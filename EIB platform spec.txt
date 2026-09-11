@@ -1,0 +1,78 @@
+# EIB Platform — Architecture Spec
+
+Reference artifacts (read these alongside this spec, they define the UI and the shape of every field referenced below):
+- `EIB_student_manager.txt` — Forms, Students, Acc Manager tabs
+- `Lesson_editor.txt` — lesson/deliverable authoring
+- `Mentor_CRM.txt` — mentor roster and lesson assignment
+- `Student_facing_lesson_view.txt` — student and leader lesson view
+
+## Roles
+
+Three roles, gated server-side on every API route, not just hidden in the UI.
+
+| Role | Lesson Editor | Mentor CRM | Student Manager: Forms | Student Manager: Students | Student Manager: Acc Manager | Lesson View |
+|---|---|---|---|---|---|---|
+| superAdmin | full | full | full | full | full | full (leader mode, for preview) |
+| studentLeader | none | full | full | full | none | leader mode |
+| student | none | none | none | none | none | student mode, own submissions only |
+
+## Data model (MongoDB)
+
+### `users`
+The Google OAuth allow-list. `{ email, name, role: "superAdmin" | "studentLeader" | "student" }`.
+Rows are created two ways only: super admin manually adds a `studentLeader` row from the Acc Manager tab, or a `student` row is created automatically when an application is approved (see below). No other path creates a user.
+
+### `lessons`
+Canonical curriculum content. Written only by Lesson Editor, super admin only. Everyone else reads.
+`{ chapterLabel, number, title, slidesLink, mentorEnabled, deliverables: [{ id, type, title, instructions, example, points }] }`.
+
+### `submissions`
+One document per (studentId, lessonId, deliverableId). This is the single source of truth a student's lesson view and the Student Manager's per-student grading both read and write, so a grade entered in one place shows up in the other with no separate sync step.
+`{ studentId, lessonId, deliverableId, payload (shape depends on deliverable type: text, file ref, table rows, or checklist state), grade, feedback, submittedAt }`.
+Students write `payload` only. Leaders and super admin write `grade`/`feedback` only. Neither role touches the other's fields.
+
+### `mentors`
+`{ name, status: "contacted" | "responsive" | "unresponsive" | "confirmed", contacts: [{ method, value, preferred, public }], notes, lastContactedAt, publicRole, publicBio, assignedLessons: [{ lessonNumber, cohortYear }] }`.
+
+Two rules that matter:
+1. **One mentor per lesson per cohort year.** Enforce this server-side (assigning a lesson already taken for that year must fail the request), not just in the UI toggle.
+2. **`contacts[]` is never returned to a student-facing route.** The lesson view's mentor pill only ever receives the derived public-contact string (whichever contact has `public: true`, preferring the one also marked `preferred`) plus `publicRole` and `publicBio`. A private phone number must not be reachable by inspecting the network tab.
+
+### `applications`
+The Forms tab's intake data plus pipeline status.
+`{ studentId (once created), name, email, answers: [...], status: "pending" | "interview" | "waitlist" | "approved" | "denied", submittedAt }`.
+
+**Approving an application is a two-write action in one handler:** set `status: "approved"` on the application, and upsert a `users` row `{ email, name, role: "student" }` using the email from the application's own answers. This is what turns an applicant into someone who can sign in and see the lesson view. Moving a student off "approved" (denied, waitlisted) does not currently revoke that `users` row; access removal was not specified and should not be built silently.
+
+## Stack
+
+- **Vercel** hosts one Next.js app (not four separate apps). Role-based routing: `/editor` (superAdmin), `/crm` (superAdmin + studentLeader), `/manager` (superAdmin + studentLeader), `/lessons` (everyone, rendered by role).
+- **MongoDB Atlas** holds the five collections above.
+- **Cloudflare R2** stores deliverable file uploads and application resume/portfolio uploads.
+- **Auth: Google OAuth via NextAuth (Auth.js).** On sign-in, look up the email in `users`. No row, no access. Role comes from that row.
+- **Terminus** — not yet placed in this architecture. Confirm what this tool is for before Claude Code assumes a role for it.
+
+## Build order: sandbox first, real infra second
+
+Build and run this locally against mock stand-ins before connecting any
+real service. The API routes and data shapes are identical either way, only
+two things swap out later:
+
+1. **Data layer:** an in-memory store or a local file-based DB (lowdb/SQLite)
+   holding the same five collection shapes as the real MongoDB schema above,
+   sitting behind the same data-access functions the real MongoDB driver
+   will use later. Routes call those functions, not the database directly,
+   so the swap is a one-file change, not a rewrite.
+2. **Auth:** a dev-only role switcher (a dropdown setting "viewing as:
+   super admin / student leader / student" in local state or a cookie)
+   instead of real Google OAuth.
+
+Run it with `npm run dev`, click through all four tools and both lesson-view
+roles, confirm the wiring (mentor toggle to CRM, submission sync, approve to
+user creation) actually works. Only after that connect MongoDB Atlas,
+Cloudflare R2, and Google OAuth for real.
+
+## Open items, not yet decided
+
+- Whether losing "approved" status should revoke lesson-view access (removing or disabling the `users` row).
+- Whether `cohortYear` lives only on the mentor assignment or also needs to sit on `lessons`/`submissions` if a lesson's content gets reused across multiple cohort years and needs to be told apart per year.

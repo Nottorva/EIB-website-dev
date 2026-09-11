@@ -1,0 +1,1410 @@
+import React, { useState } from "react";
+import {
+  FileText,
+  Users,
+  ArrowLeft,
+  Plus,
+  Trash2,
+  ChevronUp,
+  ChevronDown,
+  Type as TypeIcon,
+  AlignLeft,
+  ListChecks,
+  Paperclip,
+  Search,
+  Mail,
+  Calendar,
+  CheckSquare,
+  Square,
+  Download,
+  Table as TableIcon,
+  UserPlus,
+} from "lucide-react";
+
+/* ---------- Design tokens (matches the rest of the EIB toolset) ---------- */
+const COLORS = {
+  bg: "#f7f8fb",
+  card: "#ffffff",
+  border: "#eef1f6",
+  text: "#0f1222",
+  sub: "#64748b",
+  faint: "#94a3b8",
+  indigo: "#4f46e5",
+  indigoSoft: "#eef0ff",
+  amber: "#b45309",
+  amberSoft: "#fdf3e0",
+  amberBorder: "#f3dfb0",
+  red: "#dc2626",
+  redSoft: "#fef2f2",
+  green: "#15803d",
+  greenSoft: "#ecfdf5",
+  greenBorder: "#bbf0d3",
+};
+
+const STATUSES = [
+  { id: "pending", label: "Pending", color: COLORS.faint, soft: "#f1f3f7", border: COLORS.border },
+  { id: "interview", label: "Interview", color: COLORS.indigo, soft: COLORS.indigoSoft, border: "#dcdcff" },
+  { id: "waitlist", label: "Waitlist", color: COLORS.amber, soft: COLORS.amberSoft, border: COLORS.amberBorder },
+  { id: "approved", label: "Approved", color: COLORS.green, soft: COLORS.greenSoft, border: COLORS.greenBorder },
+  { id: "denied", label: "Denied", color: COLORS.red, soft: COLORS.redSoft, border: "#fbd5d5" },
+];
+const statusOf = (id) => STATUSES.find((s) => s.id === id) || STATUSES[0];
+
+const QUESTION_TYPES = [
+  { id: "short", label: "Short Answer", icon: TypeIcon },
+  { id: "long", label: "Long Answer", icon: AlignLeft },
+  { id: "choice", label: "Multiple Choice", icon: ListChecks },
+  { id: "file", label: "File Upload", icon: Paperclip },
+];
+
+const DELIVERABLE_TYPES = [
+  { id: "text", label: "Text Response", icon: TypeIcon },
+  { id: "file", label: "File Upload", icon: Paperclip },
+  { id: "table", label: "Table", icon: TableIcon },
+  { id: "checklist", label: "Checklist", icon: CheckSquare },
+];
+
+let uid = 100;
+const nextId = (prefix) => `${prefix}-${uid++}`;
+
+function initialsOf(name) {
+  return name
+    .split(" ")
+    .map((p) => p[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+/* ---------- Sample data ---------- */
+function defaultForm() {
+  return [
+    { id: "q-1", type: "short", label: "Full name", required: true, options: [] },
+    { id: "q-2", type: "choice", label: "Grade", required: true, options: ["9", "10", "11", "12"] },
+    {
+      id: "q-3",
+      type: "long",
+      label: "Why do you want to join EIB?",
+      required: true,
+      options: [],
+    },
+    {
+      id: "q-4",
+      type: "long",
+      label: "Describe a problem you've noticed that you'd want to solve",
+      required: true,
+      options: [],
+    },
+    {
+      id: "q-5",
+      type: "choice",
+      label: "Can you commit to weekly Tuesday sessions, Nov to Mar?",
+      required: true,
+      options: ["Yes", "No", "Depends on the week"],
+    },
+    { id: "q-6", type: "file", label: "Resume or portfolio (optional)", required: false, options: [] },
+  ];
+}
+
+function makeDeliverable(title, type, points, submission, grade = null, feedback = "") {
+  return { id: nextId("del"), title, type, points, submission, grade, feedback };
+}
+
+function chaptersFor(status) {
+  // How far a student has gotten depends loosely on where they are in the pipeline.
+  const advanced = status === "approved" || status === "interview";
+  return [
+    {
+      chapterLabel: "Chapter 1",
+      title: "Problem Identification",
+      deliverables: [
+        makeDeliverable(
+          "Problem Journal Entry",
+          "text",
+          10,
+          advanced
+            ? {
+                text: "I noticed the same issue show up across three separate group chats this week, nobody could agree on which one had the real notes.",
+              }
+            : null,
+          advanced ? "9" : null,
+          advanced ? "Clear and specific, good use of your own observation." : ""
+        ),
+        makeDeliverable(
+          "Problem Validation Worksheet",
+          "table",
+          10,
+          advanced
+            ? {
+                columns: ["Who is affected", "How often", "Evidence"],
+                rows: [
+                  ["Fellow students", "Daily", "Logged over 3 days running"],
+                  ["Teachers", "Weekly", "Informal complaints noted"],
+                ],
+              }
+            : null,
+          advanced ? "8" : null,
+          ""
+        ),
+      ],
+    },
+    {
+      chapterLabel: "Chapter 2",
+      title: "Customer Discovery",
+      deliverables: [
+        makeDeliverable(
+          "Customer Interview Log",
+          "checklist",
+          10,
+          status === "approved"
+            ? {
+                items: [
+                  { label: "Interviewed at least 3 people", checked: true },
+                  { label: "Logged a negative reaction", checked: true },
+                  { label: "Identified one change for v2", checked: false },
+                ],
+              }
+            : null,
+          null,
+          ""
+        ),
+        makeDeliverable("Discovery Synthesis Memo", "file", 10, null, null, ""),
+      ],
+    },
+  ];
+}
+
+function defaultStudents(form) {
+  const seed = [
+    {
+      name: "Amara Chen",
+      email: "amara.chen@tfs.ca",
+      status: "approved",
+      submittedAt: "2026-10-02",
+      answers: [
+        "Amara Chen",
+        "11",
+        "I keep starting side projects and never know if they're any good until it's too late. I want a structured way to test ideas before sinking months into them.",
+        "Half my grade uses a study-group app that's basically five separate group chats. Nobody knows which one has the actual notes.",
+        "Yes",
+        "amara_chen_resume.pdf",
+      ],
+    },
+    {
+      name: "Liam Osei",
+      email: "liam.osei@tfs.ca",
+      status: "interview",
+      submittedAt: "2026-10-05",
+      answers: [
+        "Liam Osei",
+        "10",
+        "Business always felt like something adults do. I want to find out if I actually have an idea worth building, not just a fun elective.",
+        "The cafeteria line during lunch rush wastes ten minutes every single day and nobody has fixed it in three years.",
+        "Yes",
+        "",
+      ],
+    },
+    {
+      name: "Priya Nair",
+      email: "priya.nair@tfs.ca",
+      status: "waitlist",
+      submittedAt: "2026-10-08",
+      answers: [
+        "Priya Nair",
+        "12",
+        "I'm applying to business school next year and want real evidence I can build something, not just a good essay about wanting to.",
+        "Younger students at TFS don't have an easy way to find a tutor they actually trust, versus just whoever's available.",
+        "Depends on the week",
+        "priya_portfolio.pdf",
+      ],
+    },
+    {
+      name: "Ethan Walsh",
+      email: "ethan.walsh@tfs.ca",
+      status: "pending",
+      submittedAt: "2026-10-09",
+      answers: [
+        "Ethan Walsh",
+        "9",
+        "My older sibling did EIB last year and said it was the first class where being wrong actually taught you something.",
+        "Parents at pickup double park because there's no clear system, and it backs up the whole street.",
+        "Yes",
+        "",
+      ],
+    },
+    {
+      name: "Sofia Marchetti",
+      email: "sofia.marchetti@tfs.ca",
+      status: "denied",
+      submittedAt: "2026-10-10",
+      answers: [
+        "Sofia Marchetti",
+        "9",
+        "I want to build an app. I think this class will teach me to code.",
+        "Not sure yet, I was hoping the class would help me figure that out.",
+        "No",
+        "",
+      ],
+    },
+    {
+      name: "Noah Bergeron",
+      email: "noah.bergeron@tfs.ca",
+      status: "pending",
+      submittedAt: "2026-10-11",
+      answers: [
+        "Noah Bergeron",
+        "11",
+        "I run a small lawn care operation in the summer and want to understand pricing and margins better than I do now.",
+        "My own business: I undercharge because I don't actually know what a fair markup is.",
+        "Yes",
+        "noah_b_resume.pdf",
+      ],
+    },
+    {
+      name: "Zara Malik",
+      email: "zara.malik@tfs.ca",
+      status: "interview",
+      submittedAt: "2026-10-12",
+      answers: [
+        "Zara Malik",
+        "12",
+        "I've read every startup book I can find and want to test whether any of it holds up when I actually have to build something.",
+        "Club sign-ups at TFS all happen on paper sheets that go missing. There's no single record of who signed up for what.",
+        "Yes",
+        "",
+      ],
+    },
+  ];
+
+  return seed.map((s) => ({
+    id: nextId("stu"),
+    name: s.name,
+    email: s.email,
+    status: s.status,
+    submittedAt: s.submittedAt,
+    responses: form.map((q, i) => ({ questionId: q.id, answer: s.answers[i] ?? "" })),
+    chapters: chaptersFor(s.status).map((c) => ({ ...c, id: nextId("chapter") })),
+  }));
+}
+
+/* ---------- Shared atoms ---------- */
+function EditableInput({ value, onChange, placeholder, style }) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <input
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      style={{
+        border: `1px solid ${focused ? COLORS.indigo : "transparent"}`,
+        borderRadius: 8,
+        padding: "3px 7px",
+        margin: "-3px -7px",
+        background: focused ? "#fff" : "transparent",
+        fontFamily: "inherit",
+        outline: "none",
+        width: "100%",
+        boxSizing: "border-box",
+        ...style,
+      }}
+    />
+  );
+}
+
+function StatusBadge({ statusId, size = "md" }) {
+  const s = statusOf(statusId);
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        fontSize: size === "sm" ? 12 : 13,
+        fontWeight: 800,
+        color: s.color,
+        background: s.soft,
+        border: `1px solid ${s.border}`,
+        borderRadius: 999,
+        padding: size === "sm" ? "3px 9px" : "5px 12px",
+      }}
+    >
+      {s.label}
+    </span>
+  );
+}
+
+function StatusDropdown({ value, onChange }) {
+  const s = statusOf(value);
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        fontSize: 12.5,
+        fontWeight: 800,
+        color: s.color,
+        background: s.soft,
+        border: `1px solid ${s.border}`,
+        borderRadius: 999,
+        padding: "5px 10px",
+        cursor: "pointer",
+      }}
+    >
+      {STATUSES.map((opt) => (
+        <option key={opt.id} value={opt.id}>
+          {opt.label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+/* ---------- Deliverable submission rendering ---------- */
+function SubmissionView({ type, submission }) {
+  if (!submission) {
+    return (
+      <div
+        style={{
+          border: `1px dashed ${COLORS.border}`,
+          borderRadius: 12,
+          padding: "12px 14px",
+          fontSize: 13.5,
+          fontWeight: 600,
+          color: COLORS.faint,
+          fontStyle: "italic",
+        }}
+      >
+        Not submitted yet.
+      </div>
+    );
+  }
+
+  if (type === "text") {
+    return (
+      <div
+        style={{
+          background: "#fbfbfd",
+          border: `1px solid ${COLORS.border}`,
+          borderRadius: 12,
+          padding: "12px 14px",
+          fontSize: 14,
+          color: COLORS.text,
+          lineHeight: 1.55,
+        }}
+      >
+        {submission.text}
+      </div>
+    );
+  }
+
+  if (type === "table") {
+    return (
+      <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 12, overflow: "hidden" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr>
+              {submission.columns.map((c, i) => (
+                <th
+                  key={i}
+                  style={{
+                    textAlign: "left",
+                    fontSize: 12,
+                    fontWeight: 800,
+                    color: COLORS.indigo,
+                    background: COLORS.indigoSoft,
+                    padding: "8px 12px",
+                    borderBottom: `1px solid ${COLORS.border}`,
+                  }}
+                >
+                  {c}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {submission.rows.map((row, ri) => (
+              <tr key={ri}>
+                {row.map((cell, ci) => (
+                  <td
+                    key={ci}
+                    style={{
+                      fontSize: 13.5,
+                      color: COLORS.text,
+                      padding: "8px 12px",
+                      borderBottom: ri === submission.rows.length - 1 ? "none" : `1px solid ${COLORS.border}`,
+                    }}
+                  >
+                    {cell}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  if (type === "checklist") {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {submission.items.map((item, i) => (
+          <div
+            key={i}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 9,
+              border: `1px solid ${COLORS.border}`,
+              borderRadius: 10,
+              padding: "8px 12px",
+              background: item.checked ? COLORS.indigoSoft : "#fff",
+            }}
+          >
+            {item.checked ? (
+              <CheckSquare size={15} color={COLORS.indigo} strokeWidth={2.5} />
+            ) : (
+              <Square size={15} color={COLORS.faint} strokeWidth={2.25} />
+            )}
+            <span style={{ fontSize: 13.5, fontWeight: 600, color: item.checked ? COLORS.text : COLORS.sub }}>
+              {item.label}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (type === "file") {
+    return (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+          border: `1px solid ${COLORS.border}`,
+          borderRadius: 12,
+          padding: "10px 14px",
+          background: "#fbfbfd",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+          <FileText size={15} color={COLORS.indigo} />
+          <span style={{ fontSize: 13.5, fontWeight: 700, color: COLORS.text }}>{submission.fileName}</span>
+        </div>
+        <Download size={15} color={COLORS.indigo} />
+      </div>
+    );
+  }
+
+  return null;
+}
+
+function EditableTextarea({ value, onChange, placeholder, style, rows = 3 }) {
+  const [focused, setFocused] = useState(false);
+  return (
+    <textarea
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      rows={rows}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      style={{
+        border: `1px solid ${focused ? COLORS.indigo : "transparent"}`,
+        borderRadius: 8,
+        padding: "6px 8px",
+        margin: "-6px -8px",
+        background: focused ? "#fff" : "transparent",
+        fontFamily: "inherit",
+        outline: "none",
+        width: "100%",
+        boxSizing: "border-box",
+        resize: "vertical",
+        ...style,
+      }}
+    />
+  );
+}
+
+function DeliverableCard({ item, onChange }) {
+  const typeInfo = DELIVERABLE_TYPES.find((t) => t.id === item.type) || DELIVERABLE_TYPES[0];
+  const Icon = typeInfo.icon;
+  const hasGrade = item.grade !== null && item.grade !== undefined && item.grade !== "";
+
+  return (
+    <div
+      style={{
+        border: `1px solid ${COLORS.border}`,
+        borderRadius: 14,
+        padding: 16,
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+        <div>
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: 11.5,
+              fontWeight: 800,
+              color: COLORS.indigo,
+              background: COLORS.indigoSoft,
+              borderRadius: 999,
+              padding: "3px 9px",
+              marginBottom: 6,
+            }}
+          >
+            <Icon size={12} />
+            {typeInfo.label}
+          </span>
+          <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.text }}>{item.title}</div>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            background: hasGrade ? COLORS.indigoSoft : "#f1f3f7",
+            borderRadius: 999,
+            padding: "4px 6px 4px 12px",
+            flexShrink: 0,
+          }}
+        >
+          <EditableInput
+            value={item.grade ?? ""}
+            onChange={(v) => {
+              if (v === "") {
+                onChange({ ...item, grade: "" });
+                return;
+              }
+              const digits = v.replace(/[^0-9]/g, "");
+              if (digits === "") return;
+              const n = Math.min(10, parseInt(digits, 10));
+              onChange({ ...item, grade: String(n) });
+            }}
+            placeholder="—"
+            style={{
+              fontSize: 14,
+              fontWeight: 800,
+              color: hasGrade ? COLORS.indigo : COLORS.faint,
+              width: 30,
+              textAlign: "right",
+            }}
+          />
+        </div>
+      </div>
+
+      <SubmissionView type={item.type} submission={item.submission} />
+
+      <div>
+        <div style={{ fontSize: 11.5, fontWeight: 800, color: COLORS.faint, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>
+          Feedback
+        </div>
+        <div
+          style={{
+            background: "#f7f8fb",
+            border: `1px solid ${COLORS.border}`,
+            borderRadius: 10,
+            padding: "9px 11px",
+          }}
+        >
+          <EditableTextarea
+            value={item.feedback}
+            onChange={(v) => onChange({ ...item, feedback: v })}
+            placeholder="Write feedback on this submission..."
+            rows={2}
+            style={{ fontSize: 13, color: COLORS.text, lineHeight: 1.5, background: "transparent" }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ChapterSection({ chapter, onChange }) {
+  const patchDeliverable = (updated) =>
+    onChange({ ...chapter, deliverables: chapter.deliverables.map((d) => (d.id === updated.id ? updated : d)) });
+
+  return (
+    <div>
+      <div style={{ marginBottom: 10 }}>
+        <div style={{ fontSize: 12, fontWeight: 800, color: COLORS.indigo, textTransform: "uppercase", letterSpacing: 0.4 }}>
+          {chapter.chapterLabel}
+        </div>
+        <div style={{ fontSize: 17, fontWeight: 800, color: COLORS.text }}>{chapter.title}</div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {chapter.deliverables.map((d) => (
+          <DeliverableCard key={d.id} item={d} onChange={patchDeliverable} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Forms tab ---------- */
+function QuestionEditor({ question, index, total, onChange, onDelete, onMove }) {
+  const typeInfo = QUESTION_TYPES.find((t) => t.id === question.type);
+  const Icon = typeInfo.icon;
+
+  return (
+    <div
+      style={{
+        background: COLORS.card,
+        border: `1px solid ${COLORS.border}`,
+        borderRadius: 14,
+        padding: 16,
+        display: "flex",
+        gap: 12,
+      }}
+    >
+      <div style={{ display: "flex", flexDirection: "column", gap: 2, paddingTop: 2 }}>
+        <button
+          onClick={() => onMove(-1)}
+          disabled={index === 0}
+          style={{
+            border: "none",
+            background: "transparent",
+            cursor: index === 0 ? "default" : "pointer",
+            color: index === 0 ? "#d7dbe4" : COLORS.faint,
+            padding: 2,
+          }}
+        >
+          <ChevronUp size={16} />
+        </button>
+        <button
+          onClick={() => onMove(1)}
+          disabled={index === total - 1}
+          style={{
+            border: "none",
+            background: "transparent",
+            cursor: index === total - 1 ? "default" : "pointer",
+            color: index === total - 1 ? "#d7dbe4" : COLORS.faint,
+            padding: 2,
+          }}
+        >
+          <ChevronDown size={16} />
+        </button>
+      </div>
+
+      <div style={{ flex: 1 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+          <span
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: 12,
+              fontWeight: 800,
+              color: COLORS.indigo,
+              background: COLORS.indigoSoft,
+              borderRadius: 999,
+              padding: "4px 10px",
+            }}
+          >
+            <Icon size={13} />
+            {typeInfo.label}
+          </span>
+          <select
+            value={question.type}
+            onChange={(e) => onChange({ ...question, type: e.target.value })}
+            style={{
+              fontSize: 12.5,
+              fontWeight: 700,
+              color: COLORS.sub,
+              border: `1px solid ${COLORS.border}`,
+              borderRadius: 8,
+              padding: "4px 6px",
+              background: "#fff",
+            }}
+          >
+            {QUESTION_TYPES.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: COLORS.sub, fontWeight: 700, marginLeft: "auto" }}>
+            <input
+              type="checkbox"
+              checked={question.required}
+              onChange={(e) => onChange({ ...question, required: e.target.checked })}
+            />
+            Required
+          </label>
+          <button
+            onClick={onDelete}
+            style={{ border: "none", background: "transparent", color: COLORS.faint, cursor: "pointer", padding: 4 }}
+          >
+            <Trash2 size={16} />
+          </button>
+        </div>
+
+        <EditableInput
+          value={question.label}
+          onChange={(v) => onChange({ ...question, label: v })}
+          placeholder="Question"
+          style={{ fontSize: 15.5, fontWeight: 700, color: COLORS.text }}
+        />
+
+        {question.type === "choice" && (
+          <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+            {question.options.map((opt, oi) => (
+              <div key={oi} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ width: 6, height: 6, borderRadius: 999, background: COLORS.faint }} />
+                <EditableInput
+                  value={opt}
+                  onChange={(v) => {
+                    const options = [...question.options];
+                    options[oi] = v;
+                    onChange({ ...question, options });
+                  }}
+                  style={{ fontSize: 14, color: COLORS.sub }}
+                />
+                <button
+                  onClick={() => {
+                    const options = question.options.filter((_, i) => i !== oi);
+                    onChange({ ...question, options });
+                  }}
+                  style={{ border: "none", background: "transparent", color: COLORS.faint, cursor: "pointer" }}
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            ))}
+            <button
+              onClick={() => onChange({ ...question, options: [...question.options, "New option"] })}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                border: "none",
+                background: "transparent",
+                color: COLORS.indigo,
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: "pointer",
+                padding: "4px 0",
+                alignSelf: "flex-start",
+              }}
+            >
+              <Plus size={14} /> Add option
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function FormsTab({ questions, setQuestions }) {
+  const update = (id, next) => setQuestions(questions.map((q) => (q.id === id ? next : q)));
+  const remove = (id) => setQuestions(questions.filter((q) => q.id !== id));
+  const move = (index, dir) => {
+    const next = [...questions];
+    const [item] = next.splice(index, 1);
+    next.splice(index + dir, 0, item);
+    setQuestions(next);
+  };
+  const addQuestion = () =>
+    setQuestions([...questions, { id: nextId("q"), type: "short", label: "New question", required: true, options: [] }]);
+
+  return (
+    <div style={{ maxWidth: 720, margin: "0 auto" }}>
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ fontSize: 22, fontWeight: 900, color: COLORS.text }}>EIB Application Form</div>
+        <div style={{ fontSize: 14, color: COLORS.sub, marginTop: 4 }}>
+          This is what applicants see. Edit, reorder, or add questions below.
+        </div>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {questions.map((q, i) => (
+          <QuestionEditor
+            key={q.id}
+            question={q}
+            index={i}
+            total={questions.length}
+            onChange={(next) => update(q.id, next)}
+            onDelete={() => remove(q.id)}
+            onMove={(dir) => move(i, dir)}
+          />
+        ))}
+      </div>
+
+      <button
+        onClick={addQuestion}
+        style={{
+          marginTop: 14,
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          border: `1px dashed ${COLORS.border}`,
+          background: "#fff",
+          color: COLORS.indigo,
+          fontWeight: 800,
+          fontSize: 14,
+          borderRadius: 14,
+          padding: "12px 16px",
+          cursor: "pointer",
+          width: "100%",
+          justifyContent: "center",
+        }}
+      >
+        <Plus size={16} /> Add question
+      </button>
+    </div>
+  );
+}
+
+/* ---------- EIB Students tab ---------- */
+function StudentRow({ student, onOpen, onStatusChange }) {
+  return (
+    <div
+      onClick={onOpen}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        width: "100%",
+        textAlign: "left",
+        background: COLORS.card,
+        border: `1px solid ${COLORS.border}`,
+        borderRadius: 14,
+        padding: "12px 16px",
+        cursor: "pointer",
+      }}
+    >
+      <div
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 999,
+          background: COLORS.indigoSoft,
+          color: COLORS.indigo,
+          fontWeight: 800,
+          fontSize: 13,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}
+      >
+        {initialsOf(student.name)}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.text }}>{student.name}</div>
+        <div style={{ fontSize: 12.5, color: COLORS.faint, marginTop: 2 }}>Submitted {student.submittedAt}</div>
+      </div>
+      <StatusDropdown value={student.status} onChange={onStatusChange} />
+    </div>
+  );
+}
+
+function StudentDetail({ student, questions, onBack, onUpdateChapters }) {
+  const [view, setView] = useState("application");
+
+  return (
+    <div style={{ maxWidth: 680, margin: "0 auto" }}>
+      <button
+        onClick={onBack}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          border: "none",
+          background: "transparent",
+          color: COLORS.sub,
+          fontWeight: 700,
+          fontSize: 13.5,
+          cursor: "pointer",
+          padding: "4px 0",
+          marginBottom: 14,
+        }}
+      >
+        <ArrowLeft size={15} /> Back to list
+      </button>
+
+      <div
+        style={{
+          background: COLORS.card,
+          border: `1px solid ${COLORS.border}`,
+          borderRadius: 16,
+          padding: 20,
+          marginBottom: 16,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: 999,
+              background: COLORS.indigoSoft,
+              color: COLORS.indigo,
+              fontWeight: 800,
+              fontSize: 16,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            {initialsOf(student.name)}
+          </div>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ fontSize: 19, fontWeight: 900, color: COLORS.text }}>{student.name}</div>
+              <StatusBadge statusId={student.status} size="sm" />
+            </div>
+            <div style={{ display: "flex", gap: 14, marginTop: 4 }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: COLORS.faint, fontWeight: 600 }}>
+                <Mail size={12} /> {student.email}
+              </span>
+              <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: COLORS.faint, fontWeight: 600 }}>
+                <Calendar size={12} /> {student.submittedAt}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            gap: 6,
+            background: "#f7f8fb",
+            border: `1px solid ${COLORS.border}`,
+            borderRadius: 11,
+            padding: 4,
+            marginTop: 16,
+          }}
+        >
+          <button
+            onClick={() => setView("application")}
+            style={{
+              flex: 1,
+              fontSize: 13.5,
+              fontWeight: 800,
+              color: view === "application" ? "#fff" : COLORS.sub,
+              background: view === "application" ? COLORS.indigo : "transparent",
+              border: "none",
+              borderRadius: 8,
+              padding: "8px 0",
+              cursor: "pointer",
+            }}
+          >
+            Application
+          </button>
+          <button
+            onClick={() => setView("deliverables")}
+            style={{
+              flex: 1,
+              fontSize: 13.5,
+              fontWeight: 800,
+              color: view === "deliverables" ? "#fff" : COLORS.sub,
+              background: view === "deliverables" ? COLORS.indigo : "transparent",
+              border: "none",
+              borderRadius: 8,
+              padding: "8px 0",
+              cursor: "pointer",
+            }}
+          >
+            Deliverables
+          </button>
+        </div>
+      </div>
+
+      {view === "application" ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {questions.map((q) => {
+            const r = student.responses.find((r) => r.questionId === q.id);
+            return (
+              <div
+                key={q.id}
+                style={{
+                  background: COLORS.card,
+                  border: `1px solid ${COLORS.border}`,
+                  borderRadius: 14,
+                  padding: 16,
+                }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.sub, marginBottom: 8 }}>{q.label}</div>
+                {q.type === "file" ? (
+                  r?.answer ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: COLORS.indigo, fontWeight: 700 }}>
+                      <Paperclip size={14} /> {r.answer}
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 13.5, color: COLORS.faint, fontStyle: "italic" }}>No file uploaded</div>
+                  )
+                ) : (
+                  <div style={{ fontSize: 15, color: COLORS.text, lineHeight: 1.55 }}>{r?.answer || "—"}</div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+          {student.chapters.map((c) => (
+            <ChapterSection
+              key={c.id}
+              chapter={c}
+              onChange={(updated) =>
+                onUpdateChapters(student.chapters.map((ch) => (ch.id === updated.id ? updated : ch)))
+              }
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StudentsTab({ questions, students, setStudents }) {
+  const [filter, setFilter] = useState("all");
+  const [search, setSearch] = useState("");
+  const [openId, setOpenId] = useState(null);
+
+  const openStudent = students.find((s) => s.id === openId);
+
+  const filtered = students.filter((s) => {
+    if (filter !== "all" && s.status !== filter) return false;
+    if (search && !s.name.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
+
+  const setStatus = (id, status) => setStudents(students.map((s) => (s.id === id ? { ...s, status } : s)));
+  const updateChapters = (id, chapters) => setStudents(students.map((s) => (s.id === id ? { ...s, chapters } : s)));
+
+  if (openStudent) {
+    return (
+      <StudentDetail
+        student={openStudent}
+        questions={questions}
+        onBack={() => setOpenId(null)}
+        onUpdateChapters={(chapters) => updateChapters(openStudent.id, chapters)}
+      />
+    );
+  }
+
+  return (
+    <div style={{ maxWidth: 720, margin: "0 auto" }}>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 14, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <button
+            onClick={() => setFilter("all")}
+            style={{
+              fontSize: 13,
+              fontWeight: 800,
+              color: filter === "all" ? "#fff" : COLORS.text,
+              background: filter === "all" ? COLORS.indigo : "#fff",
+              border: `1px solid ${filter === "all" ? COLORS.indigo : COLORS.border}`,
+              borderRadius: 999,
+              padding: "6px 13px",
+              cursor: "pointer",
+            }}
+          >
+            All
+          </button>
+          {STATUSES.map((s) => {
+            const active = filter === s.id;
+            return (
+              <button
+                key={s.id}
+                onClick={() => setFilter(s.id)}
+                style={{
+                  fontSize: 13,
+                  fontWeight: 800,
+                  color: active ? "#fff" : s.color,
+                  background: active ? s.color : s.soft,
+                  border: `1px solid ${active ? s.color : s.border}`,
+                  borderRadius: 999,
+                  padding: "6px 13px",
+                  cursor: "pointer",
+                }}
+              >
+                {s.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div style={{ position: "relative", marginLeft: "auto" }}>
+          <Search size={14} color={COLORS.faint} style={{ position: "absolute", left: 10, top: 10 }} />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search name"
+            style={{
+              border: `1px solid ${COLORS.border}`,
+              borderRadius: 999,
+              padding: "7px 12px 7px 30px",
+              fontSize: 13.5,
+              outline: "none",
+              width: 170,
+            }}
+          />
+        </div>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {filtered.length === 0 && (
+          <div style={{ textAlign: "center", color: COLORS.faint, fontSize: 14, padding: "30px 0" }}>
+            No students match this filter.
+          </div>
+        )}
+        {filtered.map((s) => (
+          <StudentRow
+            key={s.id}
+            student={s}
+            onOpen={() => setOpenId(s.id)}
+            onStatusChange={(status) => setStatus(s.id, status)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Acc Manager tab ---------- */
+function LeaderRow({ leader, onRemove }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        background: COLORS.card,
+        border: `1px solid ${COLORS.border}`,
+        borderRadius: 14,
+        padding: "12px 16px",
+      }}
+    >
+      <div
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 999,
+          background: COLORS.indigoSoft,
+          color: COLORS.indigo,
+          fontWeight: 800,
+          fontSize: 13,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}
+      >
+        {initialsOf(leader.name)}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.text }}>{leader.name}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: COLORS.faint, marginTop: 2 }}>
+          <Mail size={12} /> {leader.email}
+        </div>
+      </div>
+      <button
+        onClick={onRemove}
+        style={{ border: "none", background: "transparent", color: COLORS.faint, cursor: "pointer", padding: 4 }}
+      >
+        <Trash2 size={15} />
+      </button>
+    </div>
+  );
+}
+
+function AccManagerTab({ leaders, setLeaders }) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const canCreate = name.trim() !== "" && email.trim() !== "";
+
+  const createLeader = () => {
+    if (!canCreate) return;
+    setLeaders([
+      ...leaders,
+      { id: nextId("lead"), name: name.trim(), email: email.trim(), createdAt: new Date().toISOString().slice(0, 10) },
+    ]);
+    setName("");
+    setEmail("");
+  };
+
+  const inputStyle = {
+    width: "100%",
+    boxSizing: "border-box",
+    border: `1px solid ${COLORS.border}`,
+    borderRadius: 10,
+    padding: "9px 12px",
+    fontSize: 14,
+    fontFamily: "inherit",
+    outline: "none",
+  };
+
+  return (
+    <div style={{ maxWidth: 720, margin: "0 auto" }}>
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ fontSize: 22, fontWeight: 900, color: COLORS.text }}>Student Leaders</div>
+        <div style={{ fontSize: 14, color: COLORS.sub, marginTop: 4 }}>
+          Enter a name and email, then create the student leader.
+        </div>
+      </div>
+
+      <div
+        style={{
+          background: COLORS.card,
+          border: `1px solid ${COLORS.border}`,
+          borderRadius: 14,
+          padding: 16,
+          marginBottom: 18,
+          display: "flex",
+          gap: 10,
+          alignItems: "flex-end",
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ flex: "1 1 200px" }}>
+          <div style={{ fontSize: 11.5, fontWeight: 800, color: COLORS.faint, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>
+            Name
+          </div>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && createLeader()}
+            placeholder="Full name"
+            style={inputStyle}
+          />
+        </div>
+        <div style={{ flex: "1 1 220px" }}>
+          <div style={{ fontSize: 11.5, fontWeight: 800, color: COLORS.faint, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>
+            Email
+          </div>
+          <input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && createLeader()}
+            placeholder="name@tfs.ca"
+            style={inputStyle}
+          />
+        </div>
+        <button
+          onClick={createLeader}
+          disabled={!canCreate}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 7,
+            border: "none",
+            background: canCreate ? COLORS.indigo : "#d7dbe4",
+            color: "#fff",
+            fontWeight: 800,
+            fontSize: 14,
+            borderRadius: 10,
+            padding: "10px 16px",
+            cursor: canCreate ? "pointer" : "default",
+          }}
+        >
+          <UserPlus size={15} /> Create
+        </button>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {leaders.length === 0 && (
+          <div style={{ textAlign: "center", color: COLORS.faint, fontSize: 14, padding: "30px 0" }}>
+            No student leaders yet.
+          </div>
+        )}
+        {leaders.map((l) => (
+          <LeaderRow key={l.id} leader={l} onRemove={() => setLeaders(leaders.filter((x) => x.id !== l.id))} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- App ---------- */
+export default function EIBStudentManager() {
+  const [questions, setQuestions] = useState(defaultForm());
+  const [students, setStudents] = useState(() => defaultStudents(defaultForm()));
+  const [leaders, setLeaders] = useState([]);
+  const [tab, setTab] = useState("students");
+
+  return (
+    <div style={{ background: COLORS.bg, minHeight: "100%", padding: "28px 20px", fontFamily: "system-ui, -apple-system, sans-serif" }}>
+      <div style={{ maxWidth: 760, margin: "0 auto 22px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ fontSize: 24, fontWeight: 900, color: COLORS.text }}>EIB Student Manager</div>
+        <div style={{ display: "flex", gap: 6, background: "#fff", border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: 4 }}>
+          <button
+            onClick={() => setTab("forms")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 7,
+              fontSize: 13.5,
+              fontWeight: 800,
+              color: tab === "forms" ? "#fff" : COLORS.sub,
+              background: tab === "forms" ? COLORS.indigo : "transparent",
+              border: "none",
+              borderRadius: 9,
+              padding: "8px 14px",
+              cursor: "pointer",
+            }}
+          >
+            <FileText size={15} /> Forms
+          </button>
+          <button
+            onClick={() => setTab("students")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 7,
+              fontSize: 13.5,
+              fontWeight: 800,
+              color: tab === "students" ? "#fff" : COLORS.sub,
+              background: tab === "students" ? COLORS.indigo : "transparent",
+              border: "none",
+              borderRadius: 9,
+              padding: "8px 14px",
+              cursor: "pointer",
+            }}
+          >
+            <Users size={15} /> EIB Students
+          </button>
+          <button
+            onClick={() => setTab("accmanager")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 7,
+              fontSize: 13.5,
+              fontWeight: 800,
+              color: tab === "accmanager" ? "#fff" : COLORS.sub,
+              background: tab === "accmanager" ? COLORS.indigo : "transparent",
+              border: "none",
+              borderRadius: 9,
+              padding: "8px 14px",
+              cursor: "pointer",
+            }}
+          >
+            <UserPlus size={15} /> Acc Manager
+          </button>
+        </div>
+      </div>
+
+      {tab === "forms" ? (
+        <FormsTab questions={questions} setQuestions={setQuestions} />
+      ) : tab === "students" ? (
+        <StudentsTab questions={questions} students={students} setStudents={setStudents} />
+      ) : (
+        <AccManagerTab leaders={leaders} setLeaders={setLeaders} />
+      )}
+    </div>
+  );
+}

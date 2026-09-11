@@ -1,0 +1,95 @@
+// Local sandbox data store.
+//
+// A single JSON file (data/db.json) holding the same five collections the real
+// MongoDB schema uses, plus a small `settings` map. Every collection module in
+// this folder talks to the store through the functions below, and every API
+// route talks to a collection module, never to this file. Swapping to MongoDB
+// Atlas later means re-implementing these functions with the Mongo driver;
+// nothing above this layer changes.
+
+import fs from "node:fs";
+import path from "node:path";
+import { seedData } from "./seed";
+
+const DB_PATH = path.join(process.cwd(), "data", "db.json");
+
+function load() {
+  if (!fs.existsSync(DB_PATH)) {
+    fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+    fs.writeFileSync(DB_PATH, JSON.stringify(seedData(), null, 2));
+  }
+  return JSON.parse(fs.readFileSync(DB_PATH, "utf8"));
+}
+
+function save(db) {
+  fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2));
+}
+
+export function newId(prefix) {
+  return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+export async function findAll(collection, predicate) {
+  const db = load();
+  const rows = db[collection] || [];
+  return predicate ? rows.filter(predicate) : rows;
+}
+
+export async function findOne(collection, predicate) {
+  const rows = await findAll(collection, predicate);
+  return rows[0] || null;
+}
+
+export async function findById(collection, id) {
+  return findOne(collection, (r) => r.id === id);
+}
+
+export async function insert(collection, doc) {
+  const db = load();
+  db[collection] = db[collection] || [];
+  db[collection].push(doc);
+  save(db);
+  return doc;
+}
+
+// Shallow-merges `patch` into the document with this id.
+export async function updateOne(collection, id, patch) {
+  const db = load();
+  const rows = db[collection] || [];
+  const idx = rows.findIndex((r) => r.id === id);
+  if (idx === -1) return null;
+  rows[idx] = { ...rows[idx], ...patch, id };
+  save(db);
+  return rows[idx];
+}
+
+export async function replaceOne(collection, id, doc) {
+  const db = load();
+  const rows = db[collection] || [];
+  const idx = rows.findIndex((r) => r.id === id);
+  if (idx === -1) return null;
+  rows[idx] = { ...doc, id };
+  save(db);
+  return rows[idx];
+}
+
+export async function removeOne(collection, id) {
+  const db = load();
+  const before = (db[collection] || []).length;
+  db[collection] = (db[collection] || []).filter((r) => r.id !== id);
+  save(db);
+  return db[collection].length < before;
+}
+
+export async function getSetting(key) {
+  const db = load();
+  return db.settings?.[key];
+}
+
+export async function setSetting(key, value) {
+  const db = load();
+  db.settings = db.settings || {};
+  db.settings[key] = value;
+  save(db);
+  return value;
+}

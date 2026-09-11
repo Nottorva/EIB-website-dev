@@ -1,0 +1,734 @@
+import React, { useState } from "react";
+import {
+  BookOpen,
+  Eye,
+  Presentation,
+  UserCheck,
+  MapPin,
+  Clock,
+  ChevronDown,
+  ChevronUp,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  X,
+  MessageCircle,
+  FileText,
+  User,
+  Table as TableIcon,
+  CheckSquare,
+  Type as TypeIcon,
+  Paperclip,
+  Lightbulb,
+} from "lucide-react";
+
+const COLORS = {
+  bg: "#f7f8fb",
+  card: "#ffffff",
+  border: "#eef1f6",
+  text: "#0f1222",
+  sub: "#64748b",
+  faint: "#94a3b8",
+  indigo: "#4f46e5",
+  indigoSoft: "#eef0ff",
+  amber: "#b45309",
+  amberSoft: "#fdf3e0",
+  amberBorder: "#f3dfb0",
+};
+
+const DELIVERABLE_TYPES = [
+  { id: "text", label: "Text Response", icon: TypeIcon },
+  { id: "file", label: "File Upload", icon: Paperclip },
+  { id: "table", label: "Table", icon: TableIcon },
+  { id: "checklist", label: "Checklist", icon: CheckSquare },
+];
+
+/* ---------- Modal shell (view-only, matches the rest of the EIB toolset) ---------- */
+function ModalShell({ eyebrow, title, onClose, children, headerRight, maxWidth = 680 }) {
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(15,18,34,0.45)",
+        display: "flex",
+        alignItems: "flex-start",
+        justifyContent: "center",
+        padding: "40px 20px",
+        zIndex: 100,
+        overflowY: "auto",
+      }}
+    >
+      <div
+        style={{
+          background: "#fff",
+          borderRadius: 24,
+          width: "100%",
+          maxWidth,
+          padding: "32px 36px 36px",
+          boxShadow: "0 20px 60px rgba(15,23,42,0.25)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 22 }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: COLORS.indigo, letterSpacing: 0.3, marginBottom: 6 }}>
+              {eyebrow}
+            </div>
+            <div style={{ fontSize: 27, fontWeight: 800, color: COLORS.text }}>{title}</div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+            {headerRight}
+            <button
+              onClick={onClose}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                border: `1px solid ${COLORS.border}`,
+                background: "#fff",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+                color: COLORS.text,
+              }}
+            >
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function HeaderButton({ icon: Icon, label, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        border: "none",
+        borderRadius: 12,
+        padding: "11px 18px",
+        fontSize: 15,
+        fontWeight: 700,
+        cursor: "pointer",
+        background: COLORS.indigo,
+        color: "#fff",
+      }}
+    >
+      <Icon size={17} strokeWidth={2.25} />
+      {label}
+    </button>
+  );
+}
+
+function Pill({ icon: Icon, label, tone = "outline", onClick }) {
+  const tones = {
+    outline: { background: "#fff", color: COLORS.text, border: `1px solid ${COLORS.border}` },
+    amber: { background: COLORS.amberSoft, color: COLORS.amber, border: `1px solid ${COLORS.amberBorder}` },
+  };
+  const s = tones[tone];
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 9,
+        padding: "13px 20px",
+        borderRadius: 12,
+        fontSize: 15.5,
+        fontWeight: 700,
+        cursor: "pointer",
+        ...s,
+      }}
+    >
+      <Icon size={18} strokeWidth={2.25} />
+      {label}
+    </button>
+  );
+}
+
+/* ---------- Slide viewer ---------- */
+function SlideViewer({ slides }) {
+  const [index, setIndex] = useState(0);
+  const slide = slides[index];
+  return (
+    <>
+      <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 18, overflow: "hidden" }}>
+        <div style={{ height: 6, background: COLORS.indigo }} />
+        <div style={{ padding: "44px 40px", minHeight: 300 }}>
+          <div style={{ fontSize: 13, fontWeight: 800, color: COLORS.indigo, letterSpacing: 0.5, marginBottom: 18 }}>
+            SLIDE {index + 1}
+          </div>
+          <div style={{ fontSize: 38, fontWeight: 800, color: COLORS.text, marginBottom: 16 }}>{slide.title}</div>
+          <div style={{ fontSize: 19, color: COLORS.sub }}>{slide.subtitle}</div>
+          <div style={{ marginTop: 60 }}>
+            <div style={{ width: 60, height: 3, background: COLORS.indigoSoft, borderRadius: 2, marginBottom: 14 }} />
+            <div style={{ fontSize: 13.5, color: COLORS.faint, fontWeight: 600 }}>EIB · Nemosyne</div>
+          </div>
+        </div>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 20, marginTop: 22 }}>
+        <button onClick={() => setIndex((i) => Math.max(0, i - 1))} disabled={index === 0} style={navBtnStyle(index === 0)}>
+          <ChevronLeft size={20} />
+        </button>
+        <span style={{ fontSize: 16, fontWeight: 800, color: COLORS.text }}>
+          {index + 1} / {slides.length}
+        </span>
+        <button
+          onClick={() => setIndex((i) => Math.min(slides.length - 1, i + 1))}
+          disabled={index === slides.length - 1}
+          style={navBtnStyle(index === slides.length - 1)}
+        >
+          <ChevronRight size={20} />
+        </button>
+      </div>
+    </>
+  );
+}
+
+function navBtnStyle(disabled) {
+  return {
+    width: 42,
+    height: 42,
+    borderRadius: 11,
+    border: `1px solid ${COLORS.border}`,
+    background: "#fff",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    cursor: disabled ? "default" : "pointer",
+    opacity: disabled ? 0.35 : 1,
+    color: COLORS.text,
+  };
+}
+
+const CHAPTER_SLIDES = [
+  { title: "Problem Identification", subtitle: "What problems are worth solving?" },
+  { title: "The Problem Landscape", subtitle: "Where do problems actually live?" },
+  { title: "Validating a Problem", subtitle: "How do we know it's real?" },
+  { title: "Chapter Wrap-Up", subtitle: "What you should walk away with." },
+];
+const TEMPLATE_SLIDES = [
+  { title: "Chapter Template", subtitle: "Starter framework for this session." },
+  { title: "Section Placeholder", subtitle: "Reference structure for the work ahead." },
+];
+
+function SlidesModal({ eyebrow, lessonTitle, onClose }) {
+  return (
+    <ModalShell
+      eyebrow={`${eyebrow} · Slides`}
+      title={lessonTitle}
+      onClose={onClose}
+      headerRight={<HeaderButton icon={Download} label="Download" onClick={() => {}} />}
+    >
+      <SlideViewer slides={CHAPTER_SLIDES} />
+    </ModalShell>
+  );
+}
+
+function TemplateModal({ eyebrow, lessonTitle, onClose }) {
+  return (
+    <ModalShell
+      eyebrow={`${eyebrow} · Template`}
+      title={lessonTitle}
+      onClose={onClose}
+      headerRight={<HeaderButton icon={Download} label="Download" onClick={() => {}} />}
+    >
+      <SlideViewer slides={TEMPLATE_SLIDES} />
+    </ModalShell>
+  );
+}
+
+/* ---------- Student Overview modal (replaces Video Lecture) ---------- */
+function StudentOverviewModal({ eyebrow, lesson, onClose }) {
+  return (
+    <ModalShell eyebrow={`${eyebrow} · Student Overview`} title={lesson.title} onClose={onClose} maxWidth={620}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          color: COLORS.sub,
+          fontSize: 15,
+          fontWeight: 600,
+          marginBottom: 22,
+        }}
+      >
+        <MapPin size={17} color={COLORS.indigo} strokeWidth={2.25} />
+        {lesson.room || "Room TBD"}
+        <span style={{ color: COLORS.faint, margin: "0 4px" }}>·</span>
+        <Clock size={17} color={COLORS.indigo} strokeWidth={2.25} />
+        {lesson.startTime || "TBD"}
+        {lesson.endTime ? ` – ${lesson.endTime}` : ""}
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 12,
+          background: COLORS.indigoSoft,
+          borderRadius: 14,
+          padding: "18px 20px",
+        }}
+      >
+        <Lightbulb size={20} color={COLORS.indigo} strokeWidth={2.25} style={{ marginTop: 2, flexShrink: 0 }} />
+        <div style={{ fontSize: 15, color: COLORS.text, lineHeight: 1.6 }}>
+          {lesson.overview || "No overview has been added for this lesson yet."}
+        </div>
+      </div>
+    </ModalShell>
+  );
+}
+
+/* ---------- Mentor info popup (view-only) ---------- */
+function MentorInfoModal({ eyebrow, mentor, onClose }) {
+  const assigned = Boolean(mentor && mentor.name);
+
+  return (
+    <ModalShell eyebrow={`${eyebrow} · Mentor`} title={assigned ? mentor.name : "No Mentor Assigned"} onClose={onClose} maxWidth={560}>
+      {!assigned ? (
+        <div style={{ fontSize: 15, color: COLORS.sub }}>This lesson doesn't have a mentor assigned yet.</div>
+      ) : (
+        <>
+          {mentor.role && (
+            <div style={{ fontSize: 15.5, color: COLORS.sub, fontWeight: 600, marginBottom: 22 }}>{mentor.role}</div>
+          )}
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              background: COLORS.amberSoft,
+              border: `1px solid ${COLORS.amberBorder}`,
+              borderRadius: 12,
+              padding: "14px 16px",
+              marginBottom: 22,
+            }}
+          >
+            <MessageCircle size={17} color={COLORS.amber} strokeWidth={2.25} />
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 800, color: COLORS.amber, letterSpacing: 0.4 }}>
+                Preferred contact
+              </div>
+              <div style={{ fontSize: 15, color: COLORS.text, fontWeight: 700 }}>
+                {mentor.contactMethod || "Not specified"}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 800, color: COLORS.text, letterSpacing: 0.5, marginBottom: 10 }}>
+            <User size={16} color={COLORS.indigo} strokeWidth={2.25} />
+            Bio
+          </div>
+          <div
+            style={{
+              background: "#f7f8fb",
+              border: `1px solid ${COLORS.border}`,
+              borderRadius: 12,
+              padding: "16px 18px",
+              fontSize: 15,
+              color: COLORS.text,
+              lineHeight: 1.6,
+            }}
+          >
+            {mentor.bio || "No bio added yet."}
+          </div>
+        </>
+      )}
+    </ModalShell>
+  );
+}
+
+/* ---------- Deliverable accordion item ---------- */
+function DeliverableAccordion({ item, role, onChangeText }) {
+  const [open, setOpen] = useState(false);
+  const hasGrade = item.grade !== null && item.grade !== undefined && item.grade !== "";
+  const typeInfo = DELIVERABLE_TYPES.find((t) => t.id === item.type) || DELIVERABLE_TYPES[0];
+  const TypeIconEl = typeInfo.icon;
+
+  return (
+    <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 16, overflow: "hidden" }}>
+      <button
+        onClick={() => setOpen(!open)}
+        style={{
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+          padding: "18px 22px",
+          background: "#fff",
+          border: "none",
+          cursor: "pointer",
+          textAlign: "left",
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: 12,
+              fontWeight: 800,
+              color: COLORS.indigo,
+              background: COLORS.indigoSoft,
+              borderRadius: 999,
+              padding: "3px 10px",
+              marginBottom: 8,
+              letterSpacing: 0.2,
+            }}
+          >
+            <TypeIconEl size={12} strokeWidth={2.5} />
+            {typeInfo.label}
+            {item.points !== null && item.points !== undefined ? ` · ${item.points} pts` : ""}
+          </div>
+          <div style={{ fontSize: 17, fontWeight: 800, color: COLORS.text }}>{item.title}</div>
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
+          {role === "student" && (
+            <span
+              style={{
+                fontSize: 14.5,
+                fontWeight: 800,
+                color: hasGrade ? COLORS.indigo : COLORS.faint,
+                background: hasGrade ? COLORS.indigoSoft : "#f1f3f7",
+                borderRadius: 999,
+                padding: "4px 14px",
+                minWidth: 30,
+                textAlign: "center",
+              }}
+            >
+              {hasGrade ? item.grade : "—"}
+            </span>
+          )}
+          {open ? <ChevronUp size={18} color={COLORS.sub} /> : <ChevronDown size={18} color={COLORS.sub} />}
+        </div>
+      </button>
+
+      {open && (
+        <div style={{ padding: "0 22px 22px", display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 16, fontSize: 14.5, color: COLORS.sub, lineHeight: 1.55 }}>
+            {item.instructions}
+          </div>
+
+          {role === "leader" ? (
+            item.example ? (
+              <div style={{ background: "#f7f8fb", border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "16px 18px" }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: COLORS.faint, letterSpacing: 0.4, marginBottom: 8 }}>
+                  Example
+                </div>
+                <div style={{ fontSize: 14.5, color: COLORS.text, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+                  {item.example}
+                </div>
+              </div>
+            ) : (
+              <div style={{ fontSize: 14, color: COLORS.faint, fontStyle: "italic" }}>No example added yet.</div>
+            )
+          ) : (
+            <>
+              <textarea
+                value={item.text}
+                onChange={(e) => onChangeText(item.id, e.target.value)}
+                placeholder={item.example ? item.example : "Write your response here..."}
+                rows={4}
+                style={{
+                  width: "100%",
+                  resize: "vertical",
+                  border: `1px solid ${COLORS.border}`,
+                  borderRadius: 12,
+                  padding: "14px 16px",
+                  fontSize: 14.5,
+                  color: COLORS.text,
+                  fontFamily: "inherit",
+                  boxSizing: "border-box",
+                  background: "#fbfbfd",
+                }}
+              />
+              <div>
+                <span style={{ fontSize: 13, fontWeight: 700, color: COLORS.faint, letterSpacing: 0.4 }}>Feedback</span>
+                <div
+                  style={{
+                    marginTop: 8,
+                    background: "#f7f8fb",
+                    border: `1px solid ${COLORS.border}`,
+                    borderRadius: 12,
+                    padding: "14px 16px",
+                    fontSize: 14.5,
+                    color: item.feedback ? COLORS.text : COLORS.faint,
+                    lineHeight: 1.55,
+                  }}
+                >
+                  {item.feedback || "No feedback yet."}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ---------- Lesson card (view-only shell, live deliverables) ---------- */
+function LessonCard({ lesson, role, onChangeDeliverableText }) {
+  const [activeModal, setActiveModal] = useState(null); // null | overview | slides | template | mentor
+  const eyebrow = lesson.chapterLabel || "Chapter";
+
+  return (
+    <div
+      style={{
+        background: COLORS.card,
+        borderRadius: 22,
+        padding: "34px 36px 36px",
+        boxShadow: "0 1px 3px rgba(15,23,42,0.05)",
+      }}
+    >
+      <div style={{ display: "flex", gap: 20 }}>
+        <div
+          style={{
+            width: 54,
+            height: 54,
+            borderRadius: 14,
+            background: COLORS.indigoSoft,
+            color: COLORS.indigo,
+            fontWeight: 800,
+            fontSize: 24,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+          }}
+        >
+          {lesson.number}
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 14, fontWeight: 800, color: COLORS.indigo, marginBottom: 4 }}>{lesson.chapterLabel}</div>
+          <div style={{ fontSize: 27, fontWeight: 800, color: COLORS.text }}>{lesson.title}</div>
+        </div>
+      </div>
+
+      {/* Lecture info */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 22,
+          marginTop: 20,
+          paddingTop: 20,
+          borderTop: `1px solid ${COLORS.border}`,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8, color: COLORS.sub, fontSize: 15, fontWeight: 600 }}>
+          <MapPin size={17} color={COLORS.indigo} strokeWidth={2.25} />
+          {lesson.room || "Room TBD"}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, color: COLORS.sub, fontSize: 15, fontWeight: 600 }}>
+          <Clock size={17} color={COLORS.indigo} strokeWidth={2.25} />
+          {lesson.startTime || "TBD"}
+          {lesson.endTime ? ` – ${lesson.endTime}` : ""}
+        </div>
+      </div>
+
+      {/* Buttons */}
+      <div
+        style={{
+          display: "flex",
+          gap: 12,
+          flexWrap: "wrap",
+          marginTop: 24,
+          paddingBottom: 24,
+          borderBottom: `1px solid ${COLORS.border}`,
+        }}
+      >
+        <Pill icon={Eye} label="Student Overview" onClick={() => setActiveModal("overview")} />
+        <Pill icon={Presentation} label="Slides" onClick={() => setActiveModal("slides")} />
+        <Pill icon={FileText} label="Template" onClick={() => setActiveModal("template")} />
+        <Pill
+          icon={UserCheck}
+          label={`Mentor: ${lesson.mentor.name || "Unassigned"}`}
+          tone="amber"
+          onClick={() => setActiveModal("mentor")}
+        />
+      </div>
+
+      {/* Deliverables */}
+      <div style={{ marginTop: 28 }}>
+        <div style={{ fontSize: 13, fontWeight: 800, color: COLORS.indigo, letterSpacing: 0.5, marginBottom: 16 }}>
+          Deliverables
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {lesson.deliverables.map((d) => (
+            <DeliverableAccordion key={d.id} item={d} role={role} onChangeText={onChangeDeliverableText} />
+          ))}
+        </div>
+      </div>
+
+      {activeModal === "overview" && (
+        <StudentOverviewModal eyebrow={eyebrow} lesson={lesson} onClose={() => setActiveModal(null)} />
+      )}
+      {activeModal === "slides" && <SlidesModal eyebrow={eyebrow} lessonTitle={lesson.title} onClose={() => setActiveModal(null)} />}
+      {activeModal === "template" && <TemplateModal eyebrow={eyebrow} lessonTitle={lesson.title} onClose={() => setActiveModal(null)} />}
+      {activeModal === "mentor" && (
+        <MentorInfoModal eyebrow={eyebrow} mentor={lesson.mentor} onClose={() => setActiveModal(null)} />
+      )}
+    </div>
+  );
+}
+
+/* ---------- Sample data ---------- */
+const INITIAL_LESSONS = [
+  {
+    id: "lesson-1",
+    number: "1",
+    chapterLabel: "Chapter 1",
+    title: "Problem Identification",
+    room: "Room 214",
+    startTime: "3:30 PM",
+    endTime: "4:15 PM",
+    overview:
+      "This session is about learning to spot problems worth solving. You'll look at your own week for friction points, then start separating real, validated problems from ones you're just assuming exist.",
+    mentor: {
+      name: "Trent Mell",
+      role: "CEO, Terra CO2 · EIB Panelist",
+      contactMethod: "Email (trent@example.com)",
+      bio: "Trent Mell is CEO of Terra CO2 and a long-time EIB panelist. He previously built and sold two cleantech ventures before moving into climate investing.",
+    },
+    deliverables: [
+      {
+        id: "del-1",
+        type: "text",
+        title: "Problem Journal Entry",
+        instructions: "Describe one problem you personally experienced this week. Who else experiences it, and how do you know?",
+        example:
+          "I noticed the same issue show up across three separate group chats this week, nobody could agree on which one had the real notes. At least six classmates mentioned it unprompted.",
+        text: "",
+        grade: null,
+        feedback: "",
+        points: 10,
+      },
+      {
+        id: "del-2",
+        type: "table",
+        title: "Problem Validation Worksheet",
+        instructions: "Complete the worksheet identifying who your problem affects, where it occurs, and evidence it's worth solving.",
+        example: "Who: fellow students. Frequency: daily. Evidence: logged over 3 days running, plus two teacher complaints.",
+        text: "",
+        grade: "8/10",
+        feedback: "Solid start, Josef. Your evidence section is strong, but push further on quantifying how often this problem actually occurs.",
+        points: 10,
+      },
+    ],
+  },
+];
+
+/* ---------- Main page ---------- */
+export default function EIBLessonView() {
+  const [lessons, setLessons] = useState(INITIAL_LESSONS);
+  const [role, setRole] = useState("student"); // "student" | "leader"
+
+  const updateDeliverableText = (lessonId, deliverableId, text) => {
+    setLessons((prev) =>
+      prev.map((l) =>
+        l.id !== lessonId
+          ? l
+          : { ...l, deliverables: l.deliverables.map((d) => (d.id === deliverableId ? { ...d, text } : d)) }
+      )
+    );
+  };
+
+  return (
+    <div style={{ background: COLORS.bg, minHeight: "100%", fontFamily: "'Inter', system-ui, sans-serif" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "18px 40px",
+          borderBottom: `1px solid ${COLORS.border}`,
+          background: "#fff",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: 11,
+              background: COLORS.indigo,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <BookOpen size={20} color="#fff" strokeWidth={2.25} />
+          </div>
+          <span style={{ fontSize: 20, fontWeight: 800, color: COLORS.text }}>EIB Textbook</span>
+        </div>
+
+        <div style={{ display: "flex", gap: 6, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: 4 }}>
+          <button
+            onClick={() => setRole("student")}
+            style={{
+              fontSize: 13.5,
+              fontWeight: 800,
+              color: role === "student" ? "#fff" : COLORS.sub,
+              background: role === "student" ? COLORS.indigo : "transparent",
+              border: "none",
+              borderRadius: 9,
+              padding: "8px 16px",
+              cursor: "pointer",
+            }}
+          >
+            Student
+          </button>
+          <button
+            onClick={() => setRole("leader")}
+            style={{
+              fontSize: 13.5,
+              fontWeight: 800,
+              color: role === "leader" ? "#fff" : COLORS.sub,
+              background: role === "leader" ? COLORS.indigo : "transparent",
+              border: "none",
+              borderRadius: 9,
+              padding: "8px 16px",
+              cursor: "pointer",
+            }}
+          >
+            Student Leader
+          </button>
+        </div>
+      </div>
+
+      <div style={{ maxWidth: 900, margin: "0 auto", padding: "44px 24px 80px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 28 }}>
+          <BookOpen size={30} color={COLORS.indigo} strokeWidth={2.25} />
+          <div style={{ width: 3, height: 30, background: COLORS.text, borderRadius: 2 }} />
+          <span style={{ fontSize: 34, fontWeight: 800, color: COLORS.text }}>Lessons</span>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+          {lessons.map((lesson) => (
+            <LessonCard
+              key={lesson.id}
+              lesson={lesson}
+              role={role}
+              onChangeDeliverableText={(delId, text) => updateDeliverableText(lesson.id, delId, text)}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
