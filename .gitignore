@@ -1,4 +1,3 @@
-node_modules
-.next
-data/db.json
-.env*.local
+# App-specific ignores live in eib-platform/.gitignore
+.DS_Store
+Thumbs.db
