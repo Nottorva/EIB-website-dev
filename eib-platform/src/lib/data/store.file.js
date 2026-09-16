@@ -5,10 +5,17 @@
 // store.mongo.js; store.js picks one at runtime.
 
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { sampleSeed } from "./seed";
 
-const DB_PATH = path.join(process.cwd(), "data", "db.json");
+// On Vercel (and other read-only hosts) the project folder cannot be written
+// to, so the sandbox file lives in the temp directory instead. It is wiped on
+// every deploy and not shared between serverless instances: fine for a look,
+// useless for real data. Set MONGODB_URI for anything that must persist.
+const DB_PATH = process.env.VERCEL
+  ? path.join(os.tmpdir(), "eib-sandbox", "db.json")
+  : path.join(process.cwd(), "data", "db.json");
 
 function load() {
   if (!fs.existsSync(DB_PATH)) {

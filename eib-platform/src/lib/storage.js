@@ -11,6 +11,7 @@
 //   applications/<email-slug>/<uuid>/<file>
 
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
@@ -26,7 +27,7 @@ const r2 = {
 };
 export const storageMode = r2.accountId && r2.accessKeyId && r2.secretAccessKey && r2.bucket ? "r2" : "local";
 
-const LOCAL_ROOT = path.join(process.cwd(), "data", "uploads");
+const LOCAL_ROOT = process.env.VERCEL ? path.join(os.tmpdir(), "eib-sandbox", "uploads") : path.join(process.cwd(), "data", "uploads");
 
 let client = null;
 function s3() {
