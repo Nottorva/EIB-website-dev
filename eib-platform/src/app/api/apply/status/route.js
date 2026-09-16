@@ -2,7 +2,8 @@
 // window state, the applicant (if signed in), whether they already applied,
 // and the form questions.
 import { open } from "@/lib/auth";
-import { getApplicant } from "@/lib/applicant";
+import { getApplicant, emailOnDomain } from "@/lib/applicant";
+import { authMode } from "@/lib/auth";
 import { getApplicationForm, getApplicationWindow, windowState } from "@/lib/data/settings";
 import { findApplicationByEmail } from "@/lib/data/applications";
 
@@ -15,6 +16,8 @@ export const GET = open(async () => {
     closesAt: win.closesAt,
     applicantDomain: win.applicantDomain,
     applicant,
+    domainOk: applicant ? emailOnDomain(applicant.email, win.applicantDomain) : null,
+    authMode,
     alreadyApplied: Boolean(existing),
     appliedAt: existing?.submittedAt || null,
     form,

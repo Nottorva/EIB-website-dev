@@ -4,7 +4,8 @@
 // view and as a live "what students see" preview in the lesson editor.
 
 import React, { useState } from "react";
-import { Plus, Trash2, Paperclip, FileText, CheckSquare, Square } from "lucide-react";
+import { uploadFile, downloadUrl } from "@/lib/uploadClient";
+import { Plus, Trash2, Paperclip, FileText, CheckSquare, Square, Download } from "lucide-react";
 import { COLORS } from "./ui";
 
 const inputBox = {
@@ -126,14 +127,43 @@ export function ChecklistInput({ item, payload, onChange }) {
   );
 }
 
-export function FileInput({ payload, onChange }) {
+// uploadPurpose: "deliverable" | "example" | "application" uploads for real;
+// null keeps the file name only (used by the throwaway preview widget).
+export function FileInput({ payload, onChange, uploadPurpose = null }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const link = downloadUrl(payload);
+
+  const pick = async (f) => {
+    if (!f) return;
+    setError(null);
+    if (!uploadPurpose) {
+      onChange({ fileName: f.name, size: f.size, mimeType: f.type });
+      return;
+    }
+    setBusy(true);
+    try {
+      onChange(await uploadFile(f, uploadPurpose));
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div>
       {payload?.fileName ? (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "12px 14px", background: "#fbfbfd", marginBottom: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
             <FileText size={16} color={COLORS.indigo} />
-            <span style={{ fontSize: 14, fontWeight: 700, color: COLORS.text }}>{payload.fileName}</span>
+            {link ? (
+              <a href={link} style={{ fontSize: 14, fontWeight: 700, color: COLORS.indigo, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {payload.fileName}
+              </a>
+            ) : (
+              <span style={{ fontSize: 14, fontWeight: 700, color: COLORS.text }}>{payload.fileName}</span>
+            )}
             {payload.size ? <span style={{ fontSize: 12, color: COLORS.faint }}>{Math.round(payload.size / 1024)} KB</span> : null}
           </div>
           <button type="button" onClick={() => onChange(null)} style={{ border: "none", background: "transparent", color: COLORS.faint, cursor: "pointer", padding: 4 }}>
@@ -141,20 +171,21 @@ export function FileInput({ payload, onChange }) {
           </button>
         </div>
       ) : null}
-      <label style={{ display: "inline-flex", alignItems: "center", gap: 8, border: `1px dashed ${COLORS.indigo}`, background: COLORS.indigoSoft, color: COLORS.indigo, fontWeight: 700, fontSize: 14, borderRadius: 12, padding: "12px 16px", cursor: "pointer" }}>
+      <label style={{ display: "inline-flex", alignItems: "center", gap: 8, border: `1px dashed ${COLORS.indigo}`, background: COLORS.indigoSoft, color: COLORS.indigo, fontWeight: 700, fontSize: 14, borderRadius: 12, padding: "12px 16px", cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1 }}>
         <Paperclip size={15} />
-        {payload?.fileName ? "Replace file" : "Choose a file to upload"}
+        {busy ? "Uploading…" : payload?.fileName ? "Replace file" : "Choose a file to upload"}
         <input
           type="file"
+          disabled={busy}
           style={{ display: "none" }}
           onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) onChange({ fileName: f.name, size: f.size, mimeType: f.type });
+            pick(e.target.files?.[0]);
             e.target.value = "";
           }}
         />
       </label>
-      <div style={{ fontSize: 12, color: COLORS.faint, marginTop: 8 }}>Sandbox: only the file name is stored. Real uploads go to Cloudflare R2 later.</div>
+      {error && <div style={{ fontSize: 12.5, color: COLORS.red, fontWeight: 700, marginTop: 8 }}>{error}</div>}
+      {!uploadPurpose && <div style={{ fontSize: 12, color: COLORS.faint, marginTop: 8 }}>Preview only: nothing is uploaded here.</div>}
     </div>
   );
 }
@@ -242,11 +273,21 @@ export function PayloadView({ type, payload, emptyLabel = "Not submitted yet." }
   }
 
   if (type === "file") {
+    const link = downloadUrl(payload);
     return (
-      <div style={{ display: "flex", alignItems: "center", gap: 9, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "10px 14px", background: "#fbfbfd" }}>
-        <FileText size={15} color={COLORS.indigo} />
-        <span style={{ fontSize: 13.5, fontWeight: 700, color: COLORS.text }}>{payload.fileName}</span>
-        {payload.size ? <span style={{ fontSize: 12, color: COLORS.faint }}>{Math.round(payload.size / 1024)} KB</span> : null}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "10px 14px", background: "#fbfbfd" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
+          <FileText size={15} color={COLORS.indigo} />
+          <span style={{ fontSize: 13.5, fontWeight: 700, color: COLORS.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{payload.fileName}</span>
+          {payload.size ? <span style={{ fontSize: 12, color: COLORS.faint }}>{Math.round(payload.size / 1024)} KB</span> : null}
+        </div>
+        {link ? (
+          <a href={link} title="Download" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 800, color: COLORS.indigo, textDecoration: "none", whiteSpace: "nowrap" }}>
+            <Download size={14} /> Download
+          </a>
+        ) : (
+          <span style={{ fontSize: 12, color: COLORS.faint }}>name only</span>
+        )}
       </div>
     );
   }
@@ -266,9 +307,9 @@ export function ExampleBlock({ item }) {
 
 export const INPUT_FOR_TYPE = { text: TextInput, table: TableInput, checklist: ChecklistInput, file: FileInput };
 
-export function DeliverableInput({ item, payload, onChange }) {
+export function DeliverableInput({ item, payload, onChange, uploadPurpose = null }) {
   const Input = INPUT_FOR_TYPE[item.type] || TextInput;
-  return <Input item={item} payload={payload} onChange={onChange} />;
+  return <Input item={item} payload={payload} onChange={onChange} uploadPurpose={uploadPurpose} />;
 }
 
 // Editor-side preview: the real input, wired to throwaway local state, so the

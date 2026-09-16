@@ -1,18 +1,21 @@
 // Applicant identity for the public application form.
 //
-// Production: applicants sign in with their TFS Google account (NextAuth,
-// same Google provider as staff, but NO allow-list lookup: applicants are not
-// in `users` yet). Name and email come from the Google profile.
+// Production: the same Google sign-in as everyone else, but with NO
+// allow-list lookup; applicants are not in `users` yet. Name and email come
+// from the Google profile.
 //
 // Sandbox: a stand-in cookie set by POST /api/apply/session that holds the
-// same {name, email} shape a Google profile would give us. Swapping in real
-// OAuth only changes getApplicant().
+// same {name, email} shape a Google profile would give us.
 
 import { cookies } from "next/headers";
+import { getSessionIdentity } from "./auth";
+import { authEnabled } from "./nextauth";
 
 export const APPLICANT_COOKIE = "eib_applicant";
 
 export async function getApplicant() {
+  if (authEnabled) return getSessionIdentity();
+
   const jar = await cookies();
   const raw = jar.get(APPLICANT_COOKIE)?.value;
   if (!raw) return null;

@@ -108,7 +108,7 @@ function DeliverableAccordion({ item, mode, submission, onChangePayload }) {
             </>
           ) : (
             <>
-              <DeliverableInput item={item} payload={submission?.payload} onChange={onChangePayload} />
+              <DeliverableInput item={item} payload={submission?.payload} onChange={onChangePayload} uploadPurpose="deliverable" />
               <div>
                 <span style={{ fontSize: 13, fontWeight: 700, color: COLORS.faint, letterSpacing: 0.4 }}>Feedback</span>
                 <div style={{ marginTop: 8, background: "#f7f8fb", border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "14px 16px", fontSize: 14.5, color: submission?.feedback ? COLORS.text : COLORS.faint, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>

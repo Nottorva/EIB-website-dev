@@ -1,32 +1,25 @@
-// Local sandbox data store.
+// Local sandbox data store (used when MONGODB_URI is not set).
 //
-// A single JSON file (data/db.json) holding the same five collections the real
-// MongoDB schema uses, plus a small `settings` map. Every collection module in
-// this folder talks to the store through the functions below, and every API
-// route talks to a collection module, never to this file. Swapping to MongoDB
-// Atlas later means re-implementing these functions with the Mongo driver;
-// nothing above this layer changes.
+// A single JSON file (data/db.json) holding the same collections the MongoDB
+// store uses, plus a `settings` map. Same function signatures as
+// store.mongo.js; store.js picks one at runtime.
 
 import fs from "node:fs";
 import path from "node:path";
-import { seedData } from "./seed";
+import { sampleSeed } from "./seed";
 
 const DB_PATH = path.join(process.cwd(), "data", "db.json");
 
 function load() {
   if (!fs.existsSync(DB_PATH)) {
     fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-    fs.writeFileSync(DB_PATH, JSON.stringify(seedData(), null, 2));
+    fs.writeFileSync(DB_PATH, JSON.stringify(sampleSeed(), null, 2));
   }
   return JSON.parse(fs.readFileSync(DB_PATH, "utf8"));
 }
 
 function save(db) {
   fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2));
-}
-
-export function newId(prefix) {
-  return `${prefix}_${Math.random().toString(36).slice(2, 10)}`;
 }
 
 export async function findAll(collection, predicate) {

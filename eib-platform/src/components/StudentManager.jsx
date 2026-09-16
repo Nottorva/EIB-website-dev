@@ -547,7 +547,18 @@ function StudentDetail({ student, questions, lessons, saver, onBack }) {
                 {q.type === "file" ? (
                   answer ? (
                     <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: COLORS.indigo, fontWeight: 700 }}>
-                      <Paperclip size={14} /> {answer}
+                      <Paperclip size={14} />
+                      {typeof answer === "object" ? (
+                        answer.key ? (
+                          <a href={`/api/uploads/download?key=${encodeURIComponent(answer.key)}`} style={{ color: COLORS.indigo }}>
+                            {answer.fileName}
+                          </a>
+                        ) : (
+                          answer.fileName
+                        )
+                      ) : (
+                        answer
+                      )}
                     </div>
                   ) : (
                     <div style={{ fontSize: 13.5, color: COLORS.faint, fontStyle: "italic" }}>No file uploaded</div>

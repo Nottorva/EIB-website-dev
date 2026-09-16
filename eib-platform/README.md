@@ -131,6 +131,83 @@ src/app/*/page.jsx          Thin server pages: gate by role, render the tool.
   and teaching-plan decks are still the placeholder slide viewer from the
   reference UI.
 
+## Going live (Vercel + MongoDB Atlas + Google sign-in + Cloudflare R2)
+
+The app switches from sandbox stand-ins to the real services purely by
+environment variables. Nothing else changes. See `.env.example` for the full
+list; each group is independent.
+
+| Sandbox stand-in | Real service | Turned on by |
+|---|---|---|
+| `data/db.json` file store | MongoDB Atlas | `MONGODB_URI` (+ `MONGODB_DB`) |
+| "Viewing as" cookie switcher | Google sign-in via NextAuth | `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `AUTH_SECRET` |
+| Files saved under `data/uploads` | Cloudflare R2 (presigned direct uploads) | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` |
+
+### 1. Vercel project settings
+
+The app lives in `eib-platform/`, not the repo root, so Vercel must be told:
+
+- **Settings → General → Root Directory** = `eib-platform` (this fixes the
+  "No Output Directory named public" error; without it Vercel doesn't see a
+  Next.js app and assumes a static site).
+- Framework preset: Next.js (auto-detected once the root directory is right).
+- Add every variable from `.env.example` under **Settings → Environment
+  Variables**, then redeploy.
+
+### 2. MongoDB Atlas
+
+Create a free cluster, a database user, and allow network access from
+anywhere (Vercel has no fixed IP). Paste the connection string as
+`MONGODB_URI`. On the first request against an empty database the app creates:
+the super admin (`SUPER_ADMIN_EMAIL` / `SUPER_ADMIN_NAME`), the default
+application form, and program settings. Nothing else. Set
+`SEED_SAMPLE_DATA=true` only on a staging project if you want the sandbox
+sample students, mentors and lessons.
+
+### 3. Google sign-in
+
+In Google Cloud Console → APIs & Services → Credentials → Create OAuth client
+ID (Web application). Authorised redirect URIs:
+
+```
+https://<your-vercel-domain>/api/auth/callback/google
+http://localhost:3000/api/auth/callback/google
+```
+
+Copy the client ID and secret into `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET`,
+and set `AUTH_SECRET` to a long random string. Once these are set:
+
+- `/signin` shows a Google button; the dev switcher and `/api/dev/*` disappear.
+- Staff and students must be on the `users` allow-list (super admin from env,
+  leaders via Acc Manager, students via approval). Anyone else lands on
+  "No access" with a sign-out button.
+- Applicants use the same Google button on `/apply` but need no allow-list
+  row; they must be on the domain set in the Forms tab (default `tfs.ca`).
+
+### 4. Cloudflare R2
+
+Create a bucket and an API token with object read/write. Set the four `R2_*`
+variables. Browsers upload directly to the bucket with presigned URLs, so add
+a CORS rule on the bucket:
+
+```json
+[{ "AllowedOrigins": ["https://<your-vercel-domain>", "http://localhost:3000"],
+   "AllowedMethods": ["PUT", "GET"],
+   "AllowedHeaders": ["Content-Type"],
+   "MaxAgeSeconds": 3600 }]
+```
+
+Downloads go through `/api/uploads/download?key=…`, which checks who may
+read the file (students their own, applicants their own, staff anything)
+before redirecting to a short-lived signed URL. File keys are namespaced
+`deliverables/<studentId>/…`, `examples/…`, `applications/<email>/…`.
+
+### Running the real stack locally
+
+Copy `.env.example` to `.env.local`, fill in whichever groups you want, and
+`npm run dev`. Any group left blank stays in sandbox mode, so you can test
+Google sign-in against the JSON file store, or Atlas with the dev switcher.
+
 ## Not built (per spec)
 
 - Revoking a student's `users` row when they lose "approved" status.

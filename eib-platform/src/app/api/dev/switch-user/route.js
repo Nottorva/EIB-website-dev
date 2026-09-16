@@ -3,9 +3,10 @@
 import { cookies } from "next/headers";
 import { DEV_COOKIE, NO_ACCESS_SENTINEL, open, readJson, HttpError } from "@/lib/auth";
 import { getUserByEmail } from "@/lib/data/users";
+import { authEnabled } from "@/lib/nextauth";
 
 export const POST = open(async ({ req }) => {
-  if (process.env.NODE_ENV === "production") throw new HttpError(404, "Not found.");
+  if (authEnabled || process.env.NODE_ENV === "production") throw new HttpError(404, "Not found.");
   const { email } = await readJson(req);
   if (email !== NO_ACCESS_SENTINEL) {
     const user = await getUserByEmail(email);

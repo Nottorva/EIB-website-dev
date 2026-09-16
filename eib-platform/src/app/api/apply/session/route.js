@@ -5,9 +5,10 @@ import { cookies } from "next/headers";
 import { open, readJson, HttpError } from "@/lib/auth";
 import { APPLICANT_COOKIE, emailOnDomain } from "@/lib/applicant";
 import { getApplicationWindow } from "@/lib/data/settings";
+import { authEnabled } from "@/lib/nextauth";
 
 export const POST = open(async ({ req }) => {
-  if (process.env.NODE_ENV === "production") throw new HttpError(404, "Not found.");
+  if (authEnabled || process.env.NODE_ENV === "production") throw new HttpError(404, "Use Google sign-in.");
   const { name, email } = await readJson(req);
   if (!String(name || "").trim() || !String(email || "").includes("@")) throw new HttpError(400, "Name and email are required.");
   const win = await getApplicationWindow();

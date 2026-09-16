@@ -357,7 +357,8 @@ const SUBMISSIONS = [
   },
 ];
 
-export function seedData() {
+// Full sample data: what the local sandbox opens with.
+export function sampleSeed() {
   return {
     users: USERS,
     lessons: LESSONS,
@@ -373,6 +374,25 @@ export function seedData() {
         closesAt: "2026-10-31T03:59:00.000Z",
         applicantDomain: "tfs.ca",
       },
+    },
+  };
+}
+
+// What a fresh production database gets: the super admin from the
+// environment, the default form, and program settings. No sample students,
+// mentors, lessons or applications.
+export function minimalSeed({ adminEmail, adminName }) {
+  return {
+    users: adminEmail ? [{ id: "user_admin", email: adminEmail.toLowerCase(), name: adminName || adminEmail, role: "superAdmin" }] : [],
+    lessons: [],
+    submissions: [],
+    mentors: [],
+    applications: [],
+    settings: {
+      applicationForm: FORM_QUESTIONS,
+      currentCohortYear: new Date().getFullYear(),
+      classSizeCap: 23,
+      applicationWindow: { opensAt: null, closesAt: null, applicantDomain: "tfs.ca" },
     },
   };
 }

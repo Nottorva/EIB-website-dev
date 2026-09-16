@@ -2,8 +2,11 @@
 
 import React, { useEffect, useState } from "react";
 import { Paperclip, CheckCircle2, Send, LogIn, LogOut, CalendarClock, Lock, ShieldCheck } from "lucide-react";
+import { signOut as nextAuthSignOut } from "next-auth/react";
 import { COLORS, fieldStyle, Notice, Loading } from "./ui";
 import { api } from "@/lib/api";
+import { uploadFile } from "@/lib/uploadClient";
+import { GoogleSignInButton } from "./GoogleButtons";
 
 const fmt = (iso) => (iso ? new Date(iso).toLocaleString(undefined, { dateStyle: "long", timeStyle: "short" }) : null);
 
@@ -41,8 +44,28 @@ function BigCard({ icon: Icon, tone = "indigo", title, children }) {
   );
 }
 
-/* Sandbox stand-in for "Sign in with Google" restricted to the school domain. */
-function SignInCard({ domain, onSignedIn }) {
+/* Real Google sign-in (production) or the sandbox stand-in, restricted to the school domain. */
+function SignInCard({ domain, onSignedIn, authMode }) {
+  if (authMode === "google") {
+    return (
+      <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 18, padding: 28 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: COLORS.indigoSoft, color: COLORS.indigo, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Lock size={20} strokeWidth={2.25} />
+          </div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: COLORS.text }}>Sign in to apply</div>
+        </div>
+        <div style={{ fontSize: 14.5, color: COLORS.sub, lineHeight: 1.6, marginBottom: 18 }}>
+          Use your <strong>@{domain}</strong> Google account. Your name and school email come from that account, so you won't need to type them into the form.
+        </div>
+        <GoogleSignInButton callbackUrl="/apply" label={`Sign in with your @${domain} Google account`} style={{ width: "100%" }} />
+      </div>
+    );
+  }
+  return <DevSignInCard domain={domain} onSignedIn={onSignedIn} />;
+}
+
+function DevSignInCard({ domain, onSignedIn }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [error, setError] = useState(null);
@@ -105,9 +128,27 @@ export default function ApplyForm() {
   const set = (id, value) => setAnswers((prev) => ({ ...prev, [id]: value }));
 
   const signOut = async () => {
+    if (status?.authMode === "google") {
+      nextAuthSignOut({ callbackUrl: "/apply" });
+      return;
+    }
     await api.del("/api/apply/session");
     setAnswers({});
     load();
+  };
+
+  const [uploading, setUploading] = useState(null);
+  const pickFile = async (q, f) => {
+    if (!f) return;
+    setUploading(q.id);
+    setError(null);
+    try {
+      set(q.id, await uploadFile(f, "application"));
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setUploading(null);
+    }
   };
 
   const submit = async (e) => {
@@ -172,7 +213,22 @@ export default function ApplyForm() {
             <CalendarClock size={15} /> Applications close {fmt(status.closesAt)}
           </div>
         )}
-        <SignInCard domain={status.applicantDomain} onSignedIn={load} />
+        <SignInCard domain={status.applicantDomain} onSignedIn={load} authMode={status.authMode} />
+      </Shell>
+    );
+  }
+
+  if (status.domainOk === false) {
+    return (
+      <Shell>
+        <BigCard icon={Lock} tone="amber" title={`Please use your @${status.applicantDomain} account`}>
+          You're signed in as <strong>{status.applicant.email}</strong>, which isn't a school account. Sign out and choose your @{status.applicantDomain} Google account instead.
+          <div style={{ marginTop: 16 }}>
+            <button type="button" onClick={signOut} style={{ border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.sub, fontWeight: 800, fontSize: 13, borderRadius: 10, padding: "8px 14px", cursor: "pointer" }}>
+              Sign out
+            </button>
+          </div>
+        </BigCard>
       </Shell>
     );
   }
@@ -245,19 +301,25 @@ export default function ApplyForm() {
 
             {q.type === "file" && (
               <div>
-                <label style={{ display: "inline-flex", alignItems: "center", gap: 8, border: `1px dashed ${COLORS.indigo}`, background: COLORS.indigoSoft, color: COLORS.indigo, fontWeight: 700, fontSize: 14, borderRadius: 12, padding: "12px 16px", cursor: "pointer" }}>
+                <label style={{ display: "inline-flex", alignItems: "center", gap: 8, border: `1px dashed ${COLORS.indigo}`, background: COLORS.indigoSoft, color: COLORS.indigo, fontWeight: 700, fontSize: 14, borderRadius: 12, padding: "12px 16px", cursor: "pointer", opacity: uploading === q.id ? 0.6 : 1 }}>
                   <Paperclip size={15} />
-                  {answers[q.id] ? answers[q.id] : "Choose a file"}
+                  {uploading === q.id ? "Uploading…" : answers[q.id]?.fileName ? answers[q.id].fileName : "Choose a file"}
                   <input
                     type="file"
+                    disabled={uploading === q.id}
                     style={{ display: "none" }}
                     onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      set(q.id, f ? f.name : "");
+                      pickFile(q, e.target.files?.[0]);
+                      e.target.value = "";
                     }}
                   />
                 </label>
-                <div style={{ fontSize: 12, color: COLORS.faint, marginTop: 8 }}>Sandbox: only the file name is kept. Real uploads go to Cloudflare R2 later.</div>
+                {answers[q.id]?.fileName && (
+                  <button type="button" onClick={() => set(q.id, "")} style={{ marginLeft: 10, border: "none", background: "transparent", color: COLORS.faint, fontWeight: 700, fontSize: 12.5, cursor: "pointer" }}>
+                    Remove
+                  </button>
+                )}
+                <div style={{ fontSize: 12, color: COLORS.faint, marginTop: 8 }}>PDF or document, up to 25 MB.</div>
               </div>
             )}
           </div>

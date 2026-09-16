@@ -1,19 +1,36 @@
-// Auth for the local sandbox.
+// Who is making this request, and what may they do.
 //
-// Real deployment: Google OAuth via NextAuth. On sign-in, look the email up in
-// `users`; no row, no access; role comes from the row.
-//
-// Sandbox: a dev cookie holds the email of the user we are "viewing as". The
-// lookup and role gating below are identical to what the real flow will do,
-// so swapping in NextAuth only changes how getCurrentUser() finds the email.
+// Identity comes from one of two places:
+//   - Google sign-in via NextAuth when AUTH_GOOGLE_* is configured (production)
+//   - the dev "viewing as" cookie otherwise (local sandbox only)
+// Either way the email is then looked up in `users`. No row, no access; the
+// role comes from the row. That lookup and the role gating below are the same
+// in both modes.
 
 import { cookies } from "next/headers";
 import { listUsers, getUserByEmail } from "./data/users";
+import { auth, authEnabled } from "./nextauth";
 
 export const DEV_COOKIE = "eib_dev_user";
 export const NO_ACCESS_SENTINEL = "__stranger__";
+export const authMode = authEnabled ? "google" : "dev";
+
+// The signed-in Google identity, whether or not it is on the allow-list.
+export async function getSessionIdentity() {
+  if (!authEnabled) return null;
+  const session = await auth();
+  const email = session?.user?.email;
+  if (!email) return null;
+  return { email: String(email).toLowerCase(), name: session.user.name || email };
+}
 
 export async function getCurrentUser() {
+  if (authEnabled) {
+    const identity = await getSessionIdentity();
+    if (!identity) return null;
+    return getUserByEmail(identity.email);
+  }
+
   const jar = await cookies();
   const email = jar.get(DEV_COOKIE)?.value;
   if (email === NO_ACCESS_SENTINEL) return null;
