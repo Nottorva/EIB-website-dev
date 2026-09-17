@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Pencil, Users, ClipboardList, GraduationCap, FileText, ShieldAlert } from "lucide-react";
 import { getCurrentUser, authMode } from "@/lib/auth";
+import { storeMode } from "@/lib/data/store";
 
 const COLORS = {
   text: "#0f1222",
@@ -57,7 +58,7 @@ export default async function Home() {
     <div style={{ maxWidth: 860, margin: "0 auto", padding: "44px 24px 80px" }}>
       <div style={{ marginBottom: 28 }}>
         <div style={{ fontSize: 13, fontWeight: 800, color: COLORS.indigo, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>
-          Local sandbox
+          {storeMode === "mongo" ? (authMode === "google" ? "Live" : "Live database · sign-in pending") : "Local sandbox"}
         </div>
         <div style={{ fontSize: 34, fontWeight: 800, color: COLORS.text }}>EIB Platform</div>
         <div style={{ fontSize: 15, color: COLORS.sub, marginTop: 8, lineHeight: 1.6 }}>
@@ -141,7 +142,7 @@ export default async function Home() {
           </div>
           <div style={{ fontSize: 18, fontWeight: 800, color: COLORS.text, marginBottom: 6 }}>Application form</div>
           <div style={{ fontSize: 14, color: COLORS.sub, lineHeight: 1.55 }}>
-            What applicants see. Public, no sign-in. Submissions land in the Student Manager as "Pending".
+            What applicants see. Applicants sign in with their school Google account; submissions land in the Student Manager as "Pending".
           </div>
         </Link>
       </div>
