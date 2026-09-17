@@ -213,6 +213,18 @@ read the file (students their own, applicants their own, staff anything)
 before redirecting to a short-lived signed URL. File keys are namespaced
 `deliverables/<studentId>/…`, `examples/…`, `applications/<email>/…`.
 
+### Checking a deployment
+
+Open `/api/health` on the deployed site. It reports which backend each part
+is using and whether the database answers, without exposing any data:
+
+```json
+{ "ok": true, "store": "mongo", "auth": "google", "storage": "r2", "db": { "ok": true, "users": 1 } }
+```
+
+`store: "file"` means `MONGODB_URI` is not being picked up; `db.ok: false`
+includes the driver's error message (bad password, network access, etc.).
+
 ### Running the real stack locally
 
 Copy `.env.example` to `.env.local`, fill in whichever groups you want, and
