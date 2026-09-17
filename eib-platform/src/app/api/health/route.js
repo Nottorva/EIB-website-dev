@@ -1,11 +1,10 @@
 // GET /api/health
 // Public, no secrets: which backends are active and whether the database
 // answers. Open it after a deploy to confirm the wiring:
-//   { store: "mongo", auth: "google", storage: "r2", db: { ok: true, users: 1 } }
+//   { store: "mongo", auth: "google", db: { ok: true, users: 1 } }
 import { open } from "@/lib/auth";
 import { storeMode, findAll } from "@/lib/data/store";
 import { authMode } from "@/lib/auth";
-import { storageMode } from "@/lib/storage";
 
 export const GET = open(async () => {
   const started = Date.now();
@@ -21,7 +20,6 @@ export const GET = open(async () => {
       ok: db.ok,
       store: storeMode,
       auth: authMode,
-      storage: storageMode,
       db,
       env: process.env.VERCEL ? "vercel" : "local",
       checkedAt: new Date().toISOString(),

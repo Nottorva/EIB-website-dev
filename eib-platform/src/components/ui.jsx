@@ -9,7 +9,7 @@ import {
   Type as TypeIcon,
   AlignLeft,
   ListChecks,
-  Paperclip,
+  Link2,
   Table as TableIcon,
   CheckSquare,
   AlertCircle,
@@ -41,7 +41,7 @@ export const COLORS = {
 
 export const DELIVERABLE_TYPES = [
   { id: "text", label: "Text Response", icon: TypeIcon },
-  { id: "file", label: "File Upload", icon: Paperclip },
+  { id: "link", label: "Link", icon: Link2 },
   { id: "table", label: "Table", icon: TableIcon },
   { id: "checklist", label: "Checklist", icon: CheckSquare },
 ];
@@ -51,7 +51,7 @@ export const QUESTION_TYPES = [
   { id: "short", label: "Short Answer", icon: TypeIcon },
   { id: "long", label: "Long Answer", icon: AlignLeft },
   { id: "choice", label: "Multiple Choice", icon: ListChecks },
-  { id: "file", label: "File Upload", icon: Paperclip },
+  { id: "link", label: "Link", icon: Link2 },
 ];
 export const questionType = (id) => QUESTION_TYPES.find((t) => t.id === id) || QUESTION_TYPES[0];
 

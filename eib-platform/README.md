@@ -75,7 +75,7 @@ Things worth trying, in order:
    never sent to a student account.
 9. **Examples are filled in, not typed.** In the Add/Edit Deliverable modal
    the Example box is the real student widget: tick the checkboxes, fill the
-   table, pick a file. Hit Save and that filled-in version is the example
+   table, paste a link. Hit Save and that filled-in version is the example
    shown on the editor card, in the leader's Lessons view, and as the
    placeholder in the student's text box. "Preview" on a card is a blank,
    unsaved copy of the widget for trying it out. Table deliverables can name
@@ -136,13 +136,11 @@ src/app/*/page.jsx          Thin server pages: gate by role, render the tool.
 - **Cohort year** is a single setting (`currentCohortYear: 2026`). Mentor
   assignments store it per the spec; lessons and submissions do not (open
   item in the spec, left as is).
-- **File uploads are mocked**: only the file name and size are stored, both
-  for application uploads and for file deliverables. R2 wiring comes later.
 - **Slides** in the lesson view show the link the editor set; the template
   and teaching-plan decks are still the placeholder slide viewer from the
   reference UI.
 
-## Going live (Vercel + MongoDB Atlas + Google sign-in + Cloudflare R2)
+## Going live (Vercel + MongoDB Atlas + Google sign-in)
 
 The app switches from sandbox stand-ins to the real services purely by
 environment variables. Nothing else changes. See `.env.example` for the full
@@ -152,7 +150,6 @@ list; each group is independent.
 |---|---|---|
 | `data/db.json` file store | MongoDB Atlas | `MONGODB_URI` (+ `MONGODB_DB`) |
 | URL-based dev role switch | Google sign-in via NextAuth | `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `AUTH_SECRET` |
-| Files saved under `data/uploads` | Cloudflare R2 (presigned direct uploads) | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` |
 
 ### 1. Vercel project settings
 
@@ -195,23 +192,14 @@ and set `AUTH_SECRET` to a long random string. Once these are set:
 - Applicants use the same Google button on `/apply` but need no allow-list
   row; they must be on the domain set in the Forms tab (default `tfs.ca`).
 
-### 4. Cloudflare R2
+### Files: links, not uploads
 
-Create a bucket and an API token with object read/write. Set the four `R2_*`
-variables. Browsers upload directly to the bucket with presigned URLs, so add
-a CORS rule on the bucket:
-
-```json
-[{ "AllowedOrigins": ["https://<your-vercel-domain>", "http://localhost:3000"],
-   "AllowedMethods": ["PUT", "GET"],
-   "AllowedHeaders": ["Content-Type"],
-   "MaxAgeSeconds": 3600 }]
-```
-
-Downloads go through `/api/uploads/download?key=…`, which checks who may
-read the file (students their own, applicants their own, staff anything)
-before redirecting to a short-lived signed URL. File keys are namespaced
-`deliverables/<studentId>/…`, `examples/…`, `applications/<email>/…`.
+There is no file upload anywhere. Deliverables and application questions of
+type **Link** take a URL (Google Docs, Slides, Drive, Canva, a website) and
+the student is reminded to share it so anyone with the link can view. This
+keeps the platform free of storage costs and permission headaches; work
+lives where students already make it. Photos and other assets for the site
+itself belong in `public/` and ship with the code.
 
 ### Checking a deployment
 
@@ -219,7 +207,7 @@ Open `/api/health` on the deployed site. It reports which backend each part
 is using and whether the database answers, without exposing any data:
 
 ```json
-{ "ok": true, "store": "mongo", "auth": "google", "storage": "r2", "db": { "ok": true, "users": 1 } }
+{ "ok": true, "store": "mongo", "auth": "google", "db": { "ok": true, "users": 1 } }
 ```
 
 `store: "file"` means `MONGODB_URI` is not being picked up; `db.ok: false`
@@ -235,4 +223,4 @@ Google sign-in against the JSON file store, or Atlas with the dev role-switch UR
 
 - Revoking a student's `users` row when they lose "approved" status.
 - Terminus. Its role in the architecture is still unconfirmed.
-- Real Google OAuth, MongoDB Atlas, Cloudflare R2.
+- Cloudflare R2 (dropped: links replaced uploads).

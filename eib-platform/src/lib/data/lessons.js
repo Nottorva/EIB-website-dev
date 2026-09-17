@@ -3,7 +3,9 @@
 
 import { findAll, findById, insert, replaceOne, updateOne, removeOne, newId } from "./store";
 
-export const DELIVERABLE_TYPE_IDS = ["text", "file", "table", "checklist"];
+export const DELIVERABLE_TYPE_IDS = ["text", "link", "table", "checklist"];
+// Older documents used a "file" type (uploads); links replaced it.
+const LEGACY_TYPE = { file: "link" };
 
 function numberSort(a, b) {
   const na = parseFloat(a.number);
@@ -22,19 +24,19 @@ export async function getLesson(id) {
 }
 
 // Examples are stored in the same shape as a student submission payload for
-// that deliverable type ({text} | {columns,rowLabels,rows} | {items} | {fileName}).
+// that deliverable type ({text} | {columns,rowLabels,rows} | {items} | {url}).
 // Older string examples are migrated to {text}.
 export function normalizeExample(ex) {
   if (ex === null || ex === undefined || ex === "") return null;
   if (typeof ex === "string") return { text: ex };
-  if (typeof ex === "object") return ex;
+  if (typeof ex === "object") return "fileName" in ex && !("url" in ex) ? null : ex;
   return null;
 }
 
 export function normalizeDeliverable(d) {
   return {
     id: d.id || newId("del"),
-    type: DELIVERABLE_TYPE_IDS.includes(d.type) ? d.type : "text",
+    type: DELIVERABLE_TYPE_IDS.includes(LEGACY_TYPE[d.type] || d.type) ? LEGACY_TYPE[d.type] || d.type : "text",
     title: String(d.title || "Untitled Deliverable"),
     instructions: String(d.instructions || ""),
     example: normalizeExample(d.example),

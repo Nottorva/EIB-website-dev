@@ -246,7 +246,7 @@ function DeliverableEditorModal({ eyebrow, initial, onSave, onDelete, onClose })
           <div style={{ fontSize: 13, color: COLORS.sub, lineHeight: 1.5, marginBottom: 12 }}>
             Fill this in exactly the way a strong student would. Once you save, this filled-in version is the example shown to students and leaders.
           </div>
-          <DeliverableInput key={`${type}:${columnsText}:${rowsText}:${checklistText}`} item={draft} payload={example} onChange={setExample} uploadPurpose="example" />
+          <DeliverableInput key={`${type}:${columnsText}:${rowsText}:${checklistText}`} item={draft} payload={example} onChange={setExample} />
         </div>
       </div>
 

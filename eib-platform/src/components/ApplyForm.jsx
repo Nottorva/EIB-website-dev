@@ -1,11 +1,10 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Paperclip, CheckCircle2, Send, LogIn, LogOut, CalendarClock, Lock, ShieldCheck } from "lucide-react";
+import { Link2, CheckCircle2, Send, LogIn, LogOut, CalendarClock, Lock, ShieldCheck } from "lucide-react";
 import { signOut as nextAuthSignOut } from "next-auth/react";
 import { COLORS, fieldStyle, Notice, Loading } from "./ui";
 import { api } from "@/lib/api";
-import { uploadFile } from "@/lib/uploadClient";
 import { GoogleSignInButton } from "./GoogleButtons";
 
 const fmt = (iso) => (iso ? new Date(iso).toLocaleString(undefined, { dateStyle: "long", timeStyle: "short" }) : null);
@@ -142,20 +141,6 @@ export default function ApplyForm() {
     await api.del("/api/apply/session");
     setAnswers({});
     load();
-  };
-
-  const [uploading, setUploading] = useState(null);
-  const pickFile = async (q, f) => {
-    if (!f) return;
-    setUploading(q.id);
-    setError(null);
-    try {
-      set(q.id, await uploadFile(f, "application"));
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setUploading(null);
-    }
   };
 
   const submit = async (e) => {
@@ -306,27 +291,13 @@ export default function ApplyForm() {
               </div>
             )}
 
-            {q.type === "file" && (
+            {q.type === "link" && (
               <div>
-                <label style={{ display: "inline-flex", alignItems: "center", gap: 8, border: `1px dashed ${COLORS.indigo}`, background: COLORS.indigoSoft, color: COLORS.indigo, fontWeight: 700, fontSize: 14, borderRadius: 12, padding: "12px 16px", cursor: "pointer", opacity: uploading === q.id ? 0.6 : 1 }}>
-                  <Paperclip size={15} />
-                  {uploading === q.id ? "Uploading…" : answers[q.id]?.fileName ? answers[q.id].fileName : "Choose a file"}
-                  <input
-                    type="file"
-                    disabled={uploading === q.id}
-                    style={{ display: "none" }}
-                    onChange={(e) => {
-                      pickFile(q, e.target.files?.[0]);
-                      e.target.value = "";
-                    }}
-                  />
-                </label>
-                {answers[q.id]?.fileName && (
-                  <button type="button" onClick={() => set(q.id, "")} style={{ marginLeft: 10, border: "none", background: "transparent", color: COLORS.faint, fontWeight: 700, fontSize: 12.5, cursor: "pointer" }}>
-                    Remove
-                  </button>
-                )}
-                <div style={{ fontSize: 12, color: COLORS.faint, marginTop: 8 }}>PDF or document, up to 25 MB.</div>
+                <div style={{ position: "relative" }}>
+                  <Link2 size={15} color={COLORS.faint} style={{ position: "absolute", left: 14, top: 15 }} />
+                  <input type="url" value={answers[q.id] || ""} onChange={(e) => set(q.id, e.target.value)} required={q.required} placeholder="https://" style={{ ...fieldStyle, paddingLeft: 38 }} />
+                </div>
+                <div style={{ fontSize: 12, color: COLORS.faint, marginTop: 8 }}>Paste a link (Google Drive, Docs, a website). Make sure it is shared so anyone with the link can view.</div>
               </div>
             )}
           </div>

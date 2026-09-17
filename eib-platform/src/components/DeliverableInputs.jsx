@@ -4,8 +4,7 @@
 // view and as a live "what students see" preview in the lesson editor.
 
 import React, { useState } from "react";
-import { uploadFile, downloadUrl } from "@/lib/uploadClient";
-import { Plus, Trash2, Paperclip, FileText, CheckSquare, Square, Download } from "lucide-react";
+import { Plus, Trash2, CheckSquare, Square, ExternalLink, Link2 } from "lucide-react";
 import { COLORS } from "./ui";
 
 const inputBox = {
@@ -127,65 +126,42 @@ export function ChecklistInput({ item, payload, onChange }) {
   );
 }
 
-// uploadPurpose: "deliverable" | "example" | "application" uploads for real;
-// null keeps the file name only (used by the throwaway preview widget).
-export function FileInput({ payload, onChange, uploadPurpose = null }) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(null);
-  const link = downloadUrl(payload);
+export function isValidUrl(v) {
+  try {
+    const u = new URL(String(v || "").trim());
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
 
-  const pick = async (f) => {
-    if (!f) return;
-    setError(null);
-    if (!uploadPurpose) {
-      onChange({ fileName: f.name, size: f.size, mimeType: f.type });
-      return;
-    }
-    setBusy(true);
-    try {
-      onChange(await uploadFile(f, uploadPurpose));
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setBusy(false);
-    }
-  };
-
+// A link to work that lives elsewhere (Google Docs, Slides, Canva, Drive...).
+// Payload: { url }.
+export function LinkInput({ payload, onChange }) {
+  const url = payload?.url || "";
+  const valid = url === "" || isValidUrl(url);
   return (
     <div>
-      {payload?.fileName ? (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "12px 14px", background: "#fbfbfd", marginBottom: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
-            <FileText size={16} color={COLORS.indigo} />
-            {link ? (
-              <a href={link} style={{ fontSize: 14, fontWeight: 700, color: COLORS.indigo, textDecoration: "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {payload.fileName}
-              </a>
-            ) : (
-              <span style={{ fontSize: 14, fontWeight: 700, color: COLORS.text }}>{payload.fileName}</span>
-            )}
-            {payload.size ? <span style={{ fontSize: 12, color: COLORS.faint }}>{Math.round(payload.size / 1024)} KB</span> : null}
-          </div>
-          <button type="button" onClick={() => onChange(null)} style={{ border: "none", background: "transparent", color: COLORS.faint, cursor: "pointer", padding: 4 }}>
-            <Trash2 size={14} />
-          </button>
+      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div style={{ position: "relative", flex: 1 }}>
+          <Link2 size={15} color={COLORS.faint} style={{ position: "absolute", left: 14, top: 16 }} />
+          <input
+            type="url"
+            value={url}
+            onChange={(e) => onChange({ url: e.target.value })}
+            placeholder="https://docs.google.com/..."
+            style={{ ...inputBox, paddingLeft: 38, borderColor: valid ? COLORS.border : COLORS.redBorder }}
+          />
         </div>
-      ) : null}
-      <label style={{ display: "inline-flex", alignItems: "center", gap: 8, border: `1px dashed ${COLORS.indigo}`, background: COLORS.indigoSoft, color: COLORS.indigo, fontWeight: 700, fontSize: 14, borderRadius: 12, padding: "12px 16px", cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1 }}>
-        <Paperclip size={15} />
-        {busy ? "Uploading…" : payload?.fileName ? "Replace file" : "Choose a file to upload"}
-        <input
-          type="file"
-          disabled={busy}
-          style={{ display: "none" }}
-          onChange={(e) => {
-            pick(e.target.files?.[0]);
-            e.target.value = "";
-          }}
-        />
-      </label>
-      {error && <div style={{ fontSize: 12.5, color: COLORS.red, fontWeight: 700, marginTop: 8 }}>{error}</div>}
-      {!uploadPurpose && <div style={{ fontSize: 12, color: COLORS.faint, marginTop: 8 }}>Preview only: nothing is uploaded here.</div>}
+        {isValidUrl(url) && (
+          <a href={url} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 14, color: "#fff", background: COLORS.indigo, fontWeight: 700, textDecoration: "none", borderRadius: 12, padding: "13px 16px", whiteSpace: "nowrap" }}>
+            Open <ExternalLink size={14} />
+          </a>
+        )}
+      </div>
+      <div style={{ fontSize: 12, color: valid ? COLORS.faint : COLORS.red, marginTop: 8 }}>
+        {valid ? "Make sure the link is shared so anyone with it can view." : "That does not look like a web address. It should start with https://"}
+      </div>
     </div>
   );
 }
@@ -196,7 +172,7 @@ export function isPayloadEmpty(type, payload) {
   if (type === "text") return !String(payload.text || "").trim();
   if (type === "table") return !(payload.rows || []).some((r) => r.some((c) => String(c || "").trim()));
   if (type === "checklist") return !(payload.items || []).some((i) => i.checked);
-  if (type === "file") return !payload.fileName;
+  if (type === "link") return !isValidUrl(payload.url);
   return true;
 }
 
@@ -272,23 +248,18 @@ export function PayloadView({ type, payload, emptyLabel = "Not submitted yet." }
     );
   }
 
-  if (type === "file") {
-    const link = downloadUrl(payload);
+  if (type === "link") {
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "10px 14px", background: "#fbfbfd" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
-          <FileText size={15} color={COLORS.indigo} />
-          <span style={{ fontSize: 13.5, fontWeight: 700, color: COLORS.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{payload.fileName}</span>
-          {payload.size ? <span style={{ fontSize: 12, color: COLORS.faint }}>{Math.round(payload.size / 1024)} KB</span> : null}
-        </div>
-        {link ? (
-          <a href={link} title="Download" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 800, color: COLORS.indigo, textDecoration: "none", whiteSpace: "nowrap" }}>
-            <Download size={14} /> Download
-          </a>
-        ) : (
-          <span style={{ fontSize: 12, color: COLORS.faint }}>name only</span>
-        )}
-      </div>
+      <a
+        href={payload.url}
+        target="_blank"
+        rel="noreferrer"
+        style={{ display: "flex", alignItems: "center", gap: 9, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "10px 14px", background: "#fbfbfd", textDecoration: "none", minWidth: 0 }}
+      >
+        <Link2 size={15} color={COLORS.indigo} />
+        <span style={{ fontSize: 13.5, fontWeight: 700, color: COLORS.indigo, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{payload.url}</span>
+        <ExternalLink size={14} color={COLORS.faint} />
+      </a>
     );
   }
   return null;
@@ -305,11 +276,11 @@ export function ExampleBlock({ item }) {
   );
 }
 
-export const INPUT_FOR_TYPE = { text: TextInput, table: TableInput, checklist: ChecklistInput, file: FileInput };
+export const INPUT_FOR_TYPE = { text: TextInput, table: TableInput, checklist: ChecklistInput, link: LinkInput };
 
-export function DeliverableInput({ item, payload, onChange, uploadPurpose = null }) {
+export function DeliverableInput({ item, payload, onChange }) {
   const Input = INPUT_FOR_TYPE[item.type] || TextInput;
-  return <Input item={item} payload={payload} onChange={onChange} uploadPurpose={uploadPurpose} />;
+  return <Input item={item} payload={payload} onChange={onChange} />;
 }
 
 // Editor-side preview: the real input, wired to throwaway local state, so the

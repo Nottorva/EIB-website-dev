@@ -4,7 +4,7 @@
 
 import { getSetting, setSetting } from "./store";
 
-export const QUESTION_TYPE_IDS = ["short", "long", "choice", "file"];
+export const QUESTION_TYPE_IDS = ["short", "long", "choice", "link"];
 
 export async function getApplicationForm() {
   return (await getSetting("applicationForm")) || [];
@@ -15,7 +15,7 @@ export async function saveApplicationForm(questions) {
     id: String(q.id),
     key: q.key || undefined,
     locked: Boolean(q.locked),
-    type: QUESTION_TYPE_IDS.includes(q.type) ? q.type : "short",
+    type: QUESTION_TYPE_IDS.includes(q.type) ? q.type : q.type === "file" ? "link" : "short",
     label: String(q.label || ""),
     required: Boolean(q.required),
     options: Array.isArray(q.options) ? q.options.map(String) : [],

@@ -22,7 +22,7 @@ const FORM_QUESTIONS = [
     required: true,
     options: ["Yes", "No", "Depends on the week"],
   },
-  { id: "q_file", type: "file", label: "Resume or portfolio (optional)", required: false, options: [] },
+  { id: "q_link", type: "link", label: "Link to a resume or portfolio (optional)", required: false, options: [] },
 ];
 
 const LESSONS = [
@@ -105,10 +105,10 @@ const LESSONS = [
       },
       {
         id: "del_memo",
-        type: "file",
+        type: "link",
         title: "Discovery Synthesis Memo",
-        instructions: "Upload a one-page memo summarising what you heard across your interviews and what surprised you.",
-        example: { fileName: "discovery_memo_example.pdf", size: 48213 },
+        instructions: "Write a one-page memo (Google Doc) summarising what you heard across your interviews and what surprised you. Share it so anyone with the link can view, then paste the link here.",
+        example: { url: "https://docs.google.com/document/d/1example-discovery-memo/edit" },
         points: 10,
         columns: [],
         checklistItems: [],
@@ -157,9 +157,9 @@ const LESSONS = [
     deliverables: [
       {
         id: "del_pitch",
-        type: "file",
+        type: "link",
         title: "Pitch Deck",
-        instructions: "Upload your pitch deck (5 slides max).",
+        instructions: "Paste a link to your pitch deck (Google Slides or Canva, 5 slides max). Make sure it is shared so anyone with the link can view.",
         example: null,
         points: 10,
         columns: [],
@@ -234,7 +234,7 @@ const MENTORS = [
   },
 ];
 
-function application(id, studentId, name, email, status, submittedAt, [grade, why, problem, commit, file]) {
+function application(id, studentId, name, email, status, submittedAt, [grade, why, problem, commit, link]) {
   return {
     id,
     studentId,
@@ -247,7 +247,7 @@ function application(id, studentId, name, email, status, submittedAt, [grade, wh
       { questionId: "q_why", answer: why },
       { questionId: "q_problem", answer: problem },
       { questionId: "q_commit", answer: commit },
-      { questionId: "q_file", answer: file },
+      { questionId: "q_link", answer: link },
     ],
   };
 }
@@ -258,7 +258,7 @@ const APPLICATIONS = [
     "I keep starting side projects and never know if they're any good until it's too late. I want a structured way to test ideas before sinking months into them.",
     "Half my grade uses a study-group app that's basically five separate group chats. Nobody knows which one has the actual notes.",
     "Yes",
-    "amara_chen_resume.pdf",
+    "https://drive.google.com/file/d/amara-resume/view",
   ]),
   application("app_liam", null, "Liam Osei", "liam.osei@tfs.ca", "interview", "2026-10-05", [
     "10",
@@ -272,7 +272,7 @@ const APPLICATIONS = [
     "I'm applying to business school next year and want real evidence I can build something, not just a good essay about wanting to.",
     "Younger students at TFS don't have an easy way to find a tutor they actually trust, versus just whoever's available.",
     "Depends on the week",
-    "priya_portfolio.pdf",
+    "https://priyanair.myportfolio.com",
   ]),
   application("app_ethan", null, "Ethan Walsh", "ethan.walsh@tfs.ca", "pending", "2026-10-09", [
     "9",
@@ -293,7 +293,7 @@ const APPLICATIONS = [
     "I run a small lawn care operation in the summer and want to understand pricing and margins better than I do now.",
     "My own business: I undercharge because I don't actually know what a fair markup is.",
     "Yes",
-    "noah_b_resume.pdf",
+    "https://drive.google.com/file/d/noah-resume/view",
   ]),
   application("app_zara", null, "Zara Malik", "zara.malik@tfs.ca", "interview", "2026-10-12", [
     "12",

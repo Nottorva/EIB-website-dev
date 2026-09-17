@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { FileText, Users, ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Mail, Calendar, Paperclip, UserPlus, Lock, ExternalLink, Send, Pencil, Copy, Check, CalendarClock } from "lucide-react";
+import { FileText, Users, ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Mail, Calendar, Link2, UserPlus, Lock, ExternalLink, Send, Pencil, Copy, Check, CalendarClock } from "lucide-react";
 import {
   COLORS,
   QUESTION_TYPES,
@@ -544,24 +544,13 @@ function StudentDetail({ student, questions, lessons, saver, onBack }) {
             return (
               <div key={q.id} style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 16 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.sub, marginBottom: 8 }}>{q.label}</div>
-                {q.type === "file" ? (
+                {q.type === "link" ? (
                   answer ? (
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: COLORS.indigo, fontWeight: 700 }}>
-                      <Paperclip size={14} />
-                      {typeof answer === "object" ? (
-                        answer.key ? (
-                          <a href={`/api/uploads/download?key=${encodeURIComponent(answer.key)}`} style={{ color: COLORS.indigo }}>
-                            {answer.fileName}
-                          </a>
-                        ) : (
-                          answer.fileName
-                        )
-                      ) : (
-                        answer
-                      )}
-                    </div>
+                    <a href={String(answer)} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 14, color: COLORS.indigo, fontWeight: 700, textDecoration: "none", wordBreak: "break-all" }}>
+                      <Link2 size={14} /> {String(answer)} <ExternalLink size={13} />
+                    </a>
                   ) : (
-                    <div style={{ fontSize: 13.5, color: COLORS.faint, fontStyle: "italic" }}>No file uploaded</div>
+                    <div style={{ fontSize: 13.5, color: COLORS.faint, fontStyle: "italic" }}>No link provided</div>
                   )
                 ) : (
                   <div style={{ fontSize: 15, color: COLORS.text, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{answer || "—"}</div>
