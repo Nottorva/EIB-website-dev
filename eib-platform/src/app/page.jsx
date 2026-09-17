@@ -62,11 +62,11 @@ export default async function Home() {
         <div style={{ fontSize: 15, color: COLORS.sub, marginTop: 8, lineHeight: 1.6 }}>
           {user ? (
             <>
-              Signed in as <strong style={{ color: COLORS.text }}>{user.name}</strong> ({ROLE_LABEL[user.role]}). Use the amber
-              "Viewing as" switcher in the top bar to try other roles. Role checks run on every API route, not just in the UI.
+              Signed in as <strong style={{ color: COLORS.text }}>{user.name}</strong> ({ROLE_LABEL[user.role]}). What you can open depends on
+              that role, and every API route checks it again server-side.
             </>
           ) : (
-            <>You are viewing as someone who is not on the allow-list. No tools are available.</>
+            <>This account is not on the EIB allow-list, so no tools are available.</>
           )}
         </div>
       </div>

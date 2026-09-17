@@ -45,7 +45,14 @@ function BigCard({ icon: Icon, tone = "indigo", title, children }) {
 }
 
 /* Real Google sign-in (production) or the sandbox stand-in, restricted to the school domain. */
-function SignInCard({ domain, onSignedIn, authMode }) {
+function SignInCard({ domain, onSignedIn, authMode, signInAvailable }) {
+  if (!signInAvailable) {
+    return (
+      <BigCard icon={Lock} tone="amber" title="Sign-in isn't set up yet">
+        Applying requires signing in with a school Google account, and Google sign-in has not been configured on this site yet. An EIB admin needs to finish that step first.
+      </BigCard>
+    );
+  }
   if (authMode === "google") {
     return (
       <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 18, padding: 28 }}>
@@ -213,7 +220,7 @@ export default function ApplyForm() {
             <CalendarClock size={15} /> Applications close {fmt(status.closesAt)}
           </div>
         )}
-        <SignInCard domain={status.applicantDomain} onSignedIn={load} authMode={status.authMode} />
+        <SignInCard domain={status.applicantDomain} onSignedIn={load} authMode={status.authMode} signInAvailable={status.signInAvailable} />
       </Shell>
     );
   }

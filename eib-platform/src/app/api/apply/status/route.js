@@ -18,6 +18,7 @@ export const GET = open(async () => {
     applicant,
     domainOk: applicant ? emailOnDomain(applicant.email, win.applicantDomain) : null,
     authMode,
+    signInAvailable: authMode === "google" || process.env.NODE_ENV !== "production",
     alreadyApplied: Boolean(existing),
     appliedAt: existing?.submittedAt || null,
     form,

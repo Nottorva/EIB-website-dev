@@ -1,7 +1,7 @@
 # EIB Platform — local sandbox
 
 One Next.js app containing all four EIB tools, running against a local JSON
-file instead of MongoDB, with a dev role switcher instead of Google OAuth.
+file instead of MongoDB, with a URL-based role switch instead of Google OAuth.
 The API routes and data shapes are the ones the real deployment will use.
 
 ## Run it
@@ -16,17 +16,28 @@ seed data. To start over: `npm run db:reset` (or delete `data/db.json`).
 
 ## Click-through guide
 
-The amber **Viewing as** dropdown in the top bar picks who you are. It sets a
-cookie; every page and every API route looks the email up in `users` and
-takes the role from that row. "Stranger" simulates an email that is not on
-the allow-list.
+Who you are is decided the same way in every mode: your email is looked up
+in the `users` allow-list and the role comes from that row. With Google
+sign-in configured (see "Going live") that email comes from Google. In the
+local sandbox there is no sign-in screen; you start as the seeded super admin
+and can switch by visiting a URL (bookmark these):
 
-| Viewing as | What you can open |
+```
+http://localhost:3000/api/dev/switch-user?email=josefm2173@gmail.com   super admin (Josef)
+http://localhost:3000/api/dev/switch-user?email=jack.harlow@tfs.ca     student leader (Jack)
+http://localhost:3000/api/dev/switch-user?email=amara.chen@tfs.ca      student (Amara)
+http://localhost:3000/api/dev/switch-user?email=__stranger__           not on the allow-list
+```
+
+That URL only exists in local development; it is disabled in production
+builds and whenever Google sign-in is on.
+
+| Signed in as | What you can open |
 |---|---|
 | Josef Marshall (super admin) | Lesson Editor, Mentor CRM, Student Manager (all three tabs), Lessons (leader preview) |
 | Jack Harlow (student leader) | Mentor CRM, Student Manager (Forms + Students only), Lessons (leader mode) |
 | Amara Chen (student) | Lessons (student mode, own submissions only) |
-| Stranger | Nothing except the public application form |
+| Not on the allow-list | Nothing except the public application form |
 
 Things worth trying, in order:
 
@@ -50,7 +61,7 @@ Things worth trying, in order:
    (any name, an @tfs.ca email) and submit. As Jack, Student
    Manager → the new applicant is Pending. Set them to Approved: a popup asks
    you to confirm and shows the class size after approval. Confirm. Refresh:
-   they now appear in the "Viewing as" switcher as a student and can open
+   switch to them with the dev URL above (their email) and they can open
    Lessons.
 6. **Class size cap.** The stats bar at the top of the Students tab shows
    applicants, interviews, and approved / cap. As Josef, "Set max class size"
@@ -75,8 +86,8 @@ Things worth trying, in order:
     future time: "not open yet". Clear both: live. Applicants must sign in
     with the configured email domain, and one application per email is
     enforced server-side.
-11. **Acc Manager** (super admin only): create a student leader, refresh, and
-    they appear in the switcher.
+11. **Acc Manager** (super admin only): create a student leader; switching to
+    their email with the dev URL now works.
 
 ## Layout
 
@@ -86,7 +97,7 @@ src/lib/data/*.js           One module per collection; routes call only these.
 src/lib/auth.js             getCurrentUser() + role gating. Swap the cookie
                             lookup for NextAuth session lookup.
 src/app/api/**              Route handlers, all gated with guarded([roles]).
-src/app/api/dev/switch-user DEV ONLY. Delete with the real auth swap.
+src/app/api/dev/switch-user LOCAL DEV ONLY (404 in production / with Google on).
 src/components/*.jsx        The four tools + the apply form (client components).
 src/app/*/page.jsx          Thin server pages: gate by role, render the tool.
 ```
@@ -140,7 +151,7 @@ list; each group is independent.
 | Sandbox stand-in | Real service | Turned on by |
 |---|---|---|
 | `data/db.json` file store | MongoDB Atlas | `MONGODB_URI` (+ `MONGODB_DB`) |
-| "Viewing as" cookie switcher | Google sign-in via NextAuth | `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `AUTH_SECRET` |
+| URL-based dev role switch | Google sign-in via NextAuth | `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `AUTH_SECRET` |
 | Files saved under `data/uploads` | Cloudflare R2 (presigned direct uploads) | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` |
 
 ### 1. Vercel project settings
@@ -177,7 +188,7 @@ http://localhost:3000/api/auth/callback/google
 Copy the client ID and secret into `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET`,
 and set `AUTH_SECRET` to a long random string. Once these are set:
 
-- `/signin` shows a Google button; the dev switcher and `/api/dev/*` disappear.
+- `/signin` shows a Google button; the dev role-switch URL returns 404.
 - Staff and students must be on the `users` allow-list (super admin from env,
   leaders via Acc Manager, students via approval). Anyone else lands on
   "No access" with a sign-out button.
@@ -206,7 +217,7 @@ before redirecting to a short-lived signed URL. File keys are namespaced
 
 Copy `.env.example` to `.env.local`, fill in whichever groups you want, and
 `npm run dev`. Any group left blank stays in sandbox mode, so you can test
-Google sign-in against the JSON file store, or Atlas with the dev switcher.
+Google sign-in against the JSON file store, or Atlas with the dev role-switch URL.
 
 ## Not built (per spec)
 

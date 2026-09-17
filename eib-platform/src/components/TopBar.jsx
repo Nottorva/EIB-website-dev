@@ -1,14 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { BookOpen, Pencil, Users, ClipboardList, GraduationCap, FileText, Eye } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { BookOpen, Pencil, Users, ClipboardList, GraduationCap, FileText } from "lucide-react";
 import { COLORS } from "./ui";
-import { api } from "@/lib/api";
 import { GoogleSignInButton, GoogleSignOutButton } from "./GoogleButtons";
-
-const NO_ACCESS_SENTINEL = "__stranger__";
 
 const ROLE_LABEL = { superAdmin: "Super admin", studentLeader: "Student leader", student: "Student" };
 
@@ -19,72 +16,46 @@ const NAV = [
   { href: "/lessons", label: "Lessons", icon: GraduationCap, roles: ["superAdmin", "studentLeader", "student"] },
 ];
 
-function DevSwitcher({ user, users }) {
-  const router = useRouter();
-  const [switching, setSwitching] = useState(false);
-  const current = user ? user.email : NO_ACCESS_SENTINEL;
-
-  const switchTo = async (email) => {
-    setSwitching(true);
-    try {
-      await api.post("/api/dev/switch-user", { email });
-      router.push("/");
-      router.refresh();
-    } finally {
-      setSwitching(false);
-    }
-  };
-
-  const grouped = ["superAdmin", "studentLeader", "student"].map((role) => ({ role, users: users.filter((u) => u.role === role) }));
-
-  return (
-    <div
-      style={{ display: "flex", alignItems: "center", gap: 10, background: COLORS.amberSoft, border: `1px solid ${COLORS.amberBorder}`, borderRadius: 12, padding: "6px 8px 6px 12px" }}
-      title="Dev-only role switcher. Replaced by Google sign-in when AUTH_GOOGLE_* is set."
-    >
-      <Eye size={14} color={COLORS.amber} />
-      <span style={{ fontSize: 12, fontWeight: 800, color: COLORS.amber, letterSpacing: 0.3, whiteSpace: "nowrap" }}>VIEWING AS</span>
-      <select
-        value={current}
-        disabled={switching}
-        onChange={(e) => switchTo(e.target.value)}
-        style={{ fontSize: 13, fontWeight: 800, color: COLORS.text, background: "#fff", border: `1px solid ${COLORS.amberBorder}`, borderRadius: 8, padding: "6px 8px", cursor: "pointer", maxWidth: 260 }}
-      >
-        {grouped.map((g) => (
-          <optgroup key={g.role} label={ROLE_LABEL[g.role]}>
-            {g.users.map((u) => (
-              <option key={u.id} value={u.email}>
-                {u.name} ({ROLE_LABEL[g.role]})
-              </option>
-            ))}
-            {g.users.length === 0 && <option disabled>None yet</option>}
-          </optgroup>
-        ))}
-        <optgroup label="Not on the allow-list">
-          <option value={NO_ACCESS_SENTINEL}>Stranger (no users row)</option>
-        </optgroup>
-      </select>
-    </div>
-  );
-}
-
-function GoogleIdentity({ user, identity, pathname }) {
-  if (!identity) {
-    if (pathname === "/apply" || pathname === "/signin") return null;
+function Identity({ user, identity, authMode, pathname }) {
+  const shown = identity || user;
+  if (!shown) {
+    if (authMode !== "google" || pathname === "/apply" || pathname === "/signin") return null;
     return <GoogleSignInButton callbackUrl={pathname || "/"} label="Sign in" style={{ padding: "8px 14px", fontSize: 13.5 }} />;
   }
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-      <div style={{ textAlign: "right" }}>
-        <div style={{ fontSize: 13.5, fontWeight: 800, color: COLORS.text }}>{identity.name}</div>
+      <div
+        style={{
+          width: 34,
+          height: 34,
+          borderRadius: "50%",
+          background: COLORS.indigoSoft,
+          color: COLORS.indigo,
+          fontWeight: 800,
+          fontSize: 12.5,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {String(shown.name || "?")
+          .split(" ")
+          .filter(Boolean)
+          .map((p) => p[0])
+          .join("")
+          .slice(0, 2)
+          .toUpperCase()}
+      </div>
+      <div style={{ textAlign: "left" }}>
+        <div style={{ fontSize: 13.5, fontWeight: 800, color: COLORS.text }}>{shown.name}</div>
         <div style={{ fontSize: 11.5, color: COLORS.faint }}>{user ? ROLE_LABEL[user.role] : "Not on the allow-list"}</div>
       </div>
-      <GoogleSignOutButton callbackUrl={pathname === "/apply" ? "/apply" : "/"} />
+      {authMode === "google" && <GoogleSignOutButton callbackUrl={pathname === "/apply" ? "/apply" : "/"} />}
     </div>
   );
 }
 
-export default function TopBar({ user, users, authMode, identity }) {
+export default function TopBar({ user, authMode, identity }) {
   const pathname = usePathname();
   const visibleNav = NAV.filter((n) => user && n.roles.includes(user.role));
 
@@ -114,18 +85,18 @@ export default function TopBar({ user, users, authMode, identity }) {
               </Link>
             );
           })}
-          {(authMode === "dev" || (user && user.role !== "student")) && (
+          {user && user.role !== "student" && (
             <Link
               href="/apply"
               style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13.5, fontWeight: 800, color: pathname === "/apply" ? COLORS.amber : COLORS.faint, background: pathname === "/apply" ? COLORS.amberSoft : "transparent", borderRadius: 9, padding: "7px 12px", textDecoration: "none" }}
             >
-              <FileText size={15} /> Application form (public)
+              <FileText size={15} /> Application form
             </Link>
           )}
         </nav>
       </div>
 
-      {authMode === "google" ? <GoogleIdentity user={user} identity={identity} pathname={pathname} /> : <DevSwitcher user={user} users={users} />}
+      <Identity user={user} identity={identity} authMode={authMode} pathname={pathname} />
     </header>
   );
 }

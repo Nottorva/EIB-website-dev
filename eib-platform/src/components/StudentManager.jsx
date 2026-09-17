@@ -706,7 +706,7 @@ function StudentsTab({ saver, user }) {
       try {
         const saved = await api.patch(`/api/applications/${id}`, { status });
         setApplications((prev) => prev.map((s) => (s.id === id ? saved : s)));
-        if (status === "approved") setInfo(`${saved.name} approved. A student account for ${saved.email} now exists; they will appear in the "Viewing as" switcher after a refresh.`);
+        if (status === "approved") setInfo(`${saved.name} approved. A student account for ${saved.email} now exists; they can now sign in and open Lessons.`);
       } catch (e) {
         setError(e.message);
       }
