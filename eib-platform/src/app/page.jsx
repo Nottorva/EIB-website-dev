@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Pencil, Users, ClipboardList, GraduationCap, FileText, ShieldAlert } from "lucide-react";
-import { getCurrentUser } from "@/lib/auth";
+import { getCurrentUser, authMode } from "@/lib/auth";
 
 const COLORS = {
   text: "#0f1222",
@@ -49,6 +49,7 @@ const ROLE_LABEL = { superAdmin: "Super admin", studentLeader: "Student leader",
 
 export default async function Home() {
   const user = await getCurrentUser();
+  const signInMissing = !user && authMode !== "google" && process.env.NODE_ENV === "production";
   const allowed = TOOLS.filter((t) => user && t.roles.includes(user.role));
   const blocked = TOOLS.filter((t) => !user || !t.roles.includes(user.role));
 
@@ -66,7 +67,11 @@ export default async function Home() {
               that role, and every API route checks it again server-side.
             </>
           ) : (
-            <>This account is not on the EIB allow-list, so no tools are available.</>
+            <>
+              {signInMissing
+                ? "Sign-in hasn't been configured on this site yet. An EIB admin needs to set up Google sign-in before anyone can use it."
+                : "This account is not on the EIB allow-list, so no tools are available."}
+            </>
           )}
         </div>
       </div>

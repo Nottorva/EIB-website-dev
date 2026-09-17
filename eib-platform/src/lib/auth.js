@@ -31,6 +31,11 @@ export async function getCurrentUser() {
     return getUserByEmail(identity.email);
   }
 
+  // No Google sign-in configured. In a production build that means nobody
+  // can be identified, so nobody gets in. The dev-cookie convenience below
+  // is for local development only; it must never apply on a live URL.
+  if (process.env.NODE_ENV === "production") return null;
+
   const jar = await cookies();
   const email = jar.get(DEV_COOKIE)?.value;
   if (email === NO_ACCESS_SENTINEL) return null;

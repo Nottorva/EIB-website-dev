@@ -9,11 +9,14 @@ export default async function Denied({ searchParams }) {
   const need = params?.need;
   const identity = authMode === "google" ? await getSessionIdentity() : null;
 
+  const signInMissing = authMode !== "google" && process.env.NODE_ENV === "production";
   const message =
     reason === "signin"
-      ? identity
-        ? `${identity.email} is signed in to Google but has not been added to EIB. Students get access when their application is approved; student leaders are added by the super admin.`
-        : "This email is not on the allow-list, so there is nothing to show."
+      ? signInMissing
+        ? "Sign-in hasn't been configured on this site yet, so nobody can be identified. An EIB admin needs to set up Google sign-in (AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET / AUTH_SECRET) before anyone can use it."
+        : identity
+          ? `${identity.email} is signed in to Google but has not been added to EIB. Students get access when their application is approved; student leaders are added by the super admin.`
+          : "This email is not on the allow-list, so there is nothing to show."
       : `This page requires role ${need ? need.split(",").join(" or ") : "(unknown)"}. Your current role does not have it.`;
 
   return (
