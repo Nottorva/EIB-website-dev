@@ -52,7 +52,14 @@ function buildField() {
   return field;
 }
 
-const shotStyle = (panel) => ({ backgroundColor: panel.tint, backgroundImage: `url("${panel.photo}")` });
+const shotStyle = (panel) => ({
+  backgroundColor: panel.tint,
+  backgroundImage: `url("${panel.photo}")`,
+  "--pos": panel.position || "50% 50%",
+  "--pos-m": panel.mobilePosition || panel.position || "50% 50%",
+  "--size": panel.size || "cover",
+  "--shade": panel.shade ?? 0,
+});
 
 export default function Reel({ reel }) {
   const reelRef = useRef(null);

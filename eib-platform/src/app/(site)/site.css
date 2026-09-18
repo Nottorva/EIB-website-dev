@@ -119,8 +119,21 @@
 .reel { position: relative; }
 .stage { position: sticky; top: 0; height: 100svh; overflow: hidden; background: var(--ink-900); }
 .layer { position: absolute; inset: 0; }
-.shot { position: absolute; inset: 0; background-size: cover; background-position: 50% 50%;
+.shot { position: absolute; inset: 0; background-size: var(--size, cover); background-position: var(--pos, 50% 50%);
   background-repeat: no-repeat; will-change: clip-path; transform: translateZ(0); }
+/* per-photo darkening on the left, so the caption always sits on shadow;
+   it lives inside the shot, so it is uncovered together with its photo */
+.shot::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(100deg,
+    rgba(4, 6, 10, var(--shade, 0)) 0%,
+    rgba(4, 6, 10, calc(var(--shade, 0) * 0.85)) 34%,
+    rgba(4, 6, 10, calc(var(--shade, 0) * 0.4)) 58%,
+    rgba(4, 6, 10, 0) 80%); }
+@media (max-width: 860px) {
+  /* phones crop the sides anyway; zooming would lose the subject, and each
+     photo names which slice to keep */
+  .shot { background-size: cover; background-position: var(--pos-m, var(--pos, 50% 50%)); }
+}
 .layer[data-i] .shot { clip-path: polygon(var(--xt, 180%) 0%, 190% 0%, 190% 100%, var(--xb, 180%) 100%); }
 .edge { position: absolute; top: 0; bottom: 0; left: 0; width: 0; opacity: 0;
   border-left: 1.5px solid rgba(240, 243, 250, 0.9);
@@ -129,7 +142,7 @@
   transform-origin: 50% 50%; will-change: transform; }
 .scrim { position: absolute; inset: 0; pointer-events: none;
   background:
-    linear-gradient(100deg, rgba(4, 6, 10, 0.9) 0%, rgba(4, 6, 10, 0.72) 26%, rgba(4, 6, 10, 0.28) 52%, rgba(4, 6, 10, 0) 74%),
+    linear-gradient(100deg, rgba(4, 6, 10, 0.9) 0%, rgba(4, 6, 10, 0.76) 30%, rgba(4, 6, 10, 0.36) 55%, rgba(4, 6, 10, 0) 76%),
     linear-gradient(to top, rgba(4, 6, 10, 0.72) 0%, rgba(4, 6, 10, 0) 34%); }
 
 .caps { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
@@ -144,10 +157,18 @@
 .capIn--open { -webkit-mask-image: none; mask-image: none; }
 /* every caption gets the same box, so during the crossfade the kicker lands on
    the kicker and the headline on the headline instead of colliding at odd offsets */
-.cap { justify-self: start; align-self: center;
+.cap { justify-self: start; align-self: center; position: relative;
   width: clamp(300px, 48vw, 740px);
   margin-inline: max(16px, 6vw);
-  min-height: clamp(320px, 46svh, 430px); }
+  min-height: clamp(320px, 46svh, 430px);
+  text-shadow: 0 1px 2px rgba(4, 6, 10, 0.55), 0 10px 34px rgba(4, 6, 10, 0.45); }
+/* a soft blur of the photo behind the words, feathered on every side so it
+   reads as depth rather than a box */
+.cap::before { content: ""; position: absolute; inset: -14% -18% -14% -22%; z-index: -1; pointer-events: none;
+  -webkit-backdrop-filter: blur(22px) brightness(0.72) saturate(0.85); backdrop-filter: blur(22px) brightness(0.72) saturate(0.85);
+  -webkit-mask-image: radial-gradient(ellipse 62% 56% at 46% 50%, #000 42%, transparent 100%);
+  mask-image: radial-gradient(ellipse 62% 56% at 46% 50%, #000 42%, transparent 100%); }
+.cap > * { position: relative; }
 .cap .kick { color: var(--accent-2); margin: 0 0 18px; display: flex; align-items: center; gap: 10px; }
 .cap .kick::before { content: ""; width: 26px; height: 1px; background: var(--accent); flex: none; }
 .cap h2, .cap h1 { font-size: clamp(2.05rem, 4.7vw, 3.95rem); margin: 0 0 20px; }

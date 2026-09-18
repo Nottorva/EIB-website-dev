@@ -107,7 +107,7 @@ React state (see `src/components/site/`). What comes from the database:
 | Curriculum | Lessons the Lesson Editor marks **Website · shown**, in number order, with their stage, week and public description. Consecutive lessons with the same stage share one tag. Until any lesson is shown, the prototype's sample curriculum is displayed. Links, deliverables and rooms never reach the site. |
 | Testimonials | The `testimonials` collection, approved rows only, managed on the Website page. With none approved the site shows bracketed placeholder cards labelled as such. Never invent quotes. |
 | Reel captions, comparison table, footer | Static copy in `src/lib/siteContent.js`. |
-| Photographs | `public/site/*.jpg`. These are the handoff's abstract placeholders; swap the files for real cohort photography, same names, no layout change. |
+| Photographs | `public/site/stage-*.jpg` are real cohort photos (the auditorium shot doubles as the hero and the Demo Day panel, cropped differently). Each panel in `siteContent.js` names its crop (`position`, `mobilePosition`, `size`) and a `shade` for extra darkening under the caption; the caption also carries a feathered blur of the photo behind it. Carousel photos `v-*.jpg` are still placeholders. |
 
 The prototype's Tune panel was removed; its final values are constants at the
 top of `Reel.jsx`. The three typefaces are self-hosted through `next/font`.

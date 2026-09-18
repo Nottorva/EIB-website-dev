@@ -5,10 +5,20 @@
 // testimonials, the curriculum) come from the database and only fall back to
 // the entries below when nothing has been published yet.
 
+// Per photo: `position` is the CSS background-position (which part of the
+// photo to keep when it is cropped), `size` optionally zooms in on wide
+// screens ("auto 135%" = 135% of the stage height; phones always use cover),
+// and `shade` (0–1) is extra darkening on the left, under the caption. The
+// aim in every case: the subject sits to the right of the text, the text sits
+// over the darkest part of the frame.
 export const REEL = {
   hero: {
     photo: "/site/stage-0.jpg",
-    tint: "#0D1724",
+    position: "100% 100%",
+    mobilePosition: "74% 50%",
+    size: "auto 135%",
+    shade: 0.55,
+    tint: "#0B0D12",
     kicker: "Twelve weeks · Four stages",
     headline: "Build the company before university.",
     body:
@@ -17,7 +27,11 @@ export const REEL = {
   stages: [
     {
       photo: "/site/stage-1.jpg",
-      tint: "#1A1D23",
+      position: "100% 42%",
+      mobilePosition: "62% 45%",
+      size: "auto 130%",
+      shade: 0.62,
+      tint: "#2A2D2E",
       kicker: "01 — Foundations · Weeks 1–3",
       headline: "Find a problem worth twelve weeks.",
       body: "Students stop pitching products and start interrogating problems. Market literacy, problem statements, and the discipline of killing their first idea in public.",
@@ -25,7 +39,11 @@ export const REEL = {
     },
     {
       photo: "/site/stage-2.jpg",
-      tint: "#0C2A26",
+      position: "50% 45%",
+      mobilePosition: "62% 45%",
+      size: "cover",
+      shade: 0.45,
+      tint: "#1A1B22",
       kicker: "02 — Validation · Weeks 4–6",
       headline: "Leave the building. Come back with evidence.",
       body: "Twenty customer interviews per venture. Students learn to record what people do rather than what they say, then put a price on it: unit economics on a single page.",
@@ -33,15 +51,24 @@ export const REEL = {
     },
     {
       photo: "/site/stage-3.jpg",
-      tint: "#33200A",
+      position: "0% 50%",
+      mobilePosition: "45% 50%",
+      size: "auto 125%",
+      shade: 0.3,
+      tint: "#0A0A0C",
       kicker: "03 — Build · Weeks 7–10",
       headline: "Ship something a stranger can use.",
       body: "No-code, hardware, or a service run by hand. The MVP has to survive contact with a user outside the room, and the team has to measure what happened when it did.",
       meta: "Deliverable · a working MVP and a usage log",
     },
     {
-      photo: "/site/stage-4.jpg",
-      tint: "#360C15",
+      // Same auditorium photo as the hero, cropped tight on the presenter.
+      photo: "/site/stage-0.jpg",
+      position: "75% 70%",
+      mobilePosition: "70% 50%",
+      size: "auto 170%",
+      shade: 0.5,
+      tint: "#0B0D12",
       kicker: "04 — Demo Day · Weeks 11–12",
       headline: "Pitch to people who fund things.",
       body: "Eight minutes, then questions from operators and investors who are briefed to press. The panel scores the evidence behind the claim, not the confidence in front of it.",
