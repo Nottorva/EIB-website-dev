@@ -14,11 +14,11 @@
 export const REEL = {
   hero: {
     photo: "/site/stage-0.jpg",
-    position: "100% 100%",
-    mobilePosition: "74% 50%",
-    size: "auto 135%",
-    shade: 0.55,
-    tint: "#0B0D12",
+    position: "0% 40%",
+    mobilePosition: "48% 40%",
+    size: "auto 120%",
+    shade: 0.35,
+    tint: "#0A0A0C",
     kicker: "Twelve weeks · Four stages",
     headline: "Build the company before university.",
     body:
@@ -62,13 +62,14 @@ export const REEL = {
       meta: "Deliverable · a working MVP and a usage log",
     },
     {
-      // Same auditorium photo as the hero, cropped tight on the presenter.
-      photo: "/site/stage-0.jpg",
-      position: "75% 70%",
-      mobilePosition: "70% 50%",
-      size: "auto 170%",
-      shade: 0.5,
-      tint: "#0B0D12",
+      // The Demo Day room: the panel and audience, a bright warm frame, so
+      // it gets the heaviest shade and a crop that keeps faces right of the text.
+      photo: "/site/stage-4.jpg",
+      position: "0% 50%",
+      mobilePosition: "55% 50%",
+      size: "auto 130%",
+      shade: 0.72,
+      tint: "#3A2E22",
       kicker: "04 — Demo Day · Weeks 11–12",
       headline: "Pitch to people who fund things.",
       body: "Eight minutes, then questions from operators and investors who are briefed to press. The panel scores the evidence behind the claim, not the confidence in front of it.",
