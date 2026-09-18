@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, Pencil, Users, ClipboardList, GraduationCap, FileText } from "lucide-react";
+import { BookOpen, Pencil, Users, ClipboardList, GraduationCap, FileText, Globe } from "lucide-react";
 import { COLORS } from "./ui";
 import { GoogleSignInButton, GoogleSignOutButton } from "./GoogleButtons";
 
@@ -14,13 +14,14 @@ const NAV = [
   { href: "/crm", label: "Mentor CRM", icon: Users, roles: ["superAdmin", "studentLeader"] },
   { href: "/manager", label: "Student Manager", icon: ClipboardList, roles: ["superAdmin", "studentLeader"] },
   { href: "/lessons", label: "Lessons", icon: GraduationCap, roles: ["superAdmin", "studentLeader", "student"] },
+  { href: "/website", label: "Website", icon: Globe, roles: ["superAdmin"] },
 ];
 
 function Identity({ user, identity, authMode, pathname }) {
   const shown = identity || user;
   if (!shown) {
     if (authMode !== "google" || pathname === "/apply" || pathname === "/signin") return null;
-    return <GoogleSignInButton callbackUrl={pathname || "/"} label="Sign in" style={{ padding: "8px 14px", fontSize: 13.5 }} />;
+    return <GoogleSignInButton callbackUrl={pathname || "/platform"} label="Sign in" style={{ padding: "8px 14px", fontSize: 13.5 }} />;
   }
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -64,7 +65,7 @@ export default function TopBar({ user, authMode, identity }) {
       style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "12px 28px", borderBottom: `1px solid ${COLORS.border}`, background: "#fff", position: "sticky", top: 0, zIndex: 50, flexWrap: "wrap" }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
-        <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
+        <Link href="/platform" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
           <div style={{ width: 36, height: 36, borderRadius: 10, background: COLORS.indigo, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <BookOpen size={18} color="#fff" strokeWidth={2.25} />
           </div>

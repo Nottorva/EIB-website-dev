@@ -1,0 +1,350 @@
+/* Public site (the marketing page at "/"). Ported from the handoff prototype;
+   every rule is scoped under .site so nothing leaks into the platform tools.
+   The three typefaces come from next/font as CSS variables (see app/layout). */
+
+.site {
+  --ink-900: #04060a; --ink-850: #070a10; --ink-800: #0b0f17; --ink-700: #121724; --ink-600: #1b2130;
+  --line: rgba(206, 216, 240, 0.13); --line-2: rgba(206, 216, 240, 0.26);
+  --chalk: #edf0f7; --chalk-2: #aeb6c6; --chalk-3: #798193;
+  --accent: #4361ff; --accent-2: #93a6ff;
+  --card: #ffffff; --paper: #eff1f6;
+  --ink-text: #0a0e16; --ink-text-2: #4a5365; --ink-text-3: #79808f;
+  --accent-ink: #2942d8; --line-ink: rgba(10, 14, 22, 0.13);
+  --measure: 60ch;
+  --serif: var(--font-newsreader), Georgia, "Times New Roman", serif;
+  --sans: var(--font-archivo), "Helvetica Neue", Arial, sans-serif;
+  --monof: var(--font-plex-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  color-scheme: dark;
+
+  margin: 0; background: var(--ink-900); color: var(--chalk);
+  font-family: var(--serif);
+  font-size: clamp(1rem, 0.94rem + 0.28vw, 1.125rem); line-height: 1.62;
+  -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  /* clip, not hidden: a hidden overflow would turn .site into a scroll
+     container and break the sticky stage */
+  overflow-x: clip;
+}
+.site .d { font-family: var(--sans); font-stretch: 118%; font-weight: 760;
+  line-height: 0.94; letter-spacing: -0.022em; text-wrap: balance; margin: 0; }
+.site .mono { font-family: var(--monof);
+  font-size: 0.7rem; letter-spacing: 0.15em; text-transform: uppercase; font-weight: 500; line-height: 1.5; }
+.site a { color: inherit; }
+.site :focus-visible { outline: 2px solid var(--accent-2); outline-offset: 3px; border-radius: 2px; }
+.site button { font-family: inherit; }
+
+/* ---------- top chrome: ticker strip over a floating glass bar ---------- */
+.chrome { position: fixed; top: 0; left: 0; right: 0; z-index: 62; pointer-events: none;
+  padding-top: env(safe-area-inset-top, 0px); }
+.chrome > * { pointer-events: auto; }
+
+.ticker { height: 34px; display: flex; align-items: center; overflow: hidden;
+  background: rgba(7, 10, 17, 0.58);
+  -webkit-backdrop-filter: blur(18px) saturate(170%); backdrop-filter: blur(18px) saturate(170%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.09); }
+/* the carousel is one long track; the window fades it out at both ends */
+.tickwin { flex: 1; overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 7%, #000 93%, transparent 100%); }
+.ticktrack { display: flex; align-items: center; width: max-content;
+  animation: tick 46s linear infinite; }
+.ticker:hover .ticktrack { animation-play-state: paused; }
+@keyframes tick { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-50%, 0, 0); } }
+.tk { font-family: var(--monof); font-size: 0.66rem;
+  letter-spacing: 0.17em; text-transform: uppercase; color: rgba(237, 240, 247, 0.88); white-space: nowrap; }
+.tk--dim { color: rgba(237, 240, 247, 0.42); }
+.tksep { color: var(--accent-2); font-size: 0.4rem; padding: 0 18px; opacity: 0.75; }
+
+.nav { margin: 10px auto 0; width: min(720px, calc(100% - 2 * max(14px, 4vw)));
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 7px 7px 7px 18px; border-radius: 999px; position: relative; isolation: isolate; }
+.glass {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.055));
+  -webkit-backdrop-filter: blur(24px) saturate(185%); backdrop-filter: blur(24px) saturate(185%);
+  border: 1px solid rgba(255, 255, 255, 0.19);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.34), inset 0 -1px 0 rgba(255, 255, 255, 0.05),
+    0 12px 36px -14px rgba(0, 0, 0, 0.6); }
+/* the slow specular travelling across the capsule */
+.glass::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(105deg, transparent 32%, rgba(255, 255, 255, 0.22) 46%, transparent 60%);
+  background-size: 280% 100%; animation: sheen 11s ease-in-out infinite; z-index: -1; }
+@keyframes sheen { 0%, 100% { background-position: 140% 0; } 50% { background-position: -40% 0; } }
+
+.brand { text-decoration: none; display: flex; align-items: baseline; gap: 9px; flex: none; }
+.brand .mark { font-family: var(--sans); font-stretch: 125%; font-weight: 800;
+  font-size: 1.02rem; letter-spacing: 0.01em; color: var(--chalk); }
+.navr { display: flex; align-items: center; gap: 8px; }
+.apply { flex: none; border: 0; cursor: pointer; background: var(--accent); color: #fff;
+  font-family: var(--monof); font-size: 0.66rem; letter-spacing: 0.15em;
+  text-transform: uppercase; padding: 10px 20px; border-radius: 999px; white-space: nowrap;
+  text-decoration: none; display: inline-block; line-height: 1.5;
+  box-shadow: 0 6px 18px -6px rgba(67, 97, 255, 0.85); transition: transform 0.18s, box-shadow 0.18s; }
+.apply:hover { transform: translateY(-1px); box-shadow: 0 9px 22px -6px rgba(67, 97, 255, 0.95); }
+.signin { flex: none; cursor: pointer; background: transparent; border: 1px solid rgba(255, 255, 255, 0.26);
+  color: var(--chalk); font-family: var(--monof); font-size: 0.66rem;
+  letter-spacing: 0.15em; text-transform: uppercase; padding: 9px 17px; border-radius: 999px;
+  text-decoration: none; display: inline-block; line-height: 1.5; white-space: nowrap;
+  max-width: 34vw; overflow: hidden; text-overflow: ellipsis;
+  transition: background 0.18s, border-color 0.18s; }
+.signin:hover { background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.4); }
+
+/* over the light sections */
+.chrome.on-light .ticker { background: rgba(255, 255, 255, 0.66);
+  border-bottom-color: rgba(10, 14, 22, 0.09); }
+.chrome.on-light .tk { color: rgba(10, 14, 22, 0.78); }
+.chrome.on-light .tk--dim { color: rgba(10, 14, 22, 0.36); }
+.chrome.on-light .tksep { color: var(--accent-ink); }
+.chrome.on-light .glass {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(255, 255, 255, 0.56));
+  border-color: rgba(10, 14, 22, 0.09);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), 0 12px 32px -16px rgba(10, 14, 22, 0.35); }
+.chrome.on-light .glass::after {
+  background: linear-gradient(105deg, transparent 32%, rgba(255, 255, 255, 0.55) 46%, transparent 60%); }
+.chrome.on-light .brand .mark { color: var(--ink-text); }
+.chrome.on-light .apply { background: var(--accent-ink);
+  box-shadow: 0 6px 18px -7px rgba(41, 66, 216, 0.7); }
+.chrome.on-light .signin { color: var(--ink-text); border-color: rgba(10, 14, 22, 0.2); }
+.chrome.on-light .signin:hover { background: rgba(10, 14, 22, 0.06); border-color: rgba(10, 14, 22, 0.34); }
+
+@media (max-width: 560px) {
+  .nav { padding-left: 15px; gap: 7px; }
+  .apply-x { display: none; }
+  .apply, .signin { padding-inline: 14px; font-size: 0.62rem; letter-spacing: 0.1em; }
+  .tksep { padding: 0 13px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ticktrack, .glass::after { animation: none; }
+}
+
+/* ---------- the reel ---------- */
+.reel { position: relative; }
+.stage { position: sticky; top: 0; height: 100svh; overflow: hidden; background: var(--ink-900); }
+.layer { position: absolute; inset: 0; }
+.shot { position: absolute; inset: 0; background-size: cover; background-position: 50% 50%;
+  background-repeat: no-repeat; will-change: clip-path; transform: translateZ(0); }
+.layer[data-i] .shot { clip-path: polygon(var(--xt, 180%) 0%, 190% 0%, 190% 100%, var(--xb, 180%) 100%); }
+.edge { position: absolute; top: 0; bottom: 0; left: 0; width: 0; opacity: 0;
+  border-left: 1.5px solid rgba(240, 243, 250, 0.9);
+  box-shadow: -26px 0 52px -14px rgba(3, 5, 9, 0.9), 0 0 24px rgba(147, 166, 255, 0.4);
+  transform: translateX(var(--mid, 300vw)) skewX(var(--ang, 0deg));
+  transform-origin: 50% 50%; will-change: transform; }
+.scrim { position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(100deg, rgba(4, 6, 10, 0.9) 0%, rgba(4, 6, 10, 0.72) 26%, rgba(4, 6, 10, 0.28) 52%, rgba(4, 6, 10, 0) 74%),
+    linear-gradient(to top, rgba(4, 6, 10, 0.72) 0%, rgba(4, 6, 10, 0) 34%); }
+
+.caps { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+/* two full-stage masks per caption: one reveals it under its own diagonal,
+   one un-reveals it under the next. Nesting multiplies them, so no mask-composite. */
+.capOut, .capIn { position: absolute; inset: 0;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%; mask-size: 100% 100%; }
+.capIn { display: grid; align-items: center;
+  -webkit-mask-image: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0));
+  mask-image: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0)); }
+.capIn--open { -webkit-mask-image: none; mask-image: none; }
+/* every caption gets the same box, so during the crossfade the kicker lands on
+   the kicker and the headline on the headline instead of colliding at odd offsets */
+.cap { justify-self: start; align-self: center;
+  width: clamp(300px, 48vw, 740px);
+  margin-inline: max(16px, 6vw);
+  min-height: clamp(320px, 46svh, 430px); }
+.cap .kick { color: var(--accent-2); margin: 0 0 18px; display: flex; align-items: center; gap: 10px; }
+.cap .kick::before { content: ""; width: 26px; height: 1px; background: var(--accent); flex: none; }
+.cap h2, .cap h1 { font-size: clamp(2.05rem, 4.7vw, 3.95rem); margin: 0 0 20px; }
+.cap p { margin: 0; color: #d7dce8; max-width: 46ch; font-size: clamp(1rem, 0.92rem + 0.34vw, 1.18rem); }
+.cap .meta { margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--line-2); color: var(--chalk-2); }
+.hero-sub { font-size: clamp(1.05rem, 0.95rem + 0.45vw, 1.3rem) !important; color: #dee3ed !important; }
+
+/* stage rail + skip */
+.hud { position: absolute; left: 0; right: 0; bottom: 0; z-index: 8; display: flex; align-items: flex-end;
+  justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  padding: 0 max(16px, 6vw) calc(22px + env(safe-area-inset-bottom, 0px)); }
+.rail { display: flex; gap: 8px; align-items: center; }
+.rail i { display: block; width: clamp(26px, 6vw, 54px); height: 2px; background: rgba(237, 240, 247, 0.22);
+  overflow: hidden; border-radius: 2px; }
+.rail u { display: block; height: 100%; background: var(--accent-2); transform: scaleX(0); transform-origin: 0 50%; }
+.rail span { color: var(--chalk-2); margin-right: 6px; }
+.skip { pointer-events: auto; background: rgba(8, 11, 18, 0.55); border: 1px solid var(--line-2);
+  color: var(--chalk-2); border-radius: 999px; padding: 8px 14px; cursor: pointer;
+  backdrop-filter: blur(6px); font-family: var(--monof); font-size: 0.68rem;
+  letter-spacing: 0.14em; text-transform: uppercase; transition: color 0.2s, border-color 0.2s; }
+.skip:hover { color: var(--chalk); border-color: var(--chalk-3); }
+
+/* ---------- the card that rides up over the reel ---------- */
+/* .after is pulled up by the slide distance and sits above the pinned stage,
+   so scrolling carries it over the reel instead of carrying the reel away */
+.after { position: relative; z-index: 20; background: var(--paper); }
+.motes { position: fixed; inset: 0; z-index: 19; pointer-events: none; display: none; }
+.card { background: var(--card); color: var(--ink-text); }
+.card .eyebrow { color: var(--accent-ink); }
+.card .lede { color: var(--ink-text-2); }
+.paper { background: var(--paper); color: var(--ink-text); }
+.paper .eyebrow { color: var(--accent-ink); }
+.paper .lede { color: var(--ink-text-2); }
+
+/* ---------- content below the reel ---------- */
+.wrap { max-width: 1180px; margin-inline: auto; padding-inline: max(16px, 6vw); }
+.sec { padding-block: clamp(72px, 11vw, 150px); position: relative; }
+.eyebrow { color: var(--accent-2); margin: 0 0 20px; }
+.h2 { font-size: clamp(1.9rem, 4.4vw, 3.35rem); margin: 0 0 22px; }
+.lede { max-width: var(--measure); color: #c9d0de; margin: 0 0 clamp(36px, 5vw, 60px);
+  font-size: clamp(1.05rem, 0.98rem + 0.4vw, 1.28rem); }
+
+/* ---------- photos and testimonials carousel ---------- */
+.ph { color: var(--ink-text-3); }
+.carousel { margin-top: clamp(28px, 3.6vw, 48px); }
+.carwin { overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory;
+  /* the snapport has to clear the track's gutter, or the first slide snaps
+     flush to the edge and eats it */
+  scroll-padding-inline: max(16px, 6vw);
+  scrollbar-width: none; -ms-overflow-style: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 4%, #000 96%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 4%, #000 96%, transparent 100%); }
+.carwin::-webkit-scrollbar { display: none; }
+.carwin:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 4px; }
+.cartrack { display: flex; gap: clamp(14px, 1.8vw, 24px); width: max-content;
+  padding-inline: max(16px, 6vw); padding-block: 4px; }
+.slide { flex: none; width: clamp(264px, 74vw, 392px); scroll-snap-align: start;
+  background: var(--card); border: 1px solid var(--line-ink); border-radius: 4px;
+  overflow: hidden; display: flex; flex-direction: column; }
+.vshot { aspect-ratio: 4 / 3; max-width: 100%; background-size: cover; background-position: 50% 45%;
+  background-color: #1b2230; }
+.vrole { color: var(--accent-ink); margin: 0; padding: 20px 22px 12px; }
+.vquote { margin: 0; padding: 0 22px; flex: 1; }
+.vquote p { margin: 0; color: var(--ink-text); font-size: 1.02rem; line-height: 1.55; }
+.vattrib { color: var(--ink-text-3); margin: 0; padding: 18px 22px 22px; }
+.carnav { display: flex; gap: 9px; justify-content: flex-end; margin-top: clamp(18px, 2.2vw, 26px); }
+.carbtn { width: 42px; height: 42px; border-radius: 999px; cursor: pointer;
+  background: var(--card); border: 1px solid var(--line-ink);
+  display: grid; place-items: center; transition: border-color 0.18s, opacity 0.18s; }
+.carbtn svg { width: 16px; height: 16px; fill: none; stroke: var(--ink-text);
+  stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.carbtn:hover:not(:disabled) { border-color: var(--accent-ink); }
+.carbtn:hover:not(:disabled) svg { stroke: var(--accent-ink); }
+.carbtn:disabled { opacity: 0.34; cursor: default; }
+
+/* the curriculum as a commit graph: a trunk down the middle, each lesson
+   branching off and turning through 90 degrees into its own title rule */
+.graph { position: relative; }
+/* absolutely positioned, so without an explicit order it would paint OVER the
+   static text; the graph belongs behind it */
+.graph-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible;
+  pointer-events: none; z-index: 0; }
+.ghead, .lessons { position: relative; z-index: 1; }
+.graph-svg .spine { fill: none; stroke: rgba(10, 14, 22, 0.2); stroke-width: 1.5; }
+.graph-svg .limb { fill: none; stroke: var(--accent-ink); stroke-width: 1.5; stroke-linecap: round; }
+.graph-svg .dot { fill: var(--paper); stroke: var(--accent-ink); stroke-width: 1.5; }
+.graph-svg .dot--head { fill: var(--accent-ink); }
+.ghead { max-width: 54ch; margin-inline: auto; text-align: center; padding-bottom: clamp(44px, 6vw, 78px); }
+.ghead .lede { margin-inline: auto; margin-bottom: 0; }
+/* one lesson per row, alternating sides, so the trunk zigzags down the middle */
+.lessons { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr;
+  row-gap: clamp(16px, 2.2vw, 30px); }
+.lesson { width: calc(50% - clamp(26px, 3.6vw, 52px)); justify-self: start; position: relative;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 100%; mask-size: 100% 100%; }
+.lesson[data-side="r"] { justify-self: end; }
+/* a lesson collapses to kicker + title + its rule; the body drops out below */
+.lhead { all: unset; box-sizing: border-box; display: block; width: 100%; cursor: pointer;
+  position: relative; padding-right: 28px; }
+.lhead:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 5px; border-radius: 3px; }
+.lno { display: block; color: var(--accent-ink); margin-bottom: 9px; }
+.ltitle { display: block; font-family: var(--sans); font-stretch: 114%;
+  font-weight: 700; font-size: clamp(1.06rem, 1rem + 0.42vw, 1.36rem); letter-spacing: -0.012em;
+  line-height: 1.2; color: var(--ink-text); transition: color 0.18s; }
+.lhead:hover .ltitle { color: var(--accent-ink); }
+.lchev { position: absolute; right: 0; bottom: 4px; width: 13px; height: 13px; fill: none;
+  stroke: var(--accent-ink); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+  transition: transform 0.28s ease; }
+.lesson[data-open="true"] .lchev { transform: rotate(180deg); }
+.lrule { height: 1.5px; margin: 14px 0 0; }
+.lpanel { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.3s ease; }
+.lesson[data-open="true"] .lpanel { grid-template-rows: 1fr; }
+.lpanel > div { overflow: hidden; }
+.lbody { margin: 0; padding-top: 15px; color: var(--ink-text-2); font-size: 0.97rem;
+  line-height: 1.62; max-width: 44ch; }
+
+/* stage tags sit on the trunk, the way a release tag sits on a branch */
+.stagemark { text-align: center; padding-block: clamp(8px, 1.2vw, 16px); }
+.stagemark p { display: inline-block; margin: 0; color: var(--ink-text-2); background: var(--paper);
+  border: 1px solid var(--line-ink); border-radius: 999px; padding: 7px 17px; }
+.gnote { text-align: center; color: var(--ink-text-3); margin: clamp(28px, 4vw, 48px) auto 0; max-width: 54ch; }
+
+/* the card */
+.mission { margin: 0 0 clamp(40px, 5vw, 66px); padding-left: clamp(18px, 2.4vw, 30px);
+  border-left: 2px solid var(--accent-ink); max-width: 50ch; }
+.mission p { margin: 0; font-size: clamp(1.22rem, 1.02rem + 0.92vw, 1.82rem); line-height: 1.34;
+  color: var(--ink-text); font-style: italic; }
+/* the difference is a comparison, so it is drawn as one: the category on the
+   muted side, EIB on the ink side, one hairline down the middle */
+.contrast { border-top: 1px solid var(--line-ink); margin: 0 0 clamp(36px, 4.5vw, 58px); }
+.crow { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(18px, 2.6vw, 40px);
+  padding: 15px 0; border-bottom: 1px solid var(--line-ink); align-items: baseline; }
+.crow > :last-child { border-left: 1px solid var(--line-ink);
+  padding-left: clamp(18px, 2.6vw, 40px); }
+.chead { padding-block: 11px; }
+.chead p { margin: 0; color: var(--ink-text-3); }
+.chead .cyes { color: var(--accent-ink); }
+.cno { margin: 0; color: var(--ink-text-3); font-size: 1rem; line-height: 1.5; }
+.cval { margin: 0; color: var(--ink-text); font-size: 1rem; line-height: 1.5; font-weight: 500; }
+@media (max-width: 680px) {
+  .contrast { border-top: none; }
+  .chead { display: none; }
+  .crow { grid-template-columns: 1fr; gap: 7px; padding: 14px 0; }
+  .crow > :last-child { border-left: 2px solid var(--accent-ink); padding-left: 13px; }
+  .cno { padding-left: 15px; }
+}
+.facts { color: var(--ink-text-3); margin: 0; padding-top: clamp(20px, 2.4vw, 28px);
+  border-top: 1px solid var(--line-ink); }
+@media (max-width: 760px) {
+  .lessons { row-gap: 20px; }
+  .stagemark { text-align: left; padding-left: 30px; }
+  .lesson, .lesson[data-side="r"] { width: auto; justify-self: stretch; margin-left: 30px; }
+  .ghead { text-align: left; margin-inline: 0; padding-left: 30px; }
+  .ghead .lede { margin-inline: 0; }
+}
+/* the curriculum is the last thing on the page; without this tail the final
+   rows never reach the middle of the screen and never finish revealing */
+#lessons { padding-bottom: clamp(90px, 13svh, 190px); }
+
+/* ---------- footer ---------- */
+.foot { background: var(--paper); color: var(--ink-text);
+  border-top: 1px solid var(--line-ink); padding-block: clamp(36px, 4.6vw, 60px); }
+.footrow { display: flex; flex-wrap: wrap; gap: clamp(26px, 4vw, 64px);
+  align-items: flex-start; justify-content: space-between; }
+.footbrand .mark { display: block; font-family: var(--sans);
+  font-stretch: 125%; font-weight: 800; font-size: 1.5rem; letter-spacing: 0.01em; color: var(--ink-text); }
+.footbrand p { margin: 9px 0 0; color: var(--ink-text-3); }
+/* flex, not auto-fit grid: as a shrink-to-fit flex item the grid collapsed to
+   a single column instead of laying the three out in a row */
+.footmeta { display: flex; flex-wrap: wrap; gap: clamp(22px, 3.4vw, 58px); margin: 0; }
+.footmeta > div { min-width: 132px; }
+.footmeta dt { color: var(--accent-ink); margin: 0 0 7px; }
+.footmeta dd { margin: 0; color: var(--ink-text-2); font-size: 0.97rem; }
+.footlinks { margin: 18px 0 0; padding: 0; list-style: none; display: flex; gap: 18px; flex-wrap: wrap; }
+.footlinks a { color: var(--ink-text-2); text-decoration: none; }
+.footlinks a:hover { color: var(--accent-ink); }
+.site.reduced .graph-svg { display: none; }
+.site.reduced .lesson { -webkit-mask-image: none !important; mask-image: none !important; }
+.site.reduced .stagemark { opacity: 1 !important; }
+@media (prefers-reduced-motion: reduce) { .lpanel, .lchev, .ltitle { transition: none; } }
+
+/* ---------- narrow ---------- */
+@media (max-width: 860px) {
+  .cap { width: auto; justify-self: stretch; min-height: clamp(340px, 56svh, 520px); }
+  .brand .sub { display: none; }
+  .hud { gap: 12px; }
+}
+
+/* ---------- reduced motion: static stack ---------- */
+.site.reduced .reel { height: auto !important; }
+.site.reduced .stage { position: static; height: auto; overflow: visible; }
+.site.reduced .layer { position: relative; inset: auto; display: block; }
+.site.reduced .shot { position: relative; inset: auto; clip-path: none !important; height: min(58svh, 470px); }
+.site.reduced .edge, .site.reduced .hud, .site.reduced .scrim { display: none !important; }
+.site.reduced .caps { display: none; }
+.site.reduced .after { margin-top: 0 !important; transform: none !important; }
+.site.reduced .motes { display: none !important; }
+.site.reduced .cap { position: relative; opacity: 1 !important; transform: none !important; visibility: visible !important;
+  width: auto; max-width: var(--measure); margin-inline: max(16px, 6vw);
+  min-height: 0; padding-block: clamp(30px, 5vw, 58px); }

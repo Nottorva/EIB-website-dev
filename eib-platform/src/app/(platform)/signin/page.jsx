@@ -5,9 +5,9 @@ import { GoogleSignInButton } from "@/components/GoogleButtons";
 
 export default async function SignInPage({ searchParams }) {
   const params = await searchParams;
-  const callbackUrl = typeof params?.callbackUrl === "string" && params.callbackUrl.startsWith("/") ? params.callbackUrl : "/";
+  const callbackUrl = typeof params?.callbackUrl === "string" && params.callbackUrl.startsWith("/") ? params.callbackUrl : "/platform";
 
-  if (authMode !== "google") redirect("/");
+  if (authMode !== "google") redirect("/platform");
   const user = await getCurrentUser();
   if (user) redirect(callbackUrl);
 

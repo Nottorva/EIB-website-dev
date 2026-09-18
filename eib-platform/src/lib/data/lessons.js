@@ -61,8 +61,30 @@ export function normalizeLesson(input, id) {
     startTime: String(input.startTime ?? ""),
     endTime: String(input.endTime ?? ""),
     overview: String(input.overview ?? ""),
+    // Public website fields. Only `published` lessons appear on the site, and
+    // only through toPublicLesson() below (never deliverables or links).
+    published: Boolean(input.published),
+    stage: String(input.stage ?? ""),
+    week: String(input.week ?? ""),
+    blurb: String(input.blurb ?? ""),
     deliverables: Array.isArray(input.deliverables) ? input.deliverables.map(normalizeDeliverable) : [],
   };
+}
+
+// The shape the public site receives: no links, no deliverables, no room.
+export function toPublicLesson(l) {
+  return {
+    id: l.id,
+    number: String(l.number ?? ""),
+    title: String(l.title ?? ""),
+    stage: String(l.stage ?? ""),
+    week: String(l.week ?? ""),
+    blurb: String(l.blurb || l.overview || ""),
+  };
+}
+
+export async function listPublishedLessons() {
+  return (await listLessons()).filter((l) => l.published).map(toPublicLesson);
 }
 
 export async function createLesson(input) {

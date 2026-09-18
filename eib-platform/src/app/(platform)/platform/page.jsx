@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Pencil, Users, ClipboardList, GraduationCap, FileText, ShieldAlert } from "lucide-react";
+import { Pencil, Users, ClipboardList, GraduationCap, FileText, ShieldAlert, Globe } from "lucide-react";
 import { getCurrentUser, authMode } from "@/lib/auth";
 import { storeMode } from "@/lib/data/store";
 
@@ -43,6 +43,13 @@ const TOOLS = [
     icon: GraduationCap,
     roles: ["superAdmin", "studentLeader", "student"],
     blurb: "The textbook view. Students submit work and see grades; leaders see instructions and examples.",
+  },
+  {
+    href: "/website",
+    label: "Website",
+    icon: Globe,
+    roles: ["superAdmin"],
+    blurb: "The public site at /. Edit the ticker strip and approve testimonials; lessons are published from the Lesson Editor.",
   },
 ];
 

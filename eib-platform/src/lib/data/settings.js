@@ -79,6 +79,24 @@ export async function saveApplicationWindow(input) {
   return setSetting("applicationWindow", next);
 }
 
+// The scrolling strip at the very top of the public site. The application
+// status line is generated from the application window; these are the extra
+// items after it. Super admin edits them on the Website page.
+export const DEFAULT_TICKER = ["Term begins January", "Demo Day in March", "Toronto · London, Ontario", "Now matching ventures with mentors"];
+
+export async function getSiteTicker() {
+  const v = await getSetting("siteTicker");
+  return Array.isArray(v) ? v : DEFAULT_TICKER;
+}
+
+export async function saveSiteTicker(items) {
+  const cleaned = (Array.isArray(items) ? items : [])
+    .map((s) => String(s ?? "").trim())
+    .filter(Boolean)
+    .slice(0, 12);
+  return setSetting("siteTicker", cleaned);
+}
+
 // "upcoming" | "open" | "closed"
 export function windowState(win, now = new Date()) {
   const t = now.toISOString();

@@ -4,7 +4,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser, getSessionIdentity, authMode } from "./auth";
 
-export async function gatePage(roles, { path = "/" } = {}) {
+export async function gatePage(roles, { path = "/platform" } = {}) {
   const user = await getCurrentUser();
   if (!user) {
     if (authMode === "google") {

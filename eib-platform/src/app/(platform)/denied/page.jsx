@@ -27,7 +27,7 @@ export default async function Denied({ searchParams }) {
       <div style={{ fontSize: 26, fontWeight: 800, color: "#0f1222", marginBottom: 10 }}>No access</div>
       <div style={{ fontSize: 15, color: "#64748b", lineHeight: 1.6, marginBottom: 22 }}>{message}</div>
       <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-        <Link href="/" style={{ display: "inline-block", background: "#4f46e5", color: "#fff", fontWeight: 800, fontSize: 14, borderRadius: 10, padding: "10px 18px", textDecoration: "none" }}>
+        <Link href="/platform" style={{ display: "inline-block", background: "#4f46e5", color: "#fff", fontWeight: 800, fontSize: 14, borderRadius: 10, padding: "10px 18px", textDecoration: "none" }}>
           Back home
         </Link>
         {identity && <GoogleSignOutButton label="Sign out and try another account" style={{ padding: "10px 18px", fontSize: 14 }} />}

@@ -5,7 +5,7 @@ import { signIn, signOut } from "next-auth/react";
 import { LogIn, LogOut } from "lucide-react";
 import { COLORS } from "./ui";
 
-export function GoogleSignInButton({ callbackUrl = "/", label = "Sign in with Google", style }) {
+export function GoogleSignInButton({ callbackUrl = "/platform", label = "Sign in with Google", style }) {
   return (
     <button
       type="button"

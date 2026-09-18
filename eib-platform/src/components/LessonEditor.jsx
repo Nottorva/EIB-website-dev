@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { BookOpen, Eye, Presentation, UserCheck, FileText, Trash2, Plus, Pencil, ExternalLink } from "lucide-react";
+import { BookOpen, Eye, Presentation, UserCheck, FileText, Trash2, Plus, Pencil, ExternalLink, Globe } from "lucide-react";
 import {
   COLORS,
   DELIVERABLE_TYPES,
@@ -112,6 +112,86 @@ function StudentOverviewModal({ eyebrow, lesson, onPatch, onClose }) {
         />
       </div>
       <div style={{ fontSize: 13, color: COLORS.faint, marginTop: 14, lineHeight: 1.5 }}>Student leaders can also change room and time from their Lessons view.</div>
+    </ModalShell>
+  );
+}
+
+/* ---------- Website modal (what the public site shows for this lesson) ---------- */
+function OnOff({ value, onChange, onLabel = "Shown", offLabel = "Hidden" }) {
+  const btn = (active, label, on) => (
+    <button
+      type="button"
+      onClick={() => onChange(on)}
+      style={{
+        padding: "8px 14px",
+        borderRadius: 9,
+        fontSize: 14,
+        fontWeight: 700,
+        cursor: "pointer",
+        border: "none",
+        background: active ? (on ? COLORS.green : COLORS.indigo) : "transparent",
+        color: active ? "#fff" : COLORS.sub,
+      }}
+    >
+      {label}
+    </button>
+  );
+  return (
+    <div style={{ display: "flex", gap: 4, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: 4, flexShrink: 0 }}>
+      {btn(!value, offLabel, false)}
+      {btn(value, onLabel, true)}
+    </div>
+  );
+}
+
+function WebsiteModal({ eyebrow, lesson, onPatch, onClose }) {
+  return (
+    <ModalShell eyebrow={`${eyebrow} · Website`} title={lesson.title} onClose={onClose} maxWidth={680}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 14,
+          marginBottom: 20,
+          padding: "14px 16px",
+          border: `1px solid ${lesson.published ? COLORS.greenBorder || COLORS.border : COLORS.border}`,
+          background: lesson.published ? COLORS.greenSoft || "#fff" : "#fff",
+          borderRadius: 14,
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.text }}>Show this lesson on the public website</div>
+          <div style={{ fontSize: 13, color: COLORS.faint, marginTop: 4, lineHeight: 1.5 }}>
+            Only the title, week, stage and description below go public. Links, deliverables and the room never do.
+          </div>
+        </div>
+        <OnOff value={Boolean(lesson.published)} onChange={(v) => onPatch({ published: v })} />
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12, marginBottom: 16 }}>
+        <div>
+          <FieldLabel>Stage</FieldLabel>
+          <input value={lesson.stage || ""} onChange={(e) => onPatch({ stage: e.target.value })} placeholder="Foundations" style={fieldStyle} />
+        </div>
+        <div>
+          <FieldLabel>Week</FieldLabel>
+          <input value={lesson.week || ""} onChange={(e) => onPatch({ week: e.target.value })} placeholder="1" style={fieldStyle} />
+        </div>
+      </div>
+      <div>
+        <FieldLabel>Public description</FieldLabel>
+        <textarea
+          value={lesson.blurb || ""}
+          onChange={(e) => onPatch({ blurb: e.target.value })}
+          rows={3}
+          placeholder="One or two sentences for visitors. Leave empty to reuse the student overview."
+          style={{ ...fieldStyle, resize: "vertical", fontSize: 14.5 }}
+        />
+      </div>
+      <div style={{ fontSize: 13, color: COLORS.faint, marginTop: 14, lineHeight: 1.5 }}>
+        Lessons appear on the site in number order. Consecutive lessons with the same stage name sit under one stage tag, with the
+        week range worked out from their weeks.
+      </div>
     </ModalShell>
   );
 }
@@ -487,6 +567,7 @@ function LessonCard({ lesson, onPatch, onDelete }) {
         <Pill icon={Eye} label={lesson.overviewLink ? "Student Overview · linked" : "Student Overview"} onClick={() => setActiveModal("studentOverview")} />
         <Pill icon={Presentation} label={lesson.slidesLink ? "Slides · linked" : "Slides"} onClick={() => setActiveModal("slides")} />
         <Pill icon={FileText} label={lesson.teachingPlanLink ? "Teaching Plan · linked" : "Teaching Plan"} onClick={() => setActiveModal("teachingPlan")} />
+        <Pill icon={Globe} label={lesson.published ? "Website · shown" : "Website · hidden"} tone={lesson.published ? "default" : "outline"} onClick={() => setActiveModal("website")} />
         <MentorToggle enabled={lesson.mentorEnabled} onToggle={(enabled) => onPatch({ mentorEnabled: enabled })} />
       </div>
 
@@ -530,6 +611,7 @@ function LessonCard({ lesson, onPatch, onDelete }) {
       {activeModal === "studentOverview" && <StudentOverviewModal eyebrow={eyebrow} lesson={lesson} onPatch={onPatch} onClose={() => setActiveModal(null)} />}
       {activeModal === "slides" && <SlidesModal eyebrow={eyebrow} lesson={lesson} onPatch={onPatch} onClose={() => setActiveModal(null)} />}
       {activeModal === "teachingPlan" && <TeachingPlanModal eyebrow={eyebrow} lesson={lesson} onPatch={onPatch} onClose={() => setActiveModal(null)} />}
+      {activeModal === "website" && <WebsiteModal eyebrow={eyebrow} lesson={lesson} onPatch={onPatch} onClose={() => setActiveModal(null)} />}
       {activeModal === "addDeliverable" && <DeliverableEditorModal eyebrow={eyebrow} initial={null} onSave={saveDeliverable} onClose={() => setActiveModal(null)} />}
       {activeModal === "editDeliverable" && editingDeliverable && (
         <DeliverableEditorModal

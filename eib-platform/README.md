@@ -14,6 +14,9 @@ npm run dev
 Open http://localhost:3000. The first request creates `data/db.json` from the
 seed data. To start over: `npm run db:reset` (or delete `data/db.json`).
 
+`/` is the public website (see "Public site" below). The platform tools start
+at `/platform`.
+
 ## Click-through guide
 
 Who you are is decided the same way in every mode: your email is looked up
@@ -89,9 +92,33 @@ Things worth trying, in order:
 11. **Acc Manager** (super admin only): create a student leader; switching to
     their email with the dev URL now works.
 
+## Public site
+
+`/` is the marketing page ported from the design handoff: the pinned photo
+reel, the white card that rides up over it, the testimonials carousel and the
+curriculum drawn as a commit graph. All of it is scroll-driven and written to
+the DOM in `requestAnimationFrame`; nothing about scroll position lives in
+React state (see `src/components/site/`). What comes from the database:
+
+| On the site | Comes from |
+|---|---|
+| Ticker strip | First item is generated from the application window (open until / opens on / closed); the rest are edited on the **Website** page (super admin). |
+| Sign in / Apply now | Google sign-in and `/apply`. A signed-in user sees their name and "Open the platform" instead. |
+| Curriculum | Lessons the Lesson Editor marks **Website · shown**, in number order, with their stage, week and public description. Consecutive lessons with the same stage share one tag. Until any lesson is shown, the prototype's sample curriculum is displayed. Links, deliverables and rooms never reach the site. |
+| Testimonials | The `testimonials` collection, approved rows only, managed on the Website page. With none approved the site shows bracketed placeholder cards labelled as such. Never invent quotes. |
+| Reel captions, comparison table, footer | Static copy in `src/lib/siteContent.js`. |
+| Photographs | `public/site/*.jpg`. These are the handoff's abstract placeholders; swap the files for real cohort photography, same names, no layout change. |
+
+The prototype's Tune panel was removed; its final values are constants at the
+top of `Reel.jsx`. The three typefaces are self-hosted through `next/font`.
+
 ## Layout
 
 ```
+src/app/(site)/             The public site: page, layout, site.css.
+src/app/(platform)/         The tools, all behind the top bar. /platform is the hub.
+src/components/site/        Reel, SiteChrome, Voices, Curriculum (client, rAF-driven).
+src/lib/siteContent.js      Static site copy + fallbacks.
 src/lib/data/store.js       JSON-file store. Swap this for the Mongo driver.
 src/lib/data/*.js           One module per collection; routes call only these.
 src/lib/auth.js             getCurrentUser() + role gating. Swap the cookie
