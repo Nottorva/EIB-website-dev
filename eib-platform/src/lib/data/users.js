@@ -41,3 +41,9 @@ export async function upsertStudent({ name, email }) {
 export async function deleteUser(id) {
   return removeOne("users", id);
 }
+
+// Suspended rows stay on the allow-list (so the record and submissions are
+// kept) but getCurrentUser() treats them as signed out. Super admin only.
+export async function setSuspended(id, suspended) {
+  return updateOne("users", id, { suspended: Boolean(suspended), suspendedAt: suspended ? new Date().toISOString() : null });
+}

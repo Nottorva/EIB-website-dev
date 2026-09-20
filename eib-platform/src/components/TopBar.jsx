@@ -49,7 +49,7 @@ function Identity({ user, identity, authMode, pathname }) {
       </div>
       <div style={{ textAlign: "left" }}>
         <div style={{ fontSize: 13.5, fontWeight: 800, color: COLORS.text }}>{shown.name}</div>
-        <div style={{ fontSize: 11.5, color: COLORS.faint }}>{user ? ROLE_LABEL[user.role] : "Not on the allow-list"}</div>
+        {user && <div style={{ fontSize: 11.5, color: COLORS.faint }}>{ROLE_LABEL[user.role]}</div>}
       </div>
       {authMode === "google" && <GoogleSignOutButton callbackUrl={pathname === "/apply" ? "/apply" : "/"} />}
     </div>

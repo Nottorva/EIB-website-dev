@@ -24,11 +24,14 @@ export async function getSessionIdentity() {
   return { email: String(email).toLowerCase(), name: session.user.name || email };
 }
 
+// A suspended row exists but grants nothing.
+const active = (user) => (user && !user.suspended ? user : null);
+
 export async function getCurrentUser() {
   if (authEnabled) {
     const identity = await getSessionIdentity();
     if (!identity) return null;
-    return getUserByEmail(identity.email);
+    return active(await getUserByEmail(identity.email));
   }
 
   // No Google sign-in configured. In a production build that means nobody
@@ -45,7 +48,27 @@ export async function getCurrentUser() {
     const users = await listUsers({ role: "superAdmin" });
     return users[0] || null;
   }
-  return getUserByEmail(email);
+  return active(await getUserByEmail(email));
+}
+
+// Who is signed in, whether or not they have access. Used by the pages that
+// decide where a signed-in person without a working account should go.
+//   identity: the sign-in (Google, or the dev cookie's email)
+//   user:     their active allow-list row, or null
+//   suspended: true when the row exists but has been suspended
+export async function getAccessState() {
+  const user = await getCurrentUser();
+  if (user) return { user, identity: { name: user.name, email: user.email }, suspended: false };
+  let identity = null;
+  if (authEnabled) identity = await getSessionIdentity();
+  else if (process.env.NODE_ENV !== "production") {
+    const jar = await cookies();
+    const email = jar.get(DEV_COOKIE)?.value;
+    if (email && email !== NO_ACCESS_SENTINEL) identity = { name: email, email };
+  }
+  if (!identity) return { user: null, identity: null, suspended: false };
+  const row = await getUserByEmail(identity.email);
+  return { user: null, identity: { name: row?.name || identity.name, email: identity.email }, suspended: Boolean(row?.suspended) };
 }
 
 export class HttpError extends Error {

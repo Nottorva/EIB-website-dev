@@ -1,26 +1,114 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Link2, CheckCircle2, Send, LogIn, LogOut, CalendarClock, Lock, ShieldCheck } from "lucide-react";
+import Link from "next/link";
+import { Link2, CheckCircle2, Send, LogIn, LogOut, CalendarClock, Lock, ShieldCheck, Clock, ArrowRight } from "lucide-react";
 import { signOut as nextAuthSignOut } from "next-auth/react";
 import { COLORS, fieldStyle, Notice, Loading } from "./ui";
 import { api } from "@/lib/api";
 import { GoogleSignInButton } from "./GoogleButtons";
 
 const fmt = (iso) => (iso ? new Date(iso).toLocaleString(undefined, { dateStyle: "long", timeStyle: "short" }) : null);
+// Older applications stored a date only; show those without a time.
+const fmtSubmitted = (v) => {
+  if (!v) return null;
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return String(v);
+  return /T/.test(String(v)) ? d.toLocaleString(undefined, { dateStyle: "long", timeStyle: "short" }) : d.toLocaleDateString(undefined, { dateStyle: "long", timeZone: "UTC" });
+};
 
-function Shell({ children }) {
+function Shell({ children, title = "Apply to EIB", sub = "Weekly Tuesday sessions, November to March. Tell us about yourself and a problem you'd want to work on." }) {
   return (
     <div style={{ background: COLORS.bg, minHeight: "100%", padding: "44px 20px 80px" }}>
       <div style={{ maxWidth: 640, margin: "0 auto" }}>
         <div style={{ marginBottom: 24 }}>
           <div style={{ fontSize: 13, fontWeight: 800, color: COLORS.indigo, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>EIB · Application</div>
-          <div style={{ fontSize: 30, fontWeight: 800, color: COLORS.text }}>Apply to EIB</div>
-          <div style={{ fontSize: 15, color: COLORS.sub, marginTop: 8, lineHeight: 1.6 }}>Weekly Tuesday sessions, November to March. Tell us about yourself and a problem you'd want to work on.</div>
+          <div style={{ fontSize: 30, fontWeight: 800, color: COLORS.text }}>{title}</div>
+          {sub && <div style={{ fontSize: 15, color: COLORS.sub, marginTop: 8, lineHeight: 1.6 }}>{sub}</div>}
         </div>
         {children}
       </div>
     </div>
+  );
+}
+
+const quietButton = { border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.sub, fontWeight: 800, fontSize: 13, borderRadius: 10, padding: "8px 14px", cursor: "pointer" };
+
+/* What an applicant sees once they have applied: exactly one card, driven by
+   the released decision (or the lack of one). Nothing to click through. */
+function StatusScreen({ status, onSignOut }) {
+  const first = status.applicant?.name?.split(" ")[0];
+  const submitted = fmtSubmitted(status.application?.submittedAt || status.appliedAt);
+  const decision = status.application?.decision;
+  const signOut = (
+    <div style={{ marginTop: 18 }}>
+      <button type="button" onClick={onSignOut} style={quietButton}>
+        Not you? Sign out
+      </button>
+    </div>
+  );
+
+  if (status.account?.suspended) {
+    return (
+      <Shell title="Your account" sub={null}>
+        <BigCard icon={Lock} tone="amber" title="Your account is suspended">
+          The EIB student account for <strong>{status.applicant.email}</strong> has been suspended. If you think this is a mistake, speak to an EIB student leader.
+          {signOut}
+        </BigCard>
+      </Shell>
+    );
+  }
+
+  if (decision === "approved") {
+    return (
+      <Shell title="Your application" sub={null}>
+        <BigCard icon={CheckCircle2} tone="green" title={`You're in${first ? `, ${first}` : ""}`}>
+          Your application to EIB was accepted and your student account is ready.
+          <div style={{ marginTop: 20 }}>
+            <Link href="/platform" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: COLORS.indigo, color: "#fff", fontWeight: 800, fontSize: 15, borderRadius: 12, padding: "12px 20px", textDecoration: "none" }}>
+              Open the platform <ArrowRight size={16} />
+            </Link>
+          </div>
+          <div style={{ fontSize: 13, color: COLORS.faint, marginTop: 16 }}>Application submitted {submitted}.</div>
+        </BigCard>
+      </Shell>
+    );
+  }
+
+  if (decision === "denied") {
+    return (
+      <Shell title="Your application" sub={null}>
+        <BigCard icon={ShieldCheck} tone="gray" title="Thank you for applying">
+          We read every application carefully, and we are not able to offer you a place in this cohort. We hope you apply again next year.
+          <div style={{ fontSize: 13, color: COLORS.faint, marginTop: 16 }}>Application submitted {submitted}.</div>
+          {signOut}
+        </BigCard>
+      </Shell>
+    );
+  }
+
+  if (decision === "waitlist") {
+    return (
+      <Shell title="Your application" sub={null}>
+        <BigCard icon={CalendarClock} tone="amber" title="You're on the waitlist">
+          Thank you for applying. We could not offer you a place right away, but you are on the waitlist and we will be in touch as soon as a spot opens up.
+          <div style={{ fontSize: 13, color: COLORS.faint, marginTop: 16 }}>Application submitted {submitted}.</div>
+          {signOut}
+        </BigCard>
+      </Shell>
+    );
+  }
+
+  return (
+    <Shell title="Your application" sub={null}>
+      <BigCard icon={Clock} tone="indigo" title="Thank you for applying">
+        Your application is under review. You will hear back at <strong>{status.applicant.email}</strong> once decisions are released.
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginTop: 18, background: COLORS.indigoSoft, color: COLORS.indigo, fontWeight: 800, fontSize: 13.5, borderRadius: 999, padding: "8px 14px" }}>
+          <CheckCircle2 size={15} /> Submitted {submitted}
+        </div>
+        {signOut}
+      </BigCard>
+    </Shell>
   );
 }
 
@@ -124,7 +212,6 @@ export default function ApplyForm() {
   const [answers, setAnswers] = useState({});
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState(false);
 
   const load = () => api.get("/api/apply/status").then(setStatus).catch((e) => setError(e.message));
   useEffect(() => {
@@ -149,7 +236,9 @@ export default function ApplyForm() {
     setError(null);
     try {
       await api.post("/api/apply", { answers: status.form.map((q) => ({ questionId: q.id, answer: answers[q.id] ?? "" })) });
-      setDone(true);
+      // The status page takes over from here (submitted, under review).
+      await load();
+      window.scrollTo({ top: 0 });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -157,23 +246,18 @@ export default function ApplyForm() {
     }
   };
 
-  if (done) {
-    return (
-      <Shell>
-        <BigCard icon={CheckCircle2} tone="green" title="Application received">
-          Thanks for applying to EIB, {status?.applicant?.name?.split(" ")[0]}. You'll hear back at <strong>{status?.applicant?.email}</strong> once applications have been reviewed.
-          <div style={{ fontSize: 13, color: COLORS.faint, marginTop: 18 }}>Sandbox note: this application now shows as "Pending" in the Student Manager.</div>
-        </BigCard>
-      </Shell>
-    );
-  }
-
   if (!status) {
     return (
       <Shell>
         {error ? <Notice>{error}</Notice> : <Loading />}
       </Shell>
     );
+  }
+
+  // Someone who has applied (or holds a suspended account) sees their status
+  // whatever the window state is; the window only gates new applications.
+  if (status.applicant && (status.alreadyApplied || status.account?.suspended)) {
+    return <StatusScreen status={status} onSignOut={signOut} />;
   }
 
   if (status.state === "upcoming") {
@@ -218,21 +302,6 @@ export default function ApplyForm() {
           <div style={{ marginTop: 16 }}>
             <button type="button" onClick={signOut} style={{ border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.sub, fontWeight: 800, fontSize: 13, borderRadius: 10, padding: "8px 14px", cursor: "pointer" }}>
               Sign out
-            </button>
-          </div>
-        </BigCard>
-      </Shell>
-    );
-  }
-
-  if (status.alreadyApplied) {
-    return (
-      <Shell>
-        <BigCard icon={ShieldCheck} tone="green" title="You've already applied">
-          We received an application from <strong>{status.applicant.email}</strong>{status.appliedAt ? ` on ${status.appliedAt}` : ""}. One application per student; you'll hear back once reviews are done.
-          <div style={{ marginTop: 16 }}>
-            <button type="button" onClick={signOut} style={{ border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.sub, fontWeight: 800, fontSize: 13, borderRadius: 10, padding: "8px 14px", cursor: "pointer" }}>
-              Not you? Sign out
             </button>
           </div>
         </BigCard>

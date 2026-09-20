@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { FileText, Users, ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Mail, Calendar, Link2, UserPlus, Lock, ExternalLink, Send, Pencil, Copy, Check, CalendarClock } from "lucide-react";
+import { FileText, Users, ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Mail, Calendar, Link2, UserPlus, Lock, ExternalLink, Send, Pencil, Copy, Check, CalendarClock, Megaphone, ShieldOff, ShieldCheck } from "lucide-react";
 import {
   COLORS,
   QUESTION_TYPES,
@@ -33,6 +33,16 @@ const STATUSES = [
   { id: "denied", label: "Denied", color: COLORS.red, soft: COLORS.redSoft, border: COLORS.redBorder },
 ];
 const statusOf = (id) => STATUSES.find((s) => s.id === id) || STATUSES[0];
+const FINAL = ["approved", "waitlist", "denied"];
+// A final decision the applicant has not been told about yet.
+const isUnreleased = (a) => FINAL.includes(a.status) && !a.decisionReleased;
+// Older applications stored a date only; newer ones a full timestamp.
+const fmtDate = (v) => {
+  if (!v) return "—";
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return String(v);
+  return /T/.test(String(v)) ? d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : d.toLocaleDateString(undefined, { dateStyle: "medium", timeZone: "UTC" });
+};
 
 /* ================= Grading card ================= */
 function GradeCard({ deliverable, submission, canGrade, onChange, onRelease }) {
@@ -105,7 +115,7 @@ function GradeCard({ deliverable, submission, canGrade, onChange, onRelease }) {
               value={feedback}
               disabled={!canGrade}
               onChange={(e) => onChange({ feedback: e.target.value })}
-              placeholder={canGrade ? "Write feedback on this submission..." : "Approve this applicant to enable grading."}
+              placeholder={canGrade ? "Write feedback on this submission..." : "Grading opens once this applicant's account exists."}
               rows={3}
               style={{ width: "100%", boxSizing: "border-box", border: `1px solid ${COLORS.border}`, background: canGrade ? "#fff" : "#f1f3f7", borderRadius: 10, padding: "9px 12px", fontSize: 13.5, color: COLORS.text, lineHeight: 1.5, resize: "vertical", outline: "none" }}
             />
@@ -121,7 +131,7 @@ function GradeCard({ deliverable, submission, canGrade, onChange, onRelease }) {
             ) : canGrade ? (
               <>Enter a grade or feedback, then release it to the student.</>
             ) : (
-              <>Grading unlocks once the applicant is approved.</>
+              <>Grading unlocks once the applicant is approved and decisions are released.</>
             )}
           </div>
           {released ? (
@@ -415,15 +425,26 @@ function FormsTab({ saver }) {
 }
 
 /* ================= Students tab ================= */
-function StudentRow({ student, onOpen, onStatusChange }) {
+function StudentRow({ student, account, onOpen, onStatusChange }) {
+  const suspended = Boolean(account?.suspended);
   return (
-    <div onClick={onOpen} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: "12px 16px", cursor: "pointer" }}>
-      <Avatar name={student.name} />
+    <div onClick={onOpen} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", background: COLORS.card, border: `1px solid ${suspended ? COLORS.redBorder : COLORS.border}`, borderRadius: 14, padding: "12px 16px", cursor: "pointer" }}>
+        <Avatar name={student.name} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.text }}>{student.name}</div>
         <div style={{ fontSize: 12.5, color: COLORS.faint, marginTop: 2 }}>
-          Submitted {student.submittedAt}
-          {student.studentId ? " · has account" : ""}
+          Submitted {fmtDate(student.submittedAt)}
+          {suspended ? (
+            <span style={{ color: COLORS.red, fontWeight: 800 }}> · account suspended</span>
+          ) : student.studentId ? (
+            " · has account"
+          ) : isUnreleased(student) ? (
+            <span style={{ color: COLORS.amber, fontWeight: 800 }}> · decision not released</span>
+          ) : student.decisionReleased ? (
+            " · decision released"
+          ) : (
+            ""
+          )}
         </div>
       </div>
       <StatusDropdown value={student.status} onChange={onStatusChange} statuses={STATUSES} />
@@ -470,7 +491,7 @@ function DeliverablesPanel({ student, lessons, saver }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
       {!studentId && (
         <Notice tone="amber">
-          This applicant has no student account yet, so there is nothing to grade. Set their status to <strong>Approved</strong> to create one; they can then sign in and submit work.
+          This applicant has no student account yet, so there is nothing to grade. Set their status to <strong>Approved</strong>, then the super admin releases decisions: that creates the account, and they can sign in and submit work.
         </Notice>
       )}
       {lessons.map((lesson) => (
@@ -498,7 +519,46 @@ function DeliverablesPanel({ student, lessons, saver }) {
   );
 }
 
-function StudentDetail({ student, questions, lessons, saver, onBack }) {
+/* Super admin only: suspend or reinstate the student's account. */
+function AccountCard({ student, account, onSuspend }) {
+  const suspended = Boolean(account?.suspended);
+  const [busy, setBusy] = useState(false);
+  const toggle = async () => {
+    const question = suspended
+      ? `Reinstate ${student.name}'s account? They will be able to sign in again straight away.`
+      : `Suspend ${student.name}'s account? They will be signed out of EIB and cannot sign back in until you reinstate them. Their work is kept.`;
+    if (!window.confirm(question)) return;
+    setBusy(true);
+    try {
+      await onSuspend(!suspended);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: suspended ? COLORS.redSoft : COLORS.card, border: `1px solid ${suspended ? COLORS.redBorder : COLORS.border}`, borderRadius: 16, padding: "14px 18px", marginBottom: 16, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        {suspended ? <ShieldOff size={18} color={COLORS.red} /> : <ShieldCheck size={18} color={COLORS.green} />}
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 800, color: COLORS.text }}>{suspended ? "Account suspended" : "Account active"}</div>
+          <div style={{ fontSize: 12.5, color: COLORS.faint }}>
+            {suspended ? `Since ${fmtDate(account.suspendedAt)} · cannot sign in` : `${student.email} can sign in and open Lessons`}
+          </div>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={toggle}
+        disabled={busy}
+        style={{ border: `1px solid ${suspended ? COLORS.greenBorder : COLORS.redBorder}`, background: "#fff", color: suspended ? COLORS.green : COLORS.red, fontWeight: 800, fontSize: 13, borderRadius: 10, padding: "8px 14px", cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1 }}
+      >
+        {suspended ? "Reinstate account" : "Suspend account"}
+      </button>
+    </div>
+  );
+}
+
+function StudentDetail({ student, account, isSuperAdmin, onSuspend, questions, lessons, saver, onBack }) {
   const [view, setView] = useState("application");
   const answerFor = (qid) => student.answers.find((a) => a.questionId === qid)?.answer ?? "";
 
@@ -521,8 +581,13 @@ function StudentDetail({ student, questions, lessons, saver, onBack }) {
                 <Mail size={12} /> {student.email}
               </span>
               <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: COLORS.faint, fontWeight: 600 }}>
-                <Calendar size={12} /> {student.submittedAt}
+                <Calendar size={12} /> Submitted {fmtDate(student.submittedAt)}
               </span>
+              {FINAL.includes(student.status) && (
+                <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: student.decisionReleased ? COLORS.green : COLORS.amber, fontWeight: 700 }}>
+                  <Megaphone size={12} /> {student.decisionReleased ? `Decision released ${fmtDate(student.releasedAt)}` : "Decision not released yet"}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -536,6 +601,8 @@ function StudentDetail({ student, questions, lessons, saver, onBack }) {
           ]}
         />
       </div>
+
+      {isSuperAdmin && student.studentId && account && <AccountCard student={student} account={account} onSuspend={onSuspend} />}
 
       {view === "application" ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -646,7 +713,7 @@ function ApproveModal({ student, approvedCount, cap, onConfirm, onCancel }) {
   return (
     <ModalShell eyebrow="Student Manager · Approve" title={`Approve ${student.name}?`} onClose={onCancel} maxWidth={520}>
       <div style={{ fontSize: 15, color: COLORS.text, lineHeight: 1.6, marginBottom: 16 }}>
-        This creates a student account for <strong>{student.email}</strong> on the sign-in allow-list. They will be able to sign in and see the lesson view straight away.
+        This marks <strong>{student.name}</strong> as approved. Nothing happens for them yet: their student account is created, and they find out, when the super admin clicks <strong>Release decisions</strong>.
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 10, background: over ? COLORS.amberSoft : COLORS.indigoSoft, border: `1px solid ${over ? COLORS.amberBorder : COLORS.indigoBorder}`, borderRadius: 12, padding: "12px 14px", marginBottom: 22, fontSize: 14, fontWeight: 700, color: over ? COLORS.amber : COLORS.indigo }}>
         <Users size={16} />
@@ -658,7 +725,43 @@ function ApproveModal({ student, approvedCount, cap, onConfirm, onCancel }) {
           Cancel
         </button>
         <PrimaryButton onClick={onConfirm} icon={UserPlus}>
-          Approve and create account
+          Mark as approved
+        </PrimaryButton>
+      </div>
+    </ModalShell>
+  );
+}
+
+/* ---------- Release decisions (super admin) ---------- */
+function ReleaseModal({ pending, onConfirm, onCancel }) {
+  const approved = pending.filter((a) => a.status === "approved");
+  const newAccounts = approved.filter((a) => !a.studentId).length;
+  const waitlist = pending.filter((a) => a.status === "waitlist").length;
+  const denied = pending.filter((a) => a.status === "denied").length;
+  return (
+    <ModalShell eyebrow="Student Manager · Release" title={`Release ${pending.length} decision${pending.length === 1 ? "" : "s"}?`} onClose={onCancel} maxWidth={540}>
+      <div style={{ fontSize: 15, color: COLORS.text, lineHeight: 1.6, marginBottom: 16 }}>
+        Every applicant below will see their result the next time they sign in. Approved applicants get their student account now and can open Lessons straight away. Applicants still at Pending or Interview are not affected.
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 22 }}>
+        {[
+          ["Approved", approved.length, COLORS.green, COLORS.greenSoft, COLORS.greenBorder, `${newAccounts} new account${newAccounts === 1 ? "" : "s"}`],
+          ["Waitlist", waitlist, COLORS.amber, COLORS.amberSoft, COLORS.amberBorder, "told to wait"],
+          ["Denied", denied, COLORS.red, COLORS.redSoft, COLORS.redBorder, "told no"],
+        ].map(([label, n, color, soft, border, sub]) => (
+          <div key={label} style={{ background: soft, border: `1px solid ${border}`, borderRadius: 12, padding: "10px 12px" }}>
+            <div style={{ fontSize: 22, fontWeight: 900, color }}>{n}</div>
+            <div style={{ fontSize: 12.5, fontWeight: 800, color }}>{label}</div>
+            <div style={{ fontSize: 11.5, color: COLORS.faint, marginTop: 2 }}>{sub}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+        <button type="button" onClick={onCancel} style={{ border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.text, fontWeight: 800, fontSize: 14, borderRadius: 10, padding: "10px 16px", cursor: "pointer" }}>
+          Cancel
+        </button>
+        <PrimaryButton onClick={onConfirm} icon={Megaphone}>
+          Release decisions
         </PrimaryButton>
       </div>
     </ModalShell>
@@ -674,12 +777,19 @@ function StudentsTab({ saver, user }) {
   const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState(null);
   const [pendingApproval, setPendingApproval] = useState(null);
+  const [releasing, setReleasing] = useState(false);
+  const [accounts, setAccounts] = useState({}); // student users by id (super admin only)
   const [error, setError] = useState(null);
   const [info, setInfo] = useState(null);
   const isSuperAdmin = user.role === "superAdmin";
 
+  const loadAccounts = () =>
+    isSuperAdmin
+      ? api.get("/api/users?role=student").then((rows) => setAccounts(Object.fromEntries(rows.map((u) => [u.id, u]))))
+      : Promise.resolve();
+
   useEffect(() => {
-    Promise.all([api.get("/api/applications"), api.get("/api/form"), api.get("/api/lessons"), api.get("/api/settings")])
+    Promise.all([api.get("/api/applications"), api.get("/api/form"), api.get("/api/lessons"), api.get("/api/settings"), loadAccounts()])
       .then(([a, q, l, s]) => {
         setApplications(a);
         setQuestions(q);
@@ -687,19 +797,42 @@ function StudentsTab({ saver, user }) {
         setCap(s.classSizeCap);
       })
       .catch((e) => setError(e.message));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const applyStatus = (id, status) => {
-    setApplications((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)));
+    setApplications((prev) => prev.map((s) => (s.id === id ? { ...s, status, decisionReleased: false } : s)));
     saver.immediate(async () => {
       try {
         const saved = await api.patch(`/api/applications/${id}`, { status });
         setApplications((prev) => prev.map((s) => (s.id === id ? saved : s)));
-        if (status === "approved") setInfo(`${saved.name} approved. A student account for ${saved.email} now exists; they can now sign in and open Lessons.`);
+        if (status === "approved") setInfo(`${saved.name} marked as approved. ${isSuperAdmin ? "Click Release decisions when you are ready to create accounts and tell applicants." : "The super admin releases decisions, which creates the account."}`);
       } catch (e) {
         setError(e.message);
       }
     });
+  };
+
+  const release = () =>
+    saver.immediate(async () => {
+      try {
+        const r = await api.post("/api/applications/release");
+        const [a] = await Promise.all([api.get("/api/applications"), loadAccounts()]);
+        setApplications(a);
+        setInfo(`Released ${r.released} decision${r.released === 1 ? "" : "s"}: ${r.approved} approved (${r.accountsCreated} new account${r.accountsCreated === 1 ? "" : "s"}), ${r.waitlisted} waitlisted, ${r.denied} denied.`);
+      } catch (e) {
+        setError(e.message);
+      }
+    });
+
+  const suspend = async (student, suspended) => {
+    try {
+      const saved = await api.patch(`/api/users/${student.studentId}`, { suspended });
+      setAccounts((prev) => ({ ...prev, [saved.id]: saved }));
+      setInfo(suspended ? `${student.name}'s account is suspended. They can no longer sign in.` : `${student.name}'s account is active again.`);
+    } catch (e) {
+      setError(e.message);
+    }
   };
 
   // Approval is the one status that creates an account, so it goes through
@@ -726,12 +859,24 @@ function StudentsTab({ saver, user }) {
     return true;
   });
   const approvedCount = (applications || []).filter((a) => a.status === "approved").length;
+  const unreleased = (applications || []).filter(isUnreleased);
 
   if (error) return <Notice onClose={() => setError(null)}>{error}</Notice>;
   if (!applications) return <Loading />;
 
   if (openStudent) {
-    return <StudentDetail student={openStudent} questions={questions} lessons={lessons} saver={saver} onBack={() => setOpenId(null)} />;
+    return (
+      <StudentDetail
+        student={openStudent}
+        account={openStudent.studentId ? accounts[openStudent.studentId] : null}
+        isSuperAdmin={isSuperAdmin}
+        onSuspend={(suspended) => suspend(openStudent, suspended)}
+        questions={questions}
+        lessons={lessons}
+        saver={saver}
+        onBack={() => setOpenId(null)}
+      />
+    );
   }
 
   return (
@@ -742,6 +887,28 @@ function StudentsTab({ saver, user }) {
         </Notice>
       )}
       <StatsBar applications={applications} cap={cap} canEditCap={isSuperAdmin} onSaveCap={saveCap} />
+      {isSuperAdmin && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: unreleased.length ? COLORS.amberSoft : COLORS.card, border: `1px solid ${unreleased.length ? COLORS.amberBorder : COLORS.border}`, borderRadius: 14, padding: "12px 16px", marginBottom: 16, flexWrap: "wrap" }}>
+          <div style={{ fontSize: 13.5, color: unreleased.length ? COLORS.amber : COLORS.sub, fontWeight: 700, lineHeight: 1.5 }}>
+            {unreleased.length
+              ? `${unreleased.length} decision${unreleased.length === 1 ? "" : "s"} not yet released. Applicants see "under review" until you release.`
+              : "All decisions are released. Approved, waitlisted and denied applicants can see their result."}
+          </div>
+          <PrimaryButton icon={Megaphone} onClick={() => setReleasing(true)} disabled={!unreleased.length}>
+            Release decisions
+          </PrimaryButton>
+        </div>
+      )}
+      {releasing && (
+        <ReleaseModal
+          pending={unreleased}
+          onCancel={() => setReleasing(false)}
+          onConfirm={() => {
+            setReleasing(false);
+            release();
+          }}
+        />
+      )}
       <FilterBar filter={filter} setFilter={setFilter} statuses={STATUSES} search={search} setSearch={setSearch} />
       {pendingApproval && (
         <ApproveModal
@@ -758,7 +925,7 @@ function StudentsTab({ saver, user }) {
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {filtered.length === 0 && <EmptyState>No students match this filter.</EmptyState>}
         {filtered.map((s) => (
-          <StudentRow key={s.id} student={s} onOpen={() => setOpenId(s.id)} onStatusChange={(status) => requestStatus(s, status)} />
+          <StudentRow key={s.id} student={s} account={s.studentId ? accounts[s.studentId] : null} onOpen={() => setOpenId(s.id)} onStatusChange={(status) => requestStatus(s, status)} />
         ))}
       </div>
     </div>
@@ -810,7 +977,7 @@ function AccManagerTab({ saver }) {
     <div style={{ maxWidth: 720, margin: "0 auto" }}>
       <div style={{ marginBottom: 18 }}>
         <div style={{ fontSize: 22, fontWeight: 900, color: COLORS.text }}>Student Leaders</div>
-        <div style={{ fontSize: 14, color: COLORS.sub, marginTop: 4 }}>Enter a name and email, then create the student leader. This adds them to the sign-in allow-list.</div>
+        <div style={{ fontSize: 14, color: COLORS.sub, marginTop: 4 }}>Enter a name and email, then create the student leader. They can sign in with that Google account straight away.</div>
       </div>
 
       {error && <Notice onClose={() => setError(null)}>{error}</Notice>}

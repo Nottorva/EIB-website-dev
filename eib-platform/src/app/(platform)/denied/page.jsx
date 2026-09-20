@@ -6,18 +6,17 @@ import { GoogleSignOutButton } from "@/components/GoogleButtons";
 export default async function Denied({ searchParams }) {
   const params = await searchParams;
   const reason = params?.reason;
-  const need = params?.need;
   const identity = authMode === "google" ? await getSessionIdentity() : null;
 
   const signInMissing = authMode !== "google" && process.env.NODE_ENV === "production";
   const message =
     reason === "signin"
       ? signInMissing
-        ? "Sign-in hasn't been configured on this site yet, so nobody can be identified. An EIB admin needs to set up Google sign-in (AUTH_GOOGLE_ID / AUTH_GOOGLE_SECRET / AUTH_SECRET) before anyone can use it."
+        ? "Sign-in hasn't been set up on this site yet. Please check back later."
         : identity
-          ? `${identity.email} is signed in to Google but has not been added to EIB. Students get access when their application is approved; student leaders are added by the super admin.`
-          : "This email is not on the allow-list, so there is nothing to show."
-      : `This page requires role ${need ? need.split(",").join(" or ") : "(unknown)"}. Your current role does not have it.`;
+          ? `${identity.email} does not have access to EIB yet.`
+          : "You need to sign in to see this page."
+      : "Your account does not have access to this page.";
 
   return (
     <div style={{ maxWidth: 560, margin: "80px auto", padding: "0 24px", textAlign: "center" }}>

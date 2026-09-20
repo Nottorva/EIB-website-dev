@@ -81,7 +81,7 @@ export default function SiteChrome({ ticker, user, identity, authMode }) {
           </Link>
         )}
         {name ? (
-          <Link className="signin" href="/platform" title={name}>
+          <Link className="signin" href={user ? "/platform" : "/apply"} title={name}>
             {name}
           </Link>
         ) : authMode === "google" ? (

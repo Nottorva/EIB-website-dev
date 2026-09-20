@@ -59,13 +59,16 @@ Things worth trying, in order:
    grade and feedback; they are a draft the student cannot see. Click
    **Release to student**. Switch back to Amara: grade and feedback appear.
    "Withdraw from student" hides them again.
-5. **Approve creates the account, with a confirmation.** Open the public
-   Application form (link in the top bar). Sign in with the sandbox stand-in
-   (any name, an @tfs.ca email) and submit. As Jack, Student
-   Manager → the new applicant is Pending. Set them to Approved: a popup asks
-   you to confirm and shows the class size after approval. Confirm. Refresh:
-   switch to them with the dev URL above (their email) and they can open
-   Lessons.
+5. **Approve, then release.** Open the public Application form (link in the
+   top bar). Sign in with the sandbox stand-in (any name, an @tfs.ca email)
+   and submit: the page becomes a single status card ("under review",
+   submitted when). As Jack, Student Manager → the new applicant is Pending.
+   Set them to Approved: a popup confirms and shows the class size after
+   approval. Nothing happens for the applicant yet. As Josef, click
+   **Release decisions**: their account is created and their status card now
+   says they're in, with a button into the platform. Switch to them with the
+   dev URL above (their email) and they can open Lessons. Open their profile
+   as Josef and **Suspend account**: they are locked out until reinstated.
 6. **Class size cap.** The stats bar at the top of the Students tab shows
    applicants, interviews, and approved / cap. As Josef, "Set max class size"
    changes the cap. As Jack it is read-only.
@@ -156,6 +159,20 @@ src/app/*/page.jsx          Thin server pages: gate by role, render the tool.
 - **`classSizeCap` setting** (default 23), readable by leaders, writable by
   super admin. Approval is not blocked at the cap; the confirmation popup
   warns instead.
+- **Decisions are released in one step, not on approval.** Setting an
+  application to Approved / Waitlist / Denied is a private review step. The
+  super admin's **Release decisions** button (Students tab) makes every
+  unreleased final decision visible on the applicant's status page and
+  creates the student accounts for the approved ones. Changing a status after
+  release un-releases it until the next click. Pending and Interview are never
+  shown to applicants.
+- **Applicants never see the platform menu.** A signed-in account with no
+  allow-list row is sent to `/apply`, which is the form if they have not
+  applied and a single status card if they have (submitted when, under review
+  / accepted / waitlist / not this year).
+- **Student accounts can be suspended** (super admin, from the student's
+  profile in the Students tab). A suspended row stays in `users` with its
+  submissions, but the person cannot sign in; their status page says so.
 - **Approving an email that already has a users row keeps its existing
   role** (name is refreshed). The spec says upsert `{role: "student"}`; a
   literal reading would demote a super admin who applied. Flagging in case

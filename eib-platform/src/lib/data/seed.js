@@ -258,6 +258,10 @@ function application(id, studentId, name, email, status, submittedAt, [grade, wh
     email,
     status,
     submittedAt,
+    // In the sample data, anyone who already has an account had their
+    // decision released; everyone else is still waiting.
+    decisionReleased: Boolean(studentId),
+    releasedAt: studentId ? "2026-10-20T16:00:00.000Z" : null,
     answers: [
       { questionId: "q_grade", answer: grade },
       { questionId: "q_why", answer: why },
