@@ -189,7 +189,7 @@ function LessonCard({ lesson, mode, submissions, onChangePayload, onChangeLogist
   };
 
   return (
-    <div style={{ background: COLORS.card, borderRadius: 22, padding: "34px 36px 36px", boxShadow: "0 1px 3px rgba(15,23,42,0.05)" }}>
+    <div id={`lesson-${lesson.id}`} style={{ background: COLORS.card, borderRadius: 22, padding: "34px 36px 36px", boxShadow: "0 1px 3px rgba(15,23,42,0.05)", scrollMarginTop: 84 }}>
       <div style={{ display: "flex", gap: 20 }}>
         <div style={{ width: 54, height: 54, borderRadius: 14, background: COLORS.indigoSoft, color: COLORS.indigo, fontWeight: 800, fontSize: 24, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
           {lesson.number}
@@ -262,31 +262,14 @@ export default function LessonView({ user }) {
   };
 
   const mode = data?.mode || (user.role === "student" ? "student" : "leader");
+  const lessons = data?.lessons || [];
 
   return (
     <div style={{ background: COLORS.bg, minHeight: "100%" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 40px", borderBottom: `1px solid ${COLORS.border}`, background: "#fff", flexWrap: "wrap", gap: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 11, background: COLORS.indigo, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <BookOpen size={20} color="#fff" strokeWidth={2.25} />
-          </div>
-          <span style={{ fontSize: 20, fontWeight: 800, color: COLORS.text }}>EIB Textbook</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+      <div style={{ maxWidth: 1180, margin: "0 auto", padding: "36px 24px 80px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 22 }}>
+          <span style={{ fontSize: 30, fontWeight: 800, color: COLORS.text }}>Lessons</span>
           <SaveIndicator status={saver.status} />
-          <div style={{ display: "flex", gap: 6, background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: 4 }}>
-            <span style={{ fontSize: 13.5, fontWeight: 800, color: "#fff", background: COLORS.indigo, borderRadius: 9, padding: "8px 16px" }}>
-              {mode === "student" ? "Student" : user.role === "superAdmin" ? "Student Leader (admin preview)" : "Student Leader"}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: "44px 24px 80px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 28 }}>
-          <BookOpen size={30} color={COLORS.indigo} strokeWidth={2.25} />
-          <div style={{ width: 3, height: 30, background: COLORS.text, borderRadius: 2 }} />
-          <span style={{ fontSize: 34, fontWeight: 800, color: COLORS.text }}>Lessons</span>
         </div>
 
         {error && <Notice onClose={() => setError(null)}>{error}</Notice>}
@@ -294,15 +277,111 @@ export default function LessonView({ user }) {
 
         {!data ? (
           <Loading />
+        ) : lessons.length === 0 ? (
+          <div style={{ fontSize: 15, color: COLORS.faint }}>No lessons have been published yet.</div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-            {data.lessons.length === 0 && <div style={{ fontSize: 15, color: COLORS.faint }}>No lessons have been published yet.</div>}
-            {data.lessons.map((lesson) => (
+          <LessonLayout lessons={lessons}>
+            {lessons.map((lesson) => (
               <LessonCard key={lesson.id} lesson={lesson} mode={mode} submissions={submissions} onChangePayload={changePayload} onChangeLogistics={changeLogistics} />
             ))}
-          </div>
+          </LessonLayout>
         )}
       </div>
+    </div>
+  );
+}
+
+/* Lesson cards with a jump list beside them: a sticky column on wide
+   screens, a scrollable row of chips above the cards on narrow ones. The
+   highlighted entry follows whichever card is nearest the top of the screen. */
+function LessonLayout({ lessons, children }) {
+  const [narrow, setNarrow] = useState(false);
+  const [activeId, setActiveId] = useState(lessons[0]?.id || null);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 900px)");
+    const apply = () => setNarrow(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+
+  useEffect(() => {
+    let queued = false;
+    const onScroll = () => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => {
+        queued = false;
+        const line = 140; // just under the top bar
+        let best = null;
+        for (const l of lessons) {
+          const el = document.getElementById(`lesson-${l.id}`);
+          if (!el) continue;
+          const top = el.getBoundingClientRect().top;
+          if (top <= line) best = l.id; // the last card whose top has passed the line
+        }
+        setActiveId(best || lessons[0]?.id || null);
+      });
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, [lessons]);
+
+  const jump = (id) => {
+    const el = document.getElementById(`lesson-${id}`);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const item = (l) => {
+    const active = l.id === activeId;
+    return (
+      <button
+        key={l.id}
+        type="button"
+        onClick={() => jump(l.id)}
+        title={l.title}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          width: narrow ? "auto" : "100%",
+          textAlign: "left",
+          border: `1px solid ${active ? COLORS.indigoBorder : "transparent"}`,
+          background: active ? COLORS.indigoSoft : "transparent",
+          color: active ? COLORS.indigo : COLORS.sub,
+          borderRadius: 12,
+          padding: narrow ? "8px 12px 8px 8px" : "9px 10px",
+          cursor: "pointer",
+          fontFamily: "inherit",
+          flexShrink: 0,
+        }}
+      >
+        <span style={{ width: 28, height: 28, borderRadius: 8, background: active ? COLORS.indigo : "#fff", border: `1px solid ${active ? COLORS.indigo : COLORS.border}`, color: active ? "#fff" : COLORS.text, fontWeight: 800, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          {l.number}
+        </span>
+        <span style={{ fontSize: 13.5, fontWeight: 700, whiteSpace: narrow ? "nowrap" : "normal", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.3 }}>{l.title}</span>
+      </button>
+    );
+  };
+
+  if (narrow) {
+    return (
+      <div>
+        <div style={{ display: "flex", gap: 6, overflowX: "auto", padding: "4px 0 10px", marginBottom: 12, scrollbarWidth: "none" }}>{lessons.map(item)}</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>{children}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "230px minmax(0, 1fr)", gap: 28, alignItems: "start" }}>
+      <nav aria-label="Jump to lesson" style={{ position: "sticky", top: 84, display: "flex", flexDirection: "column", gap: 4 }}>
+        <div style={{ fontSize: 11.5, fontWeight: 800, color: COLORS.faint, textTransform: "uppercase", letterSpacing: 0.6, padding: "0 10px", marginBottom: 6 }}>Jump to</div>
+        {lessons.map(item)}
+      </nav>
+      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>{children}</div>
     </div>
   );
 }

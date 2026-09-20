@@ -65,8 +65,8 @@ function StatusScreen({ status, onSignOut }) {
         <BigCard icon={CheckCircle2} tone="green" title={`You're in${first ? `, ${first}` : ""}`}>
           Your application to EIB was accepted and your student account is ready.
           <div style={{ marginTop: 20 }}>
-            <Link href="/platform" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: COLORS.indigo, color: "#fff", fontWeight: 800, fontSize: 15, borderRadius: 12, padding: "12px 20px", textDecoration: "none" }}>
-              Open the platform <ArrowRight size={16} />
+            <Link href="/lessons" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: COLORS.indigo, color: "#fff", fontWeight: 800, fontSize: 15, borderRadius: 12, padding: "12px 20px", textDecoration: "none" }}>
+              Open your lessons <ArrowRight size={16} />
             </Link>
           </div>
           <div style={{ fontSize: 13, color: COLORS.faint, marginTop: 16 }}>Application submitted {submitted}.</div>

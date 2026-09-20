@@ -68,6 +68,8 @@ export default async function Home() {
   // Signed in without a working account: an applicant or a suspended
   // student. They get their status page, never this menu.
   if (!user && identity) redirect("/apply");
+  // Students have one page; skip the menu.
+  if (user?.role === "student") redirect("/lessons");
   const signInMissing = !user && authMode !== "google" && process.env.NODE_ENV === "production";
   const allowed = TOOLS.filter((t) => user && t.roles.includes(user.role));
 

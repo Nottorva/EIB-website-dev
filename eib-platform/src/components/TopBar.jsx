@@ -58,14 +58,16 @@ function Identity({ user, identity, authMode, pathname }) {
 
 export default function TopBar({ user, authMode, identity }) {
   const pathname = usePathname();
-  const visibleNav = NAV.filter((n) => user && n.roles.includes(user.role));
+  // Students have exactly one place to be, so they get no menu at all.
+  const visibleNav = user && user.role !== "student" ? NAV.filter((n) => n.roles.includes(user.role)) : [];
+  const home = user?.role === "student" ? "/lessons" : "/platform";
 
   return (
     <header
       style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "12px 28px", borderBottom: `1px solid ${COLORS.border}`, background: "#fff", position: "sticky", top: 0, zIndex: 50, flexWrap: "wrap" }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
-        <Link href="/platform" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
+        <Link href={home} style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
           <div style={{ width: 36, height: 36, borderRadius: 10, background: COLORS.indigo, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <BookOpen size={18} color="#fff" strokeWidth={2.25} />
           </div>
