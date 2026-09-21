@@ -34,6 +34,27 @@ function NoticeCard({ q, ticked, onTick }) {
   );
 }
 
+// The strip the super admin sees above the form in preview: the window
+// state, in the same colours the Forms tab uses for it.
+const PREVIEW_STATE = {
+  upcoming: { label: "Not open yet", color: COLORS.amber, soft: COLORS.amberSoft, border: COLORS.amberBorder },
+  open: { label: "Live", color: COLORS.green, soft: COLORS.greenSoft, border: COLORS.greenBorder },
+  closed: { label: "Closed", color: COLORS.red, soft: COLORS.redSoft, border: COLORS.redBorder },
+};
+function PreviewStrip({ state, opensAt, closesAt }) {
+  const st = PREVIEW_STATE[state] || PREVIEW_STATE.open;
+  const when = state === "upcoming" ? `opens ${fmt(opensAt)}` : state === "closed" ? `closed ${fmt(closesAt)}` : closesAt ? `closes ${fmt(closesAt)}` : "no closing time set";
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", background: st.soft, border: `1px solid ${st.border}`, borderRadius: 14, padding: "12px 16px", marginBottom: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ fontSize: 11.5, fontWeight: 900, letterSpacing: 0.6, textTransform: "uppercase", color: "#fff", background: st.color, borderRadius: 999, padding: "4px 10px" }}>{st.label}</span>
+        <span style={{ fontSize: 13.5, fontWeight: 700, color: st.color }}>Preview · {when}</span>
+      </div>
+      <span style={{ fontSize: 12.5, color: COLORS.sub, fontWeight: 600 }}>This is what applicants see. Submitting is disabled here.</span>
+    </div>
+  );
+}
+
 // Older applications stored a date only; show those without a time.
 const fmtSubmitted = (v) => {
   if (!v) return null;
@@ -294,8 +315,12 @@ export default function ApplyForm() {
   }
 
   const title = status.title || "Apply to EIB";
+  // Super admin looking at the link without an applicant sign-in: show the
+  // form as applicants get it, whatever the window state, with a strip on
+  // top saying which state that is. Submitting is disabled in this mode.
+  const preview = Boolean(status.previewer && !status.applicant);
 
-  if (status.state === "upcoming") {
+  if (!preview && status.state === "upcoming") {
     return (
       <Shell title={title}>
         <BigCard icon={CalendarClock} tone="amber" title="Applications aren't open yet">
@@ -306,7 +331,7 @@ export default function ApplyForm() {
     );
   }
 
-  if (status.state === "closed") {
+  if (!preview && status.state === "closed") {
     return (
       <Shell title={title}>
         <BigCard icon={Lock} tone="gray" title="Applications have closed">
@@ -316,7 +341,7 @@ export default function ApplyForm() {
     );
   }
 
-  if (!status.applicant) {
+  if (!preview && !status.applicant) {
     return (
       <Shell title={title}>
         {status.closesAt && (
@@ -329,7 +354,7 @@ export default function ApplyForm() {
     );
   }
 
-  if (status.domainOk === false) {
+  if (!preview && status.domainOk === false) {
     return (
       <Shell title={title}>
         <BigCard icon={Lock} tone="amber" title={`Please use your @${status.applicantDomain} account`}>
@@ -346,19 +371,23 @@ export default function ApplyForm() {
 
   return (
     <Shell title={title}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: "12px 16px", marginBottom: 14, flexWrap: "wrap" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <ShieldCheck size={18} color={COLORS.green} />
-          <div>
-            <div style={{ fontSize: 14, fontWeight: 800, color: COLORS.text }}>{status.applicant.name}</div>
-            <div style={{ fontSize: 12.5, color: COLORS.faint }}>{status.applicant.email}</div>
+      {preview ? (
+        <PreviewStrip state={status.state} opensAt={status.opensAt} closesAt={status.closesAt} />
+      ) : (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: "12px 16px", marginBottom: 14, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <ShieldCheck size={18} color={COLORS.green} />
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 800, color: COLORS.text }}>{status.applicant.name}</div>
+              <div style={{ fontSize: 12.5, color: COLORS.faint }}>{status.applicant.email}</div>
+            </div>
           </div>
+          <button type="button" onClick={signOut} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.sub, fontWeight: 700, fontSize: 12.5, cursor: "pointer" }}>
+            <LogOut size={13} /> Not you? Sign out
+          </button>
         </div>
-        <button type="button" onClick={signOut} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.sub, fontWeight: 700, fontSize: 12.5, cursor: "pointer" }}>
-          <LogOut size={13} /> Not you? Sign out
-        </button>
-      </div>
-      {status.closesAt && (
+      )}
+      {status.closesAt && (!preview || status.state === "open") && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, fontWeight: 700, color: COLORS.amber, background: COLORS.amberSoft, border: `1px solid ${COLORS.amberBorder}`, borderRadius: 12, padding: "10px 14px", marginBottom: 14 }}>
           <CalendarClock size={15} /> Applications close {fmt(status.closesAt)}
         </div>
@@ -366,7 +395,7 @@ export default function ApplyForm() {
 
       {error && <Notice onClose={() => setError(null)}>{error}</Notice>}
 
-      <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <form onSubmit={preview ? (e) => e.preventDefault() : submit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         {status.form.map((q) => q.type === "notice" ? (
           <NoticeCard key={q.id} q={q} ticked={answers[q.id] === (q.ack || "I understand")} onTick={(on) => set(q.id, on ? q.ack || "I understand" : "")} />
         ) : (
@@ -425,10 +454,11 @@ export default function ApplyForm() {
 
         <button
           type="submit"
-          disabled={submitting}
-          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", background: submitting ? "#d7dbe4" : COLORS.indigo, color: "#fff", border: "none", borderRadius: 13, padding: "15px", fontSize: 16, fontWeight: 800, cursor: submitting ? "default" : "pointer", marginTop: 6 }}
+          disabled={submitting || preview}
+          title={preview ? "Submitting is disabled in preview" : undefined}
+          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", background: submitting || preview ? "#d7dbe4" : COLORS.indigo, color: "#fff", border: "none", borderRadius: 13, padding: "15px", fontSize: 16, fontWeight: 800, cursor: submitting ? "default" : "pointer", marginTop: 6 }}
         >
-          <Send size={16} /> {submitting ? "Submitting…" : "Submit application"}
+          <Send size={16} /> {preview ? "Submit application (disabled in preview)" : submitting ? "Submitting…" : "Submit application"}
         </button>
       </form>
     </Shell>

@@ -90,7 +90,10 @@ Things worth trying, in order:
     fresh database starts with is the 2026-27 application in
     `src/lib/data/applicationForm2026.js` (12 items: three notices, level and
     starting-point choices, three 250-word long answers with helper lines,
-    four short answers). **Load the 2026-27 application** (super admin)
+    four short answers). Opening `/apply` as the super admin (with no applicant
+    sign-in) shows the form as a preview whatever the window state, with a
+    Not open yet / Live / Closed strip on top and submitting disabled.
+    **Load the 2026-27 application** (super admin)
     writes that over whatever is saved. Questions carry optional helper
     text; long answers can carry a word limit, counted live and enforced on
     submit. **Add notice**
