@@ -293,9 +293,11 @@ export default function ApplyForm() {
     return <StatusScreen status={status} onSignOut={signOut} />;
   }
 
+  const title = status.title || "Apply to EIB";
+
   if (status.state === "upcoming") {
     return (
-      <Shell>
+      <Shell title={title}>
         <BigCard icon={CalendarClock} tone="amber" title="Applications aren't open yet">
           This link goes live on <strong>{fmt(status.opensAt)}</strong>. Come back then; the link stays the same.
           {status.closesAt && <div style={{ marginTop: 8 }}>Applications close on {fmt(status.closesAt)}.</div>}
@@ -306,15 +308,13 @@ export default function ApplyForm() {
 
   if (status.state === "closed") {
     return (
-      <Shell>
+      <Shell title={title}>
         <BigCard icon={Lock} tone="gray" title="Applications have closed">
           The application window closed on <strong>{fmt(status.closesAt)}</strong>. If you think that's a mistake, contact an EIB student leader.
         </BigCard>
       </Shell>
     );
   }
-
-  const title = status.title || "Apply to EIB";
 
   if (!status.applicant) {
     return (
