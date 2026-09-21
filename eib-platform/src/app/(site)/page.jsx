@@ -3,9 +3,8 @@
 // Nothing student-facing (links, deliverables, rooms) ever reaches this page.
 import Link from "next/link";
 import { getCurrentUser, getSessionIdentity, authMode } from "@/lib/auth";
-import { listPublishedLessons } from "@/lib/data/lessons";
 import { getSiteTicker, getApplicationWindow, windowState } from "@/lib/data/settings";
-import { REEL, DIFFERENCE, CARD_QUOTES, FALLBACK_LESSONS, FOOTER, groupLessons } from "@/lib/siteContent";
+import { REEL, DIFFERENCE, CARD_QUOTES, CURRICULUM, FOOTER, groupLessons } from "@/lib/siteContent";
 import SiteChrome from "@/components/site/SiteChrome";
 import Reel from "@/components/site/Reel";
 import Curriculum from "@/components/site/Curriculum";
@@ -14,7 +13,7 @@ import QuoteCarousel from "@/components/site/QuoteCarousel";
 
 export const metadata = {
   title: "EIB · Entrepreneurship, Innovation & Business",
-  description: "A twelve-week venture track inside the school timetable, built around agency, creativity and the bet that young people can change the world.",
+  description: "A venture track inside the school timetable, built around agency, judgment, consequence and community.",
 };
 
 function applicationLine(win) {
@@ -26,16 +25,14 @@ function applicationLine(win) {
 }
 
 export default async function SitePage() {
-  const [user, identity, ticker, win, published] = await Promise.all([
+  const [user, identity, ticker, win] = await Promise.all([
     getCurrentUser(),
     authMode === "google" ? getSessionIdentity() : null,
     getSiteTicker(),
     getApplicationWindow(),
-    listPublishedLessons(),
   ]);
 
-  const lessons = published.length ? published : FALLBACK_LESSONS;
-  const stages = groupLessons(lessons);
+  const stages = groupLessons(CURRICULUM);
 
   return (
     <div className="site">
@@ -64,7 +61,7 @@ export default async function SitePage() {
           </div>
         </section>
 
-        <Curriculum stages={stages} lessonCount={lessons.length} />
+        <Curriculum stages={stages} />
       </main>
 
       <footer className="foot" data-chrome="light">

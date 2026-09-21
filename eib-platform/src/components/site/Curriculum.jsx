@@ -2,10 +2,10 @@
 
 // The curriculum as a commit graph. Paths are measured off the live DOM and
 // drawn as SVG; each branch, its node dot and its words share one value, the
-// row's position in the viewport. Only the accordion open/closed set is React
-// state; every per-frame value is written to the DOM directly.
+// row's position in the viewport. Nothing here is React state; every
+// per-frame value is written to the DOM directly.
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 
 const BAND = 0.25; // share of the screen, top and bottom, over which a row fades
 const TRUNK = 0.95; // screen height the trunk front runs along
@@ -15,24 +15,11 @@ const clamp = (n, a, b) => (n < a ? a : n > b ? b : n);
 const smooth = (t) => t * t * (3 - 2 * t);
 const pad2 = (n) => String(n).padStart(2, "0");
 
-const WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve", "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty"];
-const asWord = (n) => (n >= 0 && n < WORDS.length ? WORDS[n] : String(n));
-const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
-export default function Curriculum({ stages, lessonCount }) {
+export default function Curriculum({ stages }) {
   const graphRef = useRef(null);
   const svgRef = useRef(null);
   const headRef = useRef(null);
-  const firstId = stages[0]?.lessons[0]?.id;
-  const [open, setOpen] = useState(() => new Set(firstId ? [firstId] : []));
-
-  const toggle = (id) =>
-    setOpen((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
 
   useEffect(() => {
     const graph = graphRef.current;
@@ -207,7 +194,7 @@ export default function Curriculum({ stages, lessonCount }) {
     window.addEventListener("scroll", onScroll, { passive: true });
     window.addEventListener("resize", queueLayout);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(layout);
-    // re-measures every frame while an accordion panel drops
+    // re-measures whenever the block changes size (fonts, wrapping)
     const ro = window.ResizeObserver ? new ResizeObserver(queueLayout) : null;
     if (ro) ro.observe(graph);
 
@@ -226,21 +213,13 @@ export default function Curriculum({ stages, lessonCount }) {
     };
   }, [stages]);
 
-  const stageCount = stages.filter((s) => s.name).length;
-  const lede =
-    `${cap(asWord(lessonCount))} lesson${lessonCount === 1 ? "" : "s"}` +
-    (stageCount > 1 ? ` across ${asWord(stageCount)} stages` : "") +
-    ". Each one branches off the same trunk and closes with something a mentor can mark up. Open any of them.";
-
   return (
     <section className="sec paper" id="lessons" data-chrome="light">
       <div className="wrap">
         <div className="graph" ref={graphRef}>
           <svg className="graph-svg" ref={svgRef} aria-hidden="true" />
           <div className="ghead" ref={headRef}>
-            <p className="mono eyebrow">The curriculum</p>
-            <h2 className="d h2">Twelve weeks on one spine.</h2>
-            <p className="lede">{lede}</p>
+            <h2 className="d h2">The curriculum</h2>
           </div>
           <ol className="lessons">
             {stages.map((stage, si) => (
@@ -250,30 +229,21 @@ export default function Curriculum({ stages, lessonCount }) {
                     <p className="mono">{stage.label}</p>
                   </li>
                 )}
-                {stage.lessons.map((l) => {
-                  const isOpen = open.has(l.id);
-                  const panelId = `lp-${l.id}`;
-                  return (
-                    <li className="lesson" data-side={l.side} data-open={isOpen ? "true" : "false"} key={l.id}>
-                      <button className="lhead" type="button" aria-expanded={isOpen} aria-controls={panelId} onClick={() => toggle(l.id)}>
-                        <span className="mono lno">
-                          Lesson {pad2(l.index)}
-                          {l.week ? ` · Week ${l.week}` : ""}
-                        </span>
-                        <span className="ltitle">{l.title}</span>
-                        <svg className="lchev" viewBox="0 0 12 12" aria-hidden="true">
-                          <path d="M2.5 4.5 6 8 9.5 4.5" />
-                        </svg>
-                      </button>
-                      <div className="lrule" />
-                      <div className="lpanel" id={panelId}>
-                        <div>
-                          <p className="lbody">{l.blurb}</p>
-                        </div>
-                      </div>
+                {stage.lessons.map((l) =>
+                  l.note ? (
+                    <li className="stagemark note" key={l.id}>
+                      <p className="mono">{l.note}</p>
                     </li>
-                  );
-                })}
+                  ) : (
+                    <li className="lesson" data-side={l.side} key={l.id}>
+                      <div className="lhead">
+                        <span className="mono lno">{l.label || `Lesson ${pad2(l.index)}`}</span>
+                        <span className="ltitle">{l.title}</span>
+                      </div>
+                      <div className="lrule" />
+                    </li>
+                  )
+                )}
               </React.Fragment>
             ))}
           </ol>

@@ -1,9 +1,8 @@
 // Static copy for the public site (the marketing page at "/").
 //
 // Everything that changes rarely lives here as plain data: the reel captions,
-// the card copy, the quotes, the footer. Things that change often (ticker
-// items, the curriculum) come from the database and only fall back to
-// the entries below when nothing has been published yet.
+// the card copy, the quotes, the curriculum, the footer. The ticker items
+// come from the database (edited on the Website page).
 
 // Per photo: `position` is the CSS background-position (which part of the
 // photo to keep when it is cropped), `size` optionally zooms in on wide
@@ -19,7 +18,7 @@ export const REEL = {
     size: "113% auto",
     shade: 0.35,
     tint: "#0A0A0C",
-    kicker: "Twelve weeks · Four principles",
+    kicker: "Sixteen sessions · Four principles",
     // Each value is a word in its own pastel; the four panels that follow
     // take those colours in the same order.
     // One word per line ("\n"), so the block stays narrow and never crosses
@@ -110,26 +109,29 @@ export const CARD_QUOTES = [
   "It's a good way to get your foot in the door meeting real people outside of parents. It's nice to see perspectives outside of TFS as well.",
 ];
 
-// Shown while no lesson in the Lesson Editor is marked "Show on website".
-// Publishing lessons replaces this list entirely.
-export const FALLBACK_LESSONS = [
-  { id: "f1", number: "1", week: "1", stage: "Foundations", title: "Problem, not product", blurb: "Students arrive with an app idea. They leave the first block holding a problem instead, attached to a named person who actually has it." },
-  { id: "f2", number: "2", week: "1", stage: "Foundations", title: "Where ideas actually come from", blurb: "Not brainstorms. Irritation, constraint, and things the student already knows better than the adults in the room." },
-  { id: "f3", number: "3", week: "2", stage: "Foundations", title: "Writing a problem statement", blurb: "One sentence naming who, what, and how often. It gets read aloud to the cohort, and the cohort is allowed to say it is vague." },
-  { id: "f4", number: "4", week: "3", stage: "Foundations", title: "Killing your first idea", blurb: "The hardest lesson of the term. Teams practise abandoning something they like on evidence, so that doing it later costs them nothing." },
-  { id: "f5", number: "5", week: "4", stage: "Validation", title: "Finding the right people to talk to", blurb: "Twenty strangers beats two hundred classmates. Students build a list, write the ask, and send it before they leave the block." },
-  { id: "f6", number: "6", week: "4", stage: "Validation", title: "The customer interview", blurb: "Run without pitching once. The discipline is asking what someone did last time instead of what they would do next time." },
-  { id: "f7", number: "7", week: "5", stage: "Validation", title: "What people do, not what they say", blurb: "Coding the interview log. Enthusiasm is discarded; behaviour, spend, and workarounds are kept." },
-  { id: "f8", number: "8", week: "6", stage: "Validation", title: "Sizing the room", blurb: "Bottom-up market sizing built from their own interviews rather than a figure copied off a consultancy slide." },
-  { id: "f9", number: "9", week: "6", stage: "Validation", title: "Unit economics on one page", blurb: "What one customer costs to win and what one customer returns, with every assumption named and defensible." },
-  { id: "f10", number: "10", week: "7", stage: "Build", title: "Scoping the smallest thing", blurb: "Cutting the idea down to the one function that tests the riskiest assumption, and cutting everything else." },
-  { id: "f11", number: "11", week: "8", stage: "Build", title: "Building without code", blurb: "No-code tools, hardware, or a service run by hand. What matters is that a person can use it, not how it was made." },
-  { id: "f12", number: "12", week: "8", stage: "Build", title: "Pricing before you launch", blurb: "Naming a number early, because a price is a hypothesis and it is cheaper to be wrong about it now." },
-  { id: "f13", number: "13", week: "9", stage: "Build", title: "In front of a stranger", blurb: "The prototype meets someone outside the cohort. Teams watch without explaining, which is harder than it sounds." },
-  { id: "f14", number: "14", week: "10", stage: "Build", title: "Reading your own data", blurb: "Instrumenting what happened, separating signal from one enthusiastic user, and deciding what it licenses them to claim." },
-  { id: "f15", number: "15", week: "11", stage: "Demo Day", title: "The shape of a pitch", blurb: "Problem, evidence, product, economics, ask. Eight minutes, and the evidence carries the weight rather than the delivery." },
-  { id: "f16", number: "16", week: "11", stage: "Demo Day", title: "Slides that survive questions", blurb: "Built so every claim on screen traces back to something in the interview log or the usage data." },
-  { id: "f17", number: "17", week: "12", stage: "Demo Day", title: "Demo Day", blurb: "An external panel of operators and investors, briefed to press. They score what the team proved, not how confident they sounded." },
+// The curriculum drawn under the card, in order. A `note` entry is a break
+// that sits on the trunk between sessions; a `label` replaces the
+// "Lesson NN" line (the showcase is dated, not numbered).
+export const CURRICULUM = [
+  { id: "c1", stage: "Identify", title: "Problem Identification" },
+  { id: "c2", stage: "Identify", title: "Problem Validation" },
+  { id: "c3", stage: "Identify", title: "Ideation and Solutions" },
+  { id: "c4", stage: "Plan", title: "Exit Strategy and What Success Looks Like" },
+  { id: "c5", stage: "Plan", title: "Building the MVP" },
+  { id: "b1", stage: "Plan", note: "Winter break · Dec 18 to Jan 4 · no sessions" },
+  { id: "c6", stage: "Plan", title: "Monetization and the Business Model" },
+  { id: "c7", stage: "Plan", title: "Legal Basics" },
+  { id: "c8", stage: "Plan", title: "Traction and Go-to-Market" },
+  { id: "c9", stage: "Build", title: "Prototyping Day, physical" },
+  { id: "c10", stage: "Build", title: "Prototyping Day, digital" },
+  { id: "c11", stage: "Build", title: "Data Collection and Feedback" },
+  { id: "c12", stage: "Build", title: "Value Extraction" },
+  { id: "c13", stage: "Convince", title: "Narrative Construction and Investment" },
+  { id: "c14", stage: "Convince", title: "Founder Journey" },
+  { id: "b2", stage: "Convince", note: "March break · Mar 8 to 19 · no sessions" },
+  { id: "c15", stage: "Convince", title: "Pitch Refinement" },
+  { id: "c16", stage: "Convince", title: "Pitch Prep and Showcase Briefing" },
+  { id: "c17", stage: "Launch", label: "April 23", title: "Student Showcase and Cougars Den" },
 ];
 
 // What a cohort actually builds; drawn as the field of rising words ahead of
@@ -150,9 +152,10 @@ export const FOOTER = {
   ],
 };
 
-// Group published lessons into stages, in curriculum order, keeping each
-// lesson's alternating side stable across stage tags (see the trap about
-// :nth-child in the handoff: sides are data, not layout).
+// Group the curriculum into stages, in order, keeping each session's
+// alternating side stable across stage tags and break notes (see the trap
+// about :nth-child in the handoff: sides are data, not layout). Only
+// numbered sessions take an index.
 export function groupLessons(lessons) {
   const stages = [];
   let side = "l";
@@ -163,6 +166,15 @@ export function groupLessons(lessons) {
     if (!stage || stage.name !== stageName) {
       stage = { name: stageName, lessons: [] };
       stages.push(stage);
+    }
+    if (lesson.note) {
+      stage.lessons.push({ ...lesson });
+      continue;
+    }
+    if (lesson.label) {
+      stage.lessons.push({ ...lesson, side });
+      side = side === "l" ? "r" : "l";
+      continue;
     }
     index += 1;
     stage.lessons.push({ ...lesson, side, index });

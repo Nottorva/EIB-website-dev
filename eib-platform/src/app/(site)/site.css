@@ -179,11 +179,12 @@
   overflow: hidden; border-radius: 2px; }
 .rail u { display: block; height: 100%; background: var(--accent-p, var(--accent-2)); transform: scaleX(0); transform-origin: 0 50%; }
 .rail span { color: var(--chalk-2); margin-right: 6px; }
-.skip { pointer-events: auto; background: rgba(8, 11, 18, 0.55); border: 1px solid var(--line-2);
-  color: var(--chalk-2); border-radius: 999px; padding: 8px 14px; cursor: pointer;
-  backdrop-filter: blur(6px); font-family: var(--monof); font-size: 0.68rem;
-  letter-spacing: 0.14em; text-transform: uppercase; transition: color 0.2s, border-color 0.2s; }
-.skip:hover { color: var(--chalk); border-color: var(--chalk-3); }
+.skip { pointer-events: auto; background: #fff; border: 1px solid #fff;
+  color: #000; border-radius: 999px; padding: 13px 22px; cursor: pointer;
+  font-family: var(--monof); font-size: 0.8rem; font-weight: 600;
+  letter-spacing: 0.14em; text-transform: uppercase; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  transition: transform 0.2s, box-shadow 0.2s; }
+.skip:hover { transform: translateY(-1px); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45); }
 
 /* ---------- the card that rides up over the reel ---------- */
 /* .after is pulled up by the slide distance and sits above the pinned stage,
@@ -249,7 +250,7 @@
 .graph-svg .dot { fill: var(--paper); stroke: var(--accent-ink); stroke-width: 1.5; }
 .graph-svg .dot--head { fill: var(--accent-ink); }
 .ghead { max-width: 54ch; margin-inline: auto; text-align: center; padding-bottom: clamp(44px, 6vw, 78px); }
-.ghead .lede { margin-inline: auto; margin-bottom: 0; }
+.ghead .h2 { font-size: clamp(2.4rem, 6vw, 4.6rem); margin: 0; }
 /* one lesson per row, alternating sides, so the trunk zigzags down the middle */
 .lessons { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr;
   row-gap: clamp(16px, 2.2vw, 30px); }
@@ -258,27 +259,17 @@
   -webkit-mask-size: 100% 100%; mask-size: 100% 100%; }
 .lesson[data-side="r"] { justify-self: end; }
 /* a lesson collapses to kicker + title + its rule; the body drops out below */
-.lhead { all: unset; box-sizing: border-box; display: block; width: 100%; cursor: pointer;
-  position: relative; padding-right: 28px; }
-.lhead:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 5px; border-radius: 3px; }
+.lhead { display: block; width: 100%; position: relative; }
 .lno { display: block; color: var(--accent-ink); margin-bottom: 9px; }
 .ltitle { display: block; font-family: var(--sans); font-stretch: 114%;
   font-weight: 700; font-size: clamp(1.06rem, 1rem + 0.42vw, 1.36rem); letter-spacing: -0.012em;
-  line-height: 1.2; color: var(--ink-text); transition: color 0.18s; }
-.lhead:hover .ltitle { color: var(--accent-ink); }
-.lchev { position: absolute; right: 0; bottom: 4px; width: 13px; height: 13px; fill: none;
-  stroke: var(--accent-ink); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
-  transition: transform 0.28s ease; }
-.lesson[data-open="true"] .lchev { transform: rotate(180deg); }
+  line-height: 1.2; color: var(--ink-text); }
 .lrule { height: 1.5px; margin: 14px 0 0; }
-.lpanel { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 0.3s ease; }
-.lesson[data-open="true"] .lpanel { grid-template-rows: 1fr; }
-.lpanel > div { overflow: hidden; }
-.lbody { margin: 0; padding-top: 15px; color: var(--ink-text-2); font-size: 0.97rem;
-  line-height: 1.62; max-width: 44ch; }
 
 /* stage tags sit on the trunk, the way a release tag sits on a branch */
 .stagemark { text-align: center; padding-block: clamp(8px, 1.2vw, 16px); }
+/* a break sits on the trunk like a stage tag, but quieter */
+.stagemark.note p { color: var(--ink-text-3); border-style: dashed; }
 .stagemark p { display: inline-block; margin: 0; color: var(--ink-text-2); background: var(--paper);
   border: 1px solid var(--line-ink); border-radius: 999px; padding: 7px 17px; }
 .gnote { text-align: center; color: var(--ink-text-3); margin: clamp(28px, 4vw, 48px) auto 0; max-width: 54ch; }
@@ -293,7 +284,6 @@
   .stagemark { text-align: left; padding-left: 30px; }
   .lesson, .lesson[data-side="r"] { width: auto; justify-self: stretch; margin-left: 30px; }
   .ghead { text-align: left; margin-inline: 0; padding-left: 30px; }
-  .ghead .lede { margin-inline: 0; }
 }
 /* the curriculum is the last thing on the page; without this tail the final
    rows never reach the middle of the screen and never finish revealing */
@@ -319,7 +309,7 @@
 .site.reduced .graph-svg { display: none; }
 .site.reduced .lesson { -webkit-mask-image: none !important; mask-image: none !important; }
 .site.reduced .stagemark { opacity: 1 !important; }
-@media (prefers-reduced-motion: reduce) { .lpanel, .lchev, .ltitle { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .ltitle { transition: none; } }
 
 /* ---------- narrow ---------- */
 @media (max-width: 860px) {

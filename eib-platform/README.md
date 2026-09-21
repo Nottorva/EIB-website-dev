@@ -107,9 +107,9 @@ React state (see `src/components/site/`). What comes from the database:
 |---|---|
 | Ticker strip | First item is generated from the application window (open until / opens on / closed); the rest are edited on the **Website** page (super admin). |
 | Sign in / Apply now | Google sign-in and `/apply`. A signed-in user sees their name and "Open the platform" instead. |
-| Curriculum | Lessons the Lesson Editor marks **Website · shown**, in number order, with their stage, week and public description. Consecutive lessons with the same stage share one tag. Until any lesson is shown, the prototype's sample curriculum is displayed. Links, deliverables and rooms never reach the site. |
+| Curriculum | `CURRICULUM` in `siteContent.js`: the sixteen sessions in five stages (Identify, Plan, Build, Convince, Launch) with the two breaks and the April 23 showcase, drawn as static rows (no dropdowns). Static since 2026-09-20; the Lesson Editor's **Website** fields (shown/stage/week/description) are kept in the data but nothing on the site reads them. |
 | Student quotes | `CARD_QUOTES` in `siteContent.js`, rotating under the card copy. The photo-and-testimonial carousel was removed 2026-09-20; the `testimonials` collection and its Website-page editor remain but nothing on the site reads them. Never invent quotes. |
-| Reel captions, comparison table, footer | Static copy in `src/lib/siteContent.js`. |
+| Reel captions, card copy, footer | Static copy in `src/lib/siteContent.js`. |
 | Photographs | `public/site/stage-*.jpg` are real cohort photos (the auditorium shot doubles as the hero and the Demo Day panel, cropped differently). Each panel in `siteContent.js` names its crop (`position`, `mobilePosition`, `size`) and a `shade` for extra darkening under the caption; the caption also carries a feathered blur of the photo behind it. Carousel photos `v-*.jpg` are still placeholders. |
 
 The prototype's Tune panel was removed; its final values are constants at the
@@ -121,7 +121,7 @@ top of `Reel.jsx`. The three typefaces are self-hosted through `next/font`.
 src/app/(site)/             The public site: page, layout, site.css.
 src/app/(platform)/         The tools, all behind the top bar. /platform is the hub.
 src/components/site/        Reel, SiteChrome, CardReveal, QuoteCarousel, Curriculum (client).
-src/lib/siteContent.js      Static site copy + fallbacks.
+src/lib/siteContent.js      Static site copy: reel, card, quotes, curriculum, footer.
 src/lib/data/store.js       JSON-file store. Swap this for the Mongo driver.
 src/lib/data/*.js           One module per collection; routes call only these.
 src/lib/auth.js             getCurrentUser() + role gating. Swap the cookie
