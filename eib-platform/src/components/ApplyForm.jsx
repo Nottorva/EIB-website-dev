@@ -5,6 +5,8 @@ import Link from "next/link";
 import { Link2, CheckCircle2, Send, LogIn, LogOut, CalendarClock, Lock, ShieldCheck, Clock, ArrowRight, AlertTriangle } from "lucide-react";
 import { signOut as nextAuthSignOut } from "next-auth/react";
 import { COLORS, fieldStyle, Notice, Loading } from "./ui";
+
+const countWords = (text) => String(text || "").trim().split(/\s+/).filter(Boolean).length;
 import { api } from "@/lib/api";
 import { GoogleSignInButton } from "./GoogleButtons";
 
@@ -19,7 +21,7 @@ function NoticeCard({ q, ticked, onTick }) {
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
         <AlertTriangle size={26} color={COLORS.amber} style={{ flexShrink: 0, marginTop: 4 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 24, lineHeight: 1.2, fontWeight: 900, color: COLORS.text, letterSpacing: -0.2 }}>{q.label}</div>
+          <div style={{ fontSize: q.label.length > 70 ? 17.5 : 24, lineHeight: q.label.length > 70 ? 1.45 : 1.2, fontWeight: q.label.length > 70 ? 800 : 900, color: COLORS.text, letterSpacing: q.label.length > 70 ? 0 : -0.2, whiteSpace: "pre-wrap" }}>{q.label}</div>
           {q.detail && <div style={{ fontSize: 15.5, lineHeight: 1.55, color: COLORS.text, marginTop: 10, whiteSpace: "pre-wrap" }}>{q.detail}</div>}
         </div>
       </div>
@@ -258,6 +260,12 @@ export default function ApplyForm() {
 
   const submit = async (e) => {
     e.preventDefault();
+    const over = status.form.find((q) => q.type === "long" && q.maxWords && countWords(answers[q.id]) > q.maxWords);
+    if (over) {
+      setError(`"${over.label}" is over the ${over.maxWords}-word limit.`);
+      document.getElementById(`q-${over.id}`)?.scrollIntoView({ block: "center", behavior: "smooth" });
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -307,9 +315,11 @@ export default function ApplyForm() {
     );
   }
 
+  const title = status.title || "Apply to EIB";
+
   if (!status.applicant) {
     return (
-      <Shell>
+      <Shell title={title}>
         {status.closesAt && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, fontWeight: 700, color: COLORS.amber, background: COLORS.amberSoft, border: `1px solid ${COLORS.amberBorder}`, borderRadius: 12, padding: "10px 14px", marginBottom: 14 }}>
             <CalendarClock size={15} /> Applications close {fmt(status.closesAt)}
@@ -322,7 +332,7 @@ export default function ApplyForm() {
 
   if (status.domainOk === false) {
     return (
-      <Shell>
+      <Shell title={title}>
         <BigCard icon={Lock} tone="amber" title={`Please use your @${status.applicantDomain} account`}>
           You're signed in as <strong>{status.applicant.email}</strong>, which isn't a school account. Sign out and choose your @{status.applicantDomain} Google account instead.
           <div style={{ marginTop: 16 }}>
@@ -336,7 +346,7 @@ export default function ApplyForm() {
   }
 
   return (
-    <Shell>
+    <Shell title={title}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: "12px 16px", marginBottom: 14, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <ShieldCheck size={18} color={COLORS.green} />
@@ -361,15 +371,29 @@ export default function ApplyForm() {
         {status.form.map((q) => q.type === "notice" ? (
           <NoticeCard key={q.id} q={q} ticked={answers[q.id] === (q.ack || "I understand")} onTick={(on) => set(q.id, on ? q.ack || "I understand" : "")} />
         ) : (
-          <div key={q.id} style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 18 }}>
-            <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.text, marginBottom: 10 }}>
+          <div key={q.id} id={`q-${q.id}`} style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 18 }}>
+            <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.text, marginBottom: q.help ? 4 : 10, lineHeight: 1.45 }}>
               {q.label}
-              {q.required && <span style={{ color: COLORS.red, marginLeft: 4 }}>*</span>}
+              {q.required ? <span style={{ color: COLORS.red, marginLeft: 4 }}>*</span> : <span style={{ color: COLORS.faint, fontWeight: 600, marginLeft: 6, fontSize: 12.5 }}>optional</span>}
             </div>
+            {q.help && <div style={{ fontSize: 13.5, color: COLORS.sub, marginBottom: 10, lineHeight: 1.5 }}>{q.help}</div>}
 
             {q.type === "short" && <input value={answers[q.id] || ""} onChange={(e) => set(q.id, e.target.value)} required={q.required} style={fieldStyle} />}
 
-            {q.type === "long" && <textarea value={answers[q.id] || ""} onChange={(e) => set(q.id, e.target.value)} required={q.required} rows={4} style={{ ...fieldStyle, resize: "vertical", fontSize: 14.5 }} />}
+            {q.type === "long" && (
+              <div>
+                <textarea value={answers[q.id] || ""} onChange={(e) => set(q.id, e.target.value)} required={q.required} rows={q.maxWords ? 6 : 4} style={{ ...fieldStyle, resize: "vertical", fontSize: 14.5 }} />
+                {q.maxWords > 0 && (() => {
+                  const n = countWords(answers[q.id]);
+                  const over = n > q.maxWords;
+                  return (
+                    <div style={{ textAlign: "right", fontSize: 12.5, fontWeight: 700, color: over ? COLORS.red : COLORS.faint, marginTop: 6 }}>
+                      {n} / {q.maxWords} words{over ? " · over the limit" : ""}
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
 
             {q.type === "choice" && (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>

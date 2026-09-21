@@ -5,7 +5,7 @@
 //   - one application per email
 import { open, readJson, HttpError } from "@/lib/auth";
 import { getApplicant, emailOnDomain } from "@/lib/applicant";
-import { getApplicationForm, getApplicationWindow, windowState, DEFAULT_ACK } from "@/lib/data/settings";
+import { getApplicationForm, getApplicationWindow, windowState, DEFAULT_ACK, countWords } from "@/lib/data/settings";
 import { createApplication, findApplicationByEmail } from "@/lib/data/applications";
 
 export const POST = open(async ({ req }) => {
@@ -30,6 +30,7 @@ export const POST = open(async ({ req }) => {
       continue;
     }
     if (q.required && String(answerFor(q)).trim() === "") throw new HttpError(400, `"${q.label}" is required.`);
+    if (q.type === "long" && q.maxWords && countWords(answerFor(q)) > q.maxWords) throw new HttpError(400, `"${q.label}" is over the ${q.maxWords}-word limit.`);
   }
 
   const created = await createApplication({

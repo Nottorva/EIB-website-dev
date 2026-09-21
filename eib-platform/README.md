@@ -86,7 +86,14 @@ Things worth trying, in order:
    placeholder in the student's text box. "Preview" on a card is a blank,
    unsaved copy of the widget for trying it out. Table deliverables can name
    their rows as well as their columns.
-10. **Application link and window.** Student Manager → Forms. **Add notice**
+10. **Application link and window.** Student Manager → Forms. The form a
+    fresh database starts with is the 2026-27 application in
+    `src/lib/data/applicationForm2026.js` (12 items: three notices, level and
+    starting-point choices, three 250-word long answers with helper lines,
+    four short answers). **Load the 2026-27 application** (super admin)
+    writes that over whatever is saved. Questions carry optional helper
+    text; long answers can carry a word limit, counted live and enforced on
+    submit. **Add notice**
     puts a big, bold statement in the form (the seed carries the $525
     non-refundable fee) that applicants must tick "I understand" on before
     the form will submit; the server refuses the submission without it. Copy the

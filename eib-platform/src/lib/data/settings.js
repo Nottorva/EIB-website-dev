@@ -22,8 +22,10 @@ export async function saveApplicationForm(questions) {
       locked: Boolean(q.locked),
       type,
       label: String(q.label || ""),
+      help: String(q.help || ""),
       required: Boolean(q.required),
       options: Array.isArray(q.options) ? q.options.map(String) : [],
+      ...(type === "long" && Number.isInteger(Number(q.maxWords)) && Number(q.maxWords) > 0 ? { maxWords: Number(q.maxWords) } : {}),
       ...(type === "notice" ? { detail: String(q.detail || ""), ack: String(q.ack || "").trim() || DEFAULT_ACK } : {}),
     };
   });
@@ -31,6 +33,8 @@ export async function saveApplicationForm(questions) {
   // from a question, so any legacy identity questions are dropped on save.
   return setSetting("applicationForm", cleaned.filter((q) => !q.locked && q.key !== "name" && q.key !== "email"));
 }
+
+export const countWords = (text) => String(text || "").trim().split(/\s+/).filter(Boolean).length;
 
 export async function getCohortYear() {
   return (await getSetting("currentCohortYear")) || new Date().getFullYear();

@@ -202,7 +202,23 @@ function QuestionEditor({ question, index, total, onChange, onDelete, onMove }) 
         {question.type === "notice" ? (
           <NoticeEditor question={question} onChange={onChange} />
         ) : (
-          <EditableInput value={question.label} onChange={(v) => onChange({ ...question, label: v })} placeholder="Question" style={{ fontSize: 15.5, fontWeight: 700, color: COLORS.text }} />
+          <>
+            <EditableInput value={question.label} onChange={(v) => onChange({ ...question, label: v })} placeholder="Question" style={{ fontSize: 15.5, fontWeight: 700, color: COLORS.text }} />
+            <EditableInput value={question.help || ""} onChange={(v) => onChange({ ...question, help: v })} placeholder="Helper text under the question (optional)" style={{ fontSize: 13.5, color: COLORS.sub, marginTop: 2 }} />
+            {question.type === "long" && (
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 8, marginTop: 8, fontSize: 12.5, fontWeight: 700, color: COLORS.sub }}>
+                Word limit
+                <input
+                  type="number"
+                  min={0}
+                  value={question.maxWords || ""}
+                  onChange={(e) => onChange({ ...question, maxWords: parseInt(e.target.value, 10) || 0 })}
+                  placeholder="none"
+                  style={{ width: 80, fontSize: 13, fontWeight: 700, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "4px 8px" }}
+                />
+              </label>
+            )}
+          </>
         )}
 
         {question.type === "choice" && (
@@ -243,7 +259,13 @@ function QuestionEditor({ question, index, total, onChange, onDelete, onMove }) 
 function NoticeEditor({ question, onChange }) {
   return (
     <div style={{ background: COLORS.amberSoft, border: `1px solid ${COLORS.amberBorder}`, borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 8 }}>
-      <EditableInput value={question.label} onChange={(v) => onChange({ ...question, label: v })} placeholder="Headline, shown big and bold" style={{ fontSize: 21, fontWeight: 900, color: COLORS.text, background: "#fff" }} />
+      <textarea
+        value={question.label}
+        onChange={(e) => onChange({ ...question, label: e.target.value })}
+        placeholder="The statement, shown bold. A short one is set large; a paragraph is set as bold text."
+        rows={Math.min(6, Math.max(1, Math.ceil((question.label || "").length / 70)))}
+        style={{ ...fieldStyle, resize: "vertical", fontSize: question.label && question.label.length > 70 ? 15 : 20, fontWeight: 800, color: COLORS.text, background: "#fff", lineHeight: 1.4 }}
+      />
       <textarea
         value={question.detail || ""}
         onChange={(e) => onChange({ ...question, detail: e.target.value })}
@@ -395,9 +417,22 @@ function ApplicationLinkPanel({ saver }) {
   );
 }
 
-function FormsTab({ saver }) {
+function FormsTab({ saver, user }) {
   const [questions, setQuestions] = useState(null);
   const [error, setError] = useState(null);
+  const [loadingCanonical, setLoadingCanonical] = useState(false);
+
+  const loadCanonical = async () => {
+    if (!window.confirm("Replace the current form with the 2026-27 application? Every question currently in the form will be removed. Applications already submitted keep their answers.")) return;
+    setLoadingCanonical(true);
+    try {
+      setQuestions(await api.post("/api/form/reset", {}));
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoadingCanonical(false);
+    }
+  };
 
   useEffect(() => {
     api.get("/api/form").then(setQuestions).catch((e) => setError(e.message));
@@ -423,9 +458,22 @@ function FormsTab({ saver }) {
 
   return (
     <div style={{ maxWidth: 720, margin: "0 auto" }}>
-      <div style={{ marginBottom: 18 }}>
-        <div style={{ fontSize: 22, fontWeight: 900, color: COLORS.text }}>EIB Application Form</div>
-        <div style={{ fontSize: 14, color: COLORS.sub, marginTop: 4 }}>Share the link, set when it opens and closes, and edit the questions applicants answer.</div>
+      <div style={{ marginBottom: 18, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+        <div>
+          <div style={{ fontSize: 22, fontWeight: 900, color: COLORS.text }}>EIB Application 2026-27</div>
+          <div style={{ fontSize: 14, color: COLORS.sub, marginTop: 4 }}>Share the link, set when it opens and closes, and edit the questions applicants answer.</div>
+        </div>
+        {user?.role === "superAdmin" && (
+          <button
+            type="button"
+            onClick={loadCanonical}
+            disabled={loadingCanonical}
+            title="Replace the saved form with the 2026-27 application defined in code"
+            style={{ border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.sub, fontWeight: 800, fontSize: 13, borderRadius: 10, padding: "8px 14px", cursor: loadingCanonical ? "default" : "pointer" }}
+          >
+            {loadingCanonical ? "Loading…" : "Load the 2026-27 application"}
+          </button>
+        )}
       </div>
 
       <ApplicationLinkPanel saver={saver} />
@@ -1097,7 +1145,7 @@ export default function StudentManager({ user }) {
       />
       <div style={{ maxWidth: 720, margin: "0 auto" }}>{saver.error && <Notice onClose={saver.clearError}>{saver.error}</Notice>}</div>
 
-      {tab === "forms" ? <FormsTab saver={saver} /> : tab === "students" ? <StudentsTab saver={saver} user={user} /> : <AccManagerTab saver={saver} />}
+      {tab === "forms" ? <FormsTab saver={saver} user={user} /> : tab === "students" ? <StudentsTab saver={saver} user={user} /> : <AccManagerTab saver={saver} />}
     </div>
   );
 }
