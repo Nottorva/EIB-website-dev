@@ -147,7 +147,7 @@ export const LEXICON = [
 export const COST = {
   eyebrow: "Cost and logistics",
   headline: "$525 for the year.",
-  body: "Sixteen Tuesday sessions from November to April, a mentor matched to your venture, a working budget, and a place at the April 23 Student Showcase.",
+  body: "Sixteen Tuesday sessions from November to April, a working budget, and a place at the April 23 Student Showcase.",
 };
 
 export const FOOTER = {
