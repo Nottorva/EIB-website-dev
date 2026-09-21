@@ -4,12 +4,10 @@
 import Link from "next/link";
 import { getCurrentUser, getSessionIdentity, authMode } from "@/lib/auth";
 import { listPublishedLessons } from "@/lib/data/lessons";
-import { listApprovedTestimonials, toPublicTestimonial } from "@/lib/data/testimonials";
 import { getSiteTicker, getApplicationWindow, windowState } from "@/lib/data/settings";
-import { REEL, DIFFERENCE, CARD_QUOTES, PLACEHOLDER_TESTIMONIALS, FALLBACK_LESSONS, FOOTER, groupLessons } from "@/lib/siteContent";
+import { REEL, DIFFERENCE, CARD_QUOTES, FALLBACK_LESSONS, FOOTER, groupLessons } from "@/lib/siteContent";
 import SiteChrome from "@/components/site/SiteChrome";
 import Reel from "@/components/site/Reel";
-import Voices from "@/components/site/Voices";
 import Curriculum from "@/components/site/Curriculum";
 import CardReveal from "@/components/site/CardReveal";
 import QuoteCarousel from "@/components/site/QuoteCarousel";
@@ -28,18 +26,16 @@ function applicationLine(win) {
 }
 
 export default async function SitePage() {
-  const [user, identity, ticker, win, published, approved] = await Promise.all([
+  const [user, identity, ticker, win, published] = await Promise.all([
     getCurrentUser(),
     authMode === "google" ? getSessionIdentity() : null,
     getSiteTicker(),
     getApplicationWindow(),
     listPublishedLessons(),
-    listApprovedTestimonials(),
   ]);
 
   const lessons = published.length ? published : FALLBACK_LESSONS;
   const stages = groupLessons(lessons);
-  const testimonials = approved.length ? approved.map(toPublicTestimonial) : PLACEHOLDER_TESTIMONIALS;
 
   return (
     <div className="site">
@@ -67,8 +63,6 @@ export default async function SitePage() {
             <QuoteCarousel quotes={CARD_QUOTES} />
           </div>
         </section>
-
-        <Voices testimonials={testimonials} placeholder={!approved.length} />
 
         <Curriculum stages={stages} lessonCount={lessons.length} />
       </main>

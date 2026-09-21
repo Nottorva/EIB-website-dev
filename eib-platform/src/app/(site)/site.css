@@ -199,6 +199,13 @@
   background-size: cover; background-position: 50% 60%; }
 .cardbg-veil { position: absolute; inset: 0; background: var(--card); opacity: var(--veil, 1); }
 .card > .wrap { position: relative; z-index: 1; }
+/* a feathered white wash behind the copy column so it reads over the ink;
+   the right-hand side of the sketch stays at the plain tint */
+.card > .wrap::before { content: ""; position: absolute; z-index: -1; pointer-events: none;
+  top: -48px; bottom: -48px; left: -10vw; right: 18%;
+  background: linear-gradient(90deg, rgba(255,255,255,0.82) 0%, rgba(255,255,255,0.82) 52%, rgba(255,255,255,0) 100%);
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 10%, #000 90%, transparent);
+  mask-image: linear-gradient(180deg, transparent, #000 10%, #000 90%, transparent); }
 /* rotating student quotes: same blue bar as the mission line, black text */
 .qcar { max-width: 60ch; }
 .qstack { display: grid; }
@@ -213,9 +220,9 @@
 .qdots button.is-on { background: var(--accent-ink); }
 .qdots button:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 3px; }
 .card .h2, .card .lede, .card .eyebrow, .card .mission p, .card .qq p {
-  text-shadow: 0 0 2px var(--card), 0 0 14px var(--card), 0 0 28px var(--card); }
+  text-shadow: 0 0 3px var(--card), 0 0 10px var(--card), 0 0 22px var(--card), 0 0 36px var(--card); }
 .card .eyebrow { color: var(--accent-ink); }
-.card .lede { color: var(--ink-text-2); }
+.card .lede { color: var(--ink-text); }
 .paper { background: var(--paper); color: var(--ink-text); }
 .paper .eyebrow { color: var(--accent-ink); }
 .paper .lede { color: var(--ink-text-2); }
@@ -228,38 +235,6 @@
 .lede { max-width: var(--measure); color: #c9d0de; margin: 0 0 clamp(36px, 5vw, 60px);
   font-size: clamp(1.05rem, 0.98rem + 0.4vw, 1.28rem); }
 
-/* ---------- photos and testimonials carousel ---------- */
-.ph { color: var(--ink-text-3); }
-.carousel { margin-top: clamp(28px, 3.6vw, 48px); }
-.carwin { overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory;
-  /* the snapport has to clear the track's gutter, or the first slide snaps
-     flush to the edge and eats it */
-  scroll-padding-inline: max(16px, 6vw);
-  scrollbar-width: none; -ms-overflow-style: none;
-  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 4%, #000 96%, transparent 100%);
-  mask-image: linear-gradient(90deg, transparent 0, #000 4%, #000 96%, transparent 100%); }
-.carwin::-webkit-scrollbar { display: none; }
-.carwin:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 4px; }
-.cartrack { display: flex; gap: clamp(14px, 1.8vw, 24px); width: max-content;
-  padding-inline: max(16px, 6vw); padding-block: 4px; }
-.slide { flex: none; width: clamp(264px, 74vw, 392px); scroll-snap-align: start;
-  background: var(--card); border: 1px solid var(--line-ink); border-radius: 4px;
-  overflow: hidden; display: flex; flex-direction: column; }
-.vshot { aspect-ratio: 4 / 3; max-width: 100%; background-size: cover; background-position: 50% 45%;
-  background-color: #1b2230; }
-.vrole { color: var(--accent-ink); margin: 0; padding: 20px 22px 12px; }
-.vquote { margin: 0; padding: 0 22px; flex: 1; }
-.vquote p { margin: 0; color: var(--ink-text); font-size: 1.02rem; line-height: 1.55; }
-.vattrib { color: var(--ink-text-3); margin: 0; padding: 18px 22px 22px; }
-.carnav { display: flex; gap: 9px; justify-content: flex-end; margin-top: clamp(18px, 2.2vw, 26px); }
-.carbtn { width: 42px; height: 42px; border-radius: 999px; cursor: pointer;
-  background: var(--card); border: 1px solid var(--line-ink);
-  display: grid; place-items: center; transition: border-color 0.18s, opacity 0.18s; }
-.carbtn svg { width: 16px; height: 16px; fill: none; stroke: var(--ink-text);
-  stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-.carbtn:hover:not(:disabled) { border-color: var(--accent-ink); }
-.carbtn:hover:not(:disabled) svg { stroke: var(--accent-ink); }
-.carbtn:disabled { opacity: 0.34; cursor: default; }
 
 /* the curriculum as a commit graph: a trunk down the middle, each lesson
    branching off and turning through 90 degrees into its own title rule */

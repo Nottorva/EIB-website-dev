@@ -1,8 +1,8 @@
 // Static copy for the public site (the marketing page at "/").
 //
 // Everything that changes rarely lives here as plain data: the reel captions,
-// the card copy, the footer. Things that change often (ticker items,
-// testimonials, the curriculum) come from the database and only fall back to
+// the card copy, the quotes, the footer. Things that change often (ticker
+// items, the curriculum) come from the database and only fall back to
 // the entries below when nothing has been published yet.
 
 // Per photo: `position` is the CSS background-position (which part of the
@@ -108,18 +108,6 @@ export const CARD_QUOTES = [
   "Other programs will be done in three to six months. EIB feels like something I can keep.",
   "It's a platform to fail smart and learn.",
   "It's a good way to get your foot in the door meeting real people outside of parents. It's nice to see perspectives outside of TFS as well.",
-];
-
-// Shown while the testimonials collection has no approved rows. These are
-// content briefs in brackets, deliberately not written as quotes in invented
-// names; they are replaced one by one as real, permissioned quotes are added.
-export const PLACEHOLDER_TESTIMONIALS = [
-  { id: "ph1", photo: "/site/v-1.jpg", role: "Student", quote: "[Student quote. What they built, and the moment a customer interview changed their mind about it. Two or three sentences.]", name: "Name to come", org: "Cohort 03" },
-  { id: "ph2", photo: "/site/v-2.jpg", role: "Faculty sponsor", quote: "[Faculty quote. What the twelve weeks asked of the school, and just as usefully, what it did not ask.]", name: "Name to come", org: "Faculty sponsor" },
-  { id: "ph3", photo: "/site/v-3.jpg", role: "Student", quote: "[Student quote. The idea they killed in week three, what replaced it, and how they knew.]", name: "Name to come", org: "Cohort 03" },
-  { id: "ph4", photo: "/site/v-4.jpg", role: "Mentor", quote: "[Mentor quote. How the cohort's questions differed from what they expected from sixteen-year-olds.]", name: "Name to come", org: "Operator, mentor pool" },
-  { id: "ph5", photo: "/site/v-5.jpg", role: "Head of school", quote: "[Leadership quote. Why the programme earned a block in the timetable rather than a slot after it.]", name: "Name to come", org: "Partner school" },
-  { id: "ph6", photo: "/site/v-6.jpg", role: "Demo Day panel", quote: "[Panellist quote. What the evidence behind the pitches actually looked like on the day.]", name: "Name to come", org: "Demo Day panel" },
 ];
 
 // Shown while no lesson in the Lesson Editor is marked "Show on website".

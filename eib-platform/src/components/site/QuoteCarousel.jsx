@@ -1,30 +1,24 @@
 "use client";
 // A slow rotation of short quotes under the card copy. All quotes are in the
 // DOM stacked in one grid cell (so the block never changes height) and the
-// current one is faded in. Auto-advances unless the pointer is over it, the
-// tab is hidden, or the visitor prefers reduced motion; the dots jump.
-import { useEffect, useRef, useState } from "react";
+// current one is faded in. Auto-advances on a timer (skipping ticks while the
+// tab is hidden); the dots jump to a quote.
+import { useEffect, useState } from "react";
 
-export default function QuoteCarousel({ quotes, interval = 6500 }) {
+export default function QuoteCarousel({ quotes, interval = 5000 }) {
   const [current, setCurrent] = useState(0);
-  const paused = useRef(false);
 
   useEffect(() => {
     if (quotes.length < 2) return undefined;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return undefined;
     const timer = setInterval(() => {
-      if (paused.current || document.visibilityState !== "visible") return;
+      if (document.visibilityState !== "visible") return;
       setCurrent((n) => (n + 1) % quotes.length);
     }, interval);
     return () => clearInterval(timer);
   }, [quotes.length, interval]);
 
-  const hold = (on) => () => {
-    paused.current = on;
-  };
-
   return (
-    <div className="qcar" onMouseEnter={hold(true)} onMouseLeave={hold(false)} onFocus={hold(true)} onBlur={hold(false)}>
+    <div className="qcar">
       <div className="qstack">
         {quotes.map((q, n) => (
           <blockquote key={q} className={"qq" + (n === current ? " is-on" : "")} aria-hidden={n !== current}>
