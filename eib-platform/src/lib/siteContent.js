@@ -7,7 +7,7 @@
 
 // Per photo: `position` is the CSS background-position (which part of the
 // photo to keep when it is cropped), `size` optionally zooms in on wide
-// screens ("auto 135%" = 135% of the stage height; phones always use cover),
+// screens ("113% auto" = 113% of the stage WIDTH, so it always covers; phones use cover),
 // and `shade` (0–1) is extra darkening on the left, under the caption. The
 // aim in every case: the subject sits to the right of the text, the text sits
 // over the darkest part of the frame.
@@ -16,19 +16,21 @@ export const REEL = {
     photo: "/site/stage-0.jpg",
     position: "0% 40%",
     mobilePosition: "48% 40%",
-    size: "auto 120%",
+    size: "113% auto",
     shade: 0.35,
     tint: "#0A0A0C",
     kicker: "Twelve weeks · Four principles",
     // Each value is a word in its own pastel; the four panels that follow
     // take those colours in the same order.
+    // One word per line ("\n"), so the block stays narrow and never crosses
+    // the presenter on wide screens.
     headline: [
       { text: "Agency.", color: "#FFB3A7" },
-      " ",
+      "\n",
       { text: "Judgment.", color: "#C8B6FF" },
-      " ",
+      "\n",
       { text: "Consequence.", color: "#9EE7D4" },
-      " ",
+      "\n",
       { text: "Community.", color: "#FFD59E" },
     ],
     body: "",
@@ -38,7 +40,7 @@ export const REEL = {
       photo: "/site/stage-1.jpg",
       position: "100% 42%",
       mobilePosition: "62% 45%",
-      size: "auto 130%",
+      size: "108% auto",
       shade: 0.62,
       tint: "#2A2D2E",
       accent: "#FFB3A7",
@@ -55,7 +57,7 @@ export const REEL = {
       shade: 0.45,
       tint: "#1A1B22",
       accent: "#C8B6FF",
-      kicker: "02 — Risk",
+      kicker: "02 — Judgment",
       headline: "Take a real risk while it is cheap.",
       body: "Students learn to size a bet, test it cheaply, and operate with imperfect information. A wrong business decision during high school is the cheapest one they will ever make and the one they learn most from.",
       meta: "In practice · a working budget each student decides how to spend",
@@ -64,7 +66,7 @@ export const REEL = {
       photo: "/site/stage-3.jpg",
       position: "0% 50%",
       mobilePosition: "45% 50%",
-      size: "auto 125%",
+      size: "117% auto",
       shade: 0.3,
       tint: "#0A0A0C",
       accent: "#9EE7D4",
@@ -79,11 +81,11 @@ export const REEL = {
       photo: "/site/stage-4.jpg",
       position: "0% 50%",
       mobilePosition: "55% 50%",
-      size: "auto 130%",
+      size: "122% auto",
       shade: 0.72,
       tint: "#3A2E22",
       accent: "#FFD59E",
-      kicker: "04 — Access",
+      kicker: "04 — Community",
       headline: "Get the network ten years early.",
       body: "Founders, operators and investors sit with each venture during the term, then a panel of them judges it at the end. Students leave the twelve weeks with top business people already knowing their name.",
       meta: "In practice · operators and investors in the room give feedback on student ventures",

@@ -367,7 +367,7 @@ export default function Reel({ reel }) {
 // single words can carry their own colour.
 function Headline({ parts }) {
   if (!Array.isArray(parts)) return parts;
-  return parts.map((p, i) => (typeof p === "string" ? p : <span key={i} style={{ color: p.color }}>{p.text}</span>));
+  return parts.map((p, i) => (p === "\n" ? <br key={i} /> : typeof p === "string" ? p : <span key={i} style={{ color: p.color }}>{p.text}</span>));
 }
 
 function Caption({ panel, hero = false }) {
