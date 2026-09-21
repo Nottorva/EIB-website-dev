@@ -6,7 +6,14 @@
 // `feedback` only. The API route enforces which fields a caller may send;
 // the functions below just do the field-scoped upsert.
 
-import { findAll, findOne, insert, updateOne, newId } from "./store";
+import { findAll, findOne, insert, updateOne, removeOne, newId } from "./store";
+
+// Removes every submission a student made; returns how many.
+export async function deleteSubmissionsFor(studentId) {
+  const mine = await listSubmissions({ studentId });
+  for (const s of mine) await removeOne("submissions", s.id);
+  return mine.length;
+}
 
 export async function listSubmissions({ studentId, lessonId } = {}) {
   return findAll(

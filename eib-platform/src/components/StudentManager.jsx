@@ -643,7 +643,33 @@ function AccountCard({ student, account, onSuspend }) {
   );
 }
 
-function StudentDetail({ student, account, isSuperAdmin, onSuspend, questions, lessons, saver, onBack }) {
+// Super admin only: wipe this applicant so the email can apply again from
+// scratch. Used for test runs; irreversible, so it asks first.
+function ResetCard({ student, onReset }) {
+  const [busy, setBusy] = useState(false);
+  const go = async () => {
+    const what = student.studentId ? "their application, their student account and all their submissions" : "their application";
+    if (!window.confirm(`Delete ${student.name} (${student.email}) completely? This removes ${what}. Nothing is kept, and they can apply again from scratch.`)) return;
+    setBusy(true);
+    try {
+      await onReset();
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: "12px 16px", marginBottom: 16 }}>
+      <div style={{ fontSize: 13, color: COLORS.sub }}>
+        <span style={{ fontWeight: 800, color: COLORS.text }}>Clean reset.</span> Deletes the application{student.studentId ? ", the account and their work" : ""} so this email can apply again from scratch.
+      </div>
+      <button type="button" onClick={go} disabled={busy} style={{ display: "flex", alignItems: "center", gap: 6, border: `1px solid ${COLORS.redBorder}`, background: COLORS.redSoft, color: COLORS.red, fontWeight: 800, fontSize: 13, borderRadius: 10, padding: "8px 14px", cursor: busy ? "default" : "pointer" }}>
+        <Trash2 size={14} /> {busy ? "Deleting…" : "Delete application and account"}
+      </button>
+    </div>
+  );
+}
+
+function StudentDetail({ student, account, isSuperAdmin, onSuspend, onReset, questions, lessons, saver, onBack }) {
   const [view, setView] = useState("application");
   const answerFor = (qid) => student.answers.find((a) => a.questionId === qid)?.answer ?? "";
 
@@ -688,6 +714,7 @@ function StudentDetail({ student, account, isSuperAdmin, onSuspend, questions, l
       </div>
 
       {isSuperAdmin && student.studentId && account && <AccountCard student={student} account={account} onSuspend={onSuspend} />}
+      {isSuperAdmin && <ResetCard student={student} onReset={onReset} />}
 
       {view === "application" ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -918,6 +945,17 @@ function StudentsTab({ saver, user }) {
       }
     });
 
+  const resetApplicant = async (student) => {
+    try {
+      const r = await api.del(`/api/applications/${student.id}`);
+      setApplications((prev) => prev.filter((a) => a.id !== student.id));
+      if (student.studentId) setAccounts((prev) => { const next = { ...prev }; delete next[student.studentId]; return next; });
+      setOpenId(null);
+      setInfo(`${student.name} deleted: application${r.removed.account ? ", account" : ""}${r.removed.submissions ? ` and ${r.removed.submissions} submission${r.removed.submissions === 1 ? "" : "s"}` : ""} removed. ${student.email} can apply again.`);
+    } catch (e) {
+      setError(e.message);
+    }
+  };
   const suspend = async (student, suspended) => {
     try {
       const saved = await api.patch(`/api/users/${student.studentId}`, { suspended });
@@ -964,6 +1002,7 @@ function StudentsTab({ saver, user }) {
         account={openStudent.studentId ? accounts[openStudent.studentId] : null}
         isSuperAdmin={isSuperAdmin}
         onSuspend={(suspended) => suspend(openStudent, suspended)}
+        onReset={() => resetApplicant(openStudent)}
         questions={questions}
         lessons={lessons}
         saver={saver}

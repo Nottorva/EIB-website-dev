@@ -93,6 +93,9 @@ Things worth trying, in order:
     four short answers). Opening `/apply` as the super admin (with no applicant
     sign-in) shows the form as a preview whatever the window state, with a
     Not open yet / Live / Closed strip on top and submitting disabled.
+    On a student's page the super admin also has **Delete application and
+    account**: a clean reset that removes the application, the student
+    account and their submissions so that email can apply again.
     **Load the 2026-27 application** (super admin)
     writes that over whatever is saved. Questions carry optional helper
     text; long answers can carry a word limit, counted live and enforced on

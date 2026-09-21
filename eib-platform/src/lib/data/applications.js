@@ -10,8 +10,9 @@
 // the next release. Accounts are never revoked here (open item in the spec);
 // the super admin can suspend one from the Student Manager instead.
 
-import { findAll, findOne, findById, insert, updateOne, newId } from "./store";
-import { upsertStudent, setSuspended } from "./users";
+import { findAll, findOne, findById, insert, updateOne, newId, removeOne } from "./store";
+import { upsertStudent, setSuspended, deleteUser } from "./users";
+import { deleteSubmissionsFor } from "./submissions";
 
 export const APPLICATION_STATUSES = ["pending", "interview", "waitlist", "approved", "denied"];
 // Statuses an applicant can be told about. Pending and interview stay "under review".
@@ -87,6 +88,21 @@ export async function releaseDecisions() {
     result.released += 1;
   }
   return result;
+}
+
+// Clean reset (super admin): the application, the student account it created
+// and every submission under that account are removed, so the person can
+// apply again from scratch. Nothing is kept.
+export async function deleteApplicant(id) {
+  const app = await getApplication(id);
+  if (!app) return null;
+  const removed = { application: 1, account: 0, submissions: 0 };
+  if (app.studentId) {
+    removed.submissions = await deleteSubmissionsFor(app.studentId);
+    if (await deleteUser(app.studentId)) removed.account = 1;
+  }
+  await removeOne("applications", id);
+  return removed;
 }
 
 // What the applicant themselves may see: only a released decision.
