@@ -6,12 +6,13 @@ import { getCurrentUser, getSessionIdentity, authMode } from "@/lib/auth";
 import { listPublishedLessons } from "@/lib/data/lessons";
 import { listApprovedTestimonials, toPublicTestimonial } from "@/lib/data/testimonials";
 import { getSiteTicker, getApplicationWindow, windowState } from "@/lib/data/settings";
-import { REEL, DIFFERENCE, PLACEHOLDER_TESTIMONIALS, FALLBACK_LESSONS, FOOTER, groupLessons } from "@/lib/siteContent";
+import { REEL, DIFFERENCE, CARD_QUOTES, PLACEHOLDER_TESTIMONIALS, FALLBACK_LESSONS, FOOTER, groupLessons } from "@/lib/siteContent";
 import SiteChrome from "@/components/site/SiteChrome";
 import Reel from "@/components/site/Reel";
 import Voices from "@/components/site/Voices";
 import Curriculum from "@/components/site/Curriculum";
 import CardReveal from "@/components/site/CardReveal";
+import QuoteCarousel from "@/components/site/QuoteCarousel";
 
 export const metadata = {
   title: "EIB · Entrepreneurship, Innovation & Business",
@@ -62,6 +63,8 @@ export default async function SitePage() {
             <blockquote className="mission">
               <p>{DIFFERENCE.mission}</p>
             </blockquote>
+
+            <QuoteCarousel quotes={CARD_QUOTES} />
           </div>
         </section>
 

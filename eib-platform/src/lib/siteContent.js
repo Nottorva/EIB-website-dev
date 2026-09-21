@@ -100,6 +100,16 @@ export const DIFFERENCE = {
   mission: "A student's first company should happen while there is still someone around to help them build it.",
 };
 
+// Student quotes that rotate under the card copy, in this order. Verbatim;
+// nothing here is attributed to a name.
+export const CARD_QUOTES = [
+  "My dad uses business words I didn't know, and now I know all of them, so I can eavesdrop better.",
+  "Mentors don't just tell you your idea is great. They give constructive criticism to turn your idea into an actual venture.",
+  "Other programs will be done in three to six months. EIB feels like something I can keep.",
+  "It's a platform to fail smart and learn.",
+  "It's a good way to get your foot in the door meeting real people outside of parents. It's nice to see perspectives outside of TFS as well.",
+];
+
 // Shown while the testimonials collection has no approved rows. These are
 // content briefs in brackets, deliberately not written as quotes in invented
 // names; they are replaced one by one as real, permissioned quotes are added.

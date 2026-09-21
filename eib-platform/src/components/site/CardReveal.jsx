@@ -1,13 +1,13 @@
 "use client";
 // The white card's backdrop: the design-notebook photo sits under a white
-// veil. The card arrives plain white over the reel; once it has landed (its
-// top reaches the top of the viewport) the veil thins to a white tint as the
-// visitor keeps scrolling, so the sketch becomes the section's background. Driven from scroll with rAF and
+// veil. The card arrives plain white over the reel, then during the last
+// stretch of its slide the veil thins to a white tint, so by the time the
+// copy is in reading position the sketch is already there behind it. Driven from scroll with rAF and
 // a CSS variable, no React state per frame.
 import { useEffect, useRef } from "react";
 
-const HOLD = 0.08; // fraction of a viewport the card stays plain white after landing
-const FADE_SPAN = 0.35; // fraction of a viewport of scrolling the fade takes
+const FADE_FROM = 0.62; // card top at this fraction of the viewport: still plain white
+const FADE_TO = 0.12; // card top here: fully at the tint (just before it lands)
 const VEIL_MIN = 0.5; // the white tint that stays over the photo
 
 export default function CardReveal({ photo }) {
@@ -19,7 +19,7 @@ export default function CardReveal({ photo }) {
     if (!card) return undefined;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduced) {
-      card.style.setProperty("--veil", "0.6");
+      card.style.setProperty("--veil", String(VEIL_MIN));
       return () => card.style.removeProperty("--veil");
     }
 
@@ -27,7 +27,7 @@ export default function CardReveal({ photo }) {
     const update = () => {
       const top = card.getBoundingClientRect().top;
       const H = window.innerHeight;
-      const p = Math.min(1, Math.max(0, (-top - H * HOLD) / (H * FADE_SPAN)));
+      const p = Math.min(1, Math.max(0, (FADE_FROM * H - top) / ((FADE_FROM - FADE_TO) * H)));
       card.style.setProperty("--veil", String(1 - p * (1 - VEIL_MIN)));
     };
     const onScroll = () => {

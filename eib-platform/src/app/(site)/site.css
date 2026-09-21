@@ -193,13 +193,26 @@
 .card { background: var(--card); color: var(--ink-text); overflow: clip; min-height: 100vh; min-height: 100dvh; }
 /* the notebook photo under the card: a sticky full-height layer so it reads as
    the surface beneath the page, and a white veil whose opacity CardReveal
-   drives from scroll (1 while the card covers the reel, settling to a tint after) */
+   drives from scroll (1 as the card starts up over the reel, at the tint by landing) */
 .cardbg { position: absolute; inset: 0; z-index: 0; }
 .cardbg-img { position: sticky; top: 0; height: 100vh; height: 100dvh;
   background-size: cover; background-position: 50% 60%; }
 .cardbg-veil { position: absolute; inset: 0; background: var(--card); opacity: var(--veil, 1); }
 .card > .wrap { position: relative; z-index: 1; }
-.card .h2, .card .lede, .card .eyebrow, .card .mission p {
+/* rotating student quotes: same blue bar as the mission line, black text */
+.qcar { max-width: 60ch; }
+.qstack { display: grid; }
+.qq { grid-area: 1 / 1; margin: 0; padding-left: clamp(18px, 2.4vw, 30px);
+  border-left: 2px solid var(--accent-ink); opacity: 0; transition: opacity 0.7s ease; }
+.qq.is-on { opacity: 1; }
+.qq p { margin: 0; color: #000; font-style: italic; line-height: 1.4;
+  font-size: clamp(1.1rem, 0.98rem + 0.6vw, 1.5rem); }
+.qdots { display: flex; gap: 9px; margin-top: 20px; padding-left: clamp(20px, 2.4vw, 32px); }
+.qdots button { width: 9px; height: 9px; padding: 0; border-radius: 50%; cursor: pointer;
+  border: 1.5px solid var(--accent-ink); background: transparent; transition: background 0.2s; }
+.qdots button.is-on { background: var(--accent-ink); }
+.qdots button:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 3px; }
+.card .h2, .card .lede, .card .eyebrow, .card .mission p, .card .qq p {
   text-shadow: 0 0 2px var(--card), 0 0 14px var(--card), 0 0 28px var(--card); }
 .card .eyebrow { color: var(--accent-ink); }
 .card .lede { color: var(--ink-text-2); }
@@ -298,7 +311,6 @@
 /* the card */
 .mission { margin: 0 0 clamp(40px, 5vw, 66px); padding-left: clamp(18px, 2.4vw, 30px);
   border-left: 2px solid var(--accent-ink); max-width: 50ch; }
-.mission:last-child { margin-bottom: 0; }
 .mission p { margin: 0; font-size: clamp(1.22rem, 1.02rem + 0.92vw, 1.82rem); line-height: 1.34;
   color: var(--ink-text); font-style: italic; }
 @media (max-width: 760px) {
