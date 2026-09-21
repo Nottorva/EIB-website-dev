@@ -323,7 +323,7 @@ export default function Reel({ reel }) {
           {reel.stages.map((panel, i) => (
             <div className="layer" data-i={i + 1} key={i}>
               <div className="shot" aria-hidden="true" style={shotStyle(panel)} />
-              <div className="edge" aria-hidden="true" />
+              <div className="edge" aria-hidden="true" style={panel.accent ? { "--accent-p": panel.accent } : undefined} />
             </div>
           ))}
 
@@ -346,8 +346,8 @@ export default function Reel({ reel }) {
           <div className="hud">
             <div className="rail" aria-hidden="true">
               <span className="mono">Principle</span>
-              {reel.stages.map((_, i) => (
-                <i key={i}>
+              {reel.stages.map((panel, i) => (
+                <i key={i} style={panel.accent ? { "--accent-p": panel.accent } : undefined}>
                   <u />
                 </i>
               ))}
@@ -363,11 +363,26 @@ export default function Reel({ reel }) {
   );
 }
 
+// A headline is a string, or a list of strings and { text, color } parts so
+// single words can carry their own colour.
+function Headline({ parts }) {
+  if (!Array.isArray(parts)) return parts;
+  return parts.map((p, i) => (typeof p === "string" ? p : <span key={i} style={{ color: p.color }}>{p.text}</span>));
+}
+
 function Caption({ panel, hero = false }) {
   return (
-    <div className={hero ? "cap cap--hero" : "cap"}>
+    <div className={hero ? "cap cap--hero" : "cap"} style={panel.accent ? { "--accent-p": panel.accent } : undefined}>
       <p className="mono kick">{panel.kicker}</p>
-      {hero ? <h1 className="d">{panel.headline}</h1> : <h2 className="d">{panel.headline}</h2>}
+      {hero ? (
+        <h1 className="d">
+          <Headline parts={panel.headline} />
+        </h1>
+      ) : (
+        <h2 className="d">
+          <Headline parts={panel.headline} />
+        </h2>
+      )}
       {panel.body && <p className={hero ? "hero-sub" : undefined}>{panel.body}</p>}
       {panel.meta && <p className="mono meta">{panel.meta}</p>}
     </div>

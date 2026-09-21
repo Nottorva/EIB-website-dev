@@ -136,8 +136,8 @@
 }
 .layer[data-i] .shot { clip-path: polygon(var(--xt, 180%) 0%, 190% 0%, 190% 100%, var(--xb, 180%) 100%); }
 .edge { position: absolute; top: 0; bottom: 0; left: 0; width: 0; opacity: 0;
-  border-left: 1.5px solid rgba(240, 243, 250, 0.9);
-  box-shadow: -26px 0 52px -14px rgba(3, 5, 9, 0.9), 0 0 24px rgba(147, 166, 255, 0.4);
+  border-left: 1.5px solid var(--accent-p, rgba(240, 243, 250, 0.9));
+  box-shadow: -26px 0 52px -14px rgba(3, 5, 9, 0.9), 0 0 24px color-mix(in srgb, var(--accent-p, var(--accent-2)) 45%, transparent);
   transform: translateX(var(--mid, 300vw)) skewX(var(--ang, 0deg));
   transform-origin: 50% 50%; will-change: transform; }
 .scrim { position: absolute; inset: 0; pointer-events: none;
@@ -162,11 +162,12 @@
   margin-inline: max(16px, 6vw);
   min-height: clamp(320px, 46svh, 430px);
   text-shadow: 0 1px 2px rgba(4, 6, 10, 0.55), 0 10px 34px rgba(4, 6, 10, 0.45); }
-.cap .kick { color: var(--accent-2); margin: 0 0 18px; display: flex; align-items: center; gap: 10px; }
-.cap .kick::before { content: ""; width: 26px; height: 1px; background: var(--accent); flex: none; }
+/* --accent-p is the panel's own pastel (set inline); the hero has none */
+.cap .kick { color: var(--accent-p, var(--accent-2)); margin: 0 0 18px; display: flex; align-items: center; gap: 10px; }
+.cap .kick::before { content: ""; width: 26px; height: 1px; background: var(--accent-p, var(--accent)); flex: none; }
 .cap h2, .cap h1 { font-size: clamp(2.05rem, 4.7vw, 3.95rem); margin: 0 0 20px; }
 .cap p { margin: 0; color: #d7dce8; max-width: 46ch; font-size: clamp(1rem, 0.92rem + 0.34vw, 1.18rem); }
-.cap .meta { margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--line-2); color: var(--chalk-2); }
+.cap .meta { margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--accent-p, var(--line-2)); color: var(--chalk-2); }
 .hero-sub { font-size: clamp(1.05rem, 0.95rem + 0.45vw, 1.3rem) !important; color: #dee3ed !important; }
 
 /* stage rail + skip */
@@ -176,7 +177,7 @@
 .rail { display: flex; gap: 8px; align-items: center; }
 .rail i { display: block; width: clamp(26px, 6vw, 54px); height: 2px; background: rgba(237, 240, 247, 0.22);
   overflow: hidden; border-radius: 2px; }
-.rail u { display: block; height: 100%; background: var(--accent-2); transform: scaleX(0); transform-origin: 0 50%; }
+.rail u { display: block; height: 100%; background: var(--accent-p, var(--accent-2)); transform: scaleX(0); transform-origin: 0 50%; }
 .rail span { color: var(--chalk-2); margin-right: 6px; }
 .skip { pointer-events: auto; background: rgba(8, 11, 18, 0.55); border: 1px solid var(--line-2);
   color: var(--chalk-2); border-radius: 999px; padding: 8px 14px; cursor: pointer;
