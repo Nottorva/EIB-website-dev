@@ -13,8 +13,8 @@ import Voices from "@/components/site/Voices";
 import Curriculum from "@/components/site/Curriculum";
 
 export const metadata = {
-  title: "EIB · Build the company before university",
-  description: REEL.hero.body,
+  title: "EIB · Entrepreneurship, Innovation & Business",
+  description: "A twelve-week venture track inside the school timetable, built around agency, creativity and the bet that young people can change the world.",
 };
 
 function applicationLine(win) {

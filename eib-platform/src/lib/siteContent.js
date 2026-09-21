@@ -20,9 +20,8 @@ export const REEL = {
     shade: 0.35,
     tint: "#0A0A0C",
     kicker: "Twelve weeks · Four principles",
-    headline: "Build the company before university.",
-    body:
-      "EIB runs a venture track inside your timetable. Students leave with a problem they can defend, a prototype a stranger has used, and a pitch that survives a real panel.",
+    headline: "Built around agency, creativity and the bet that young people can change the world.",
+    body: "",
   },
   stages: [
     {

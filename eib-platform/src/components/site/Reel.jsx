@@ -368,7 +368,7 @@ function Caption({ panel, hero = false }) {
     <div className={hero ? "cap cap--hero" : "cap"}>
       <p className="mono kick">{panel.kicker}</p>
       {hero ? <h1 className="d">{panel.headline}</h1> : <h2 className="d">{panel.headline}</h2>}
-      <p className={hero ? "hero-sub" : undefined}>{panel.body}</p>
+      {panel.body && <p className={hero ? "hero-sub" : undefined}>{panel.body}</p>}
       {panel.meta && <p className="mono meta">{panel.meta}</p>}
     </div>
   );
