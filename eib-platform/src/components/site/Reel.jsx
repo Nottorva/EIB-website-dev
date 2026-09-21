@@ -345,7 +345,7 @@ export default function Reel({ reel }) {
 
           <div className="hud">
             <div className="rail" aria-hidden="true">
-              <span className="mono">Stage</span>
+              <span className="mono">Principle</span>
               {reel.stages.map((_, i) => (
                 <i key={i}>
                   <u />
