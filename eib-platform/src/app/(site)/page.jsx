@@ -60,21 +60,6 @@ export default async function SitePage() {
             <blockquote className="mission">
               <p>{DIFFERENCE.mission}</p>
             </blockquote>
-
-            <div className="contrast">
-              <div className="crow chead">
-                <p className="mono">Most programmes</p>
-                <p className="mono cyes">EIB</p>
-              </div>
-              {DIFFERENCE.rows.map(([no, yes]) => (
-                <div className="crow" key={yes}>
-                  <p className="cno">{no}</p>
-                  <p className="cval">{yes}</p>
-                </div>
-              ))}
-            </div>
-
-            <p className="mono facts">{DIFFERENCE.facts}</p>
           </div>
         </section>
 

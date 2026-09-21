@@ -288,29 +288,9 @@
 /* the card */
 .mission { margin: 0 0 clamp(40px, 5vw, 66px); padding-left: clamp(18px, 2.4vw, 30px);
   border-left: 2px solid var(--accent-ink); max-width: 50ch; }
+.mission:last-child { margin-bottom: 0; }
 .mission p { margin: 0; font-size: clamp(1.22rem, 1.02rem + 0.92vw, 1.82rem); line-height: 1.34;
   color: var(--ink-text); font-style: italic; }
-/* the difference is a comparison, so it is drawn as one: the category on the
-   muted side, EIB on the ink side, one hairline down the middle */
-.contrast { border-top: 1px solid var(--line-ink); margin: 0 0 clamp(36px, 4.5vw, 58px); }
-.crow { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(18px, 2.6vw, 40px);
-  padding: 15px 0; border-bottom: 1px solid var(--line-ink); align-items: baseline; }
-.crow > :last-child { border-left: 1px solid var(--line-ink);
-  padding-left: clamp(18px, 2.6vw, 40px); }
-.chead { padding-block: 11px; }
-.chead p { margin: 0; color: var(--ink-text-3); }
-.chead .cyes { color: var(--accent-ink); }
-.cno { margin: 0; color: var(--ink-text-3); font-size: 1rem; line-height: 1.5; }
-.cval { margin: 0; color: var(--ink-text); font-size: 1rem; line-height: 1.5; font-weight: 500; }
-@media (max-width: 680px) {
-  .contrast { border-top: none; }
-  .chead { display: none; }
-  .crow { grid-template-columns: 1fr; gap: 7px; padding: 14px 0; }
-  .crow > :last-child { border-left: 2px solid var(--accent-ink); padding-left: 13px; }
-  .cno { padding-left: 15px; }
-}
-.facts { color: var(--ink-text-3); margin: 0; padding-top: clamp(20px, 2.4vw, 28px);
-  border-top: 1px solid var(--line-ink); }
 @media (max-width: 760px) {
   .lessons { row-gap: 20px; }
   .stagemark { text-align: left; padding-left: 30px; }

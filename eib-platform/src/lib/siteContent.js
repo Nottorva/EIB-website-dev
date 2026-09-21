@@ -1,7 +1,7 @@
 // Static copy for the public site (the marketing page at "/").
 //
 // Everything that changes rarely lives here as plain data: the reel captions,
-// the comparison table, the footer. Things that change often (ticker items,
+// the card copy, the footer. Things that change often (ticker items,
 // testimonials, the curriculum) come from the database and only fall back to
 // the entries below when nothing has been published yet.
 
@@ -98,15 +98,6 @@ export const DIFFERENCE = {
   headline: "A reason to walk back into the building.",
   lede: "Every mentor in an EIB room comes out of the school's own community, bringing with them years of experience. By pressing student teams on their ventures, they pass hard-won knowledge to the next generation of founders while closing the distance between the classroom and the real world.",
   mission: "A student's first company should happen while there is still someone around to help them build it.",
-  rows: [
-    ["A unit about entrepreneurship", "A venture the students own"],
-    ["Case studies of other people's companies", "Twenty interviews they ran themselves"],
-    ["A business plan marked by a teacher", "A prototype a stranger has used"],
-    ["A pitch to the class", "Eight minutes to operators and investors"],
-    ["Graded on how well it was presented", "Scored on what was actually proven"],
-    ["Ends with a mark", "Ends with something they keep building"],
-  ],
-  facts: "12 weeks · one 75-minute block · 18–24 students · 6–8 ventures · one faculty sponsor",
 };
 
 // Shown while the testimonials collection has no approved rows. These are
