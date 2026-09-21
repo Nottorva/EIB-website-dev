@@ -11,6 +11,7 @@ import SiteChrome from "@/components/site/SiteChrome";
 import Reel from "@/components/site/Reel";
 import Voices from "@/components/site/Voices";
 import Curriculum from "@/components/site/Curriculum";
+import CardReveal from "@/components/site/CardReveal";
 
 export const metadata = {
   title: "EIB · Entrepreneurship, Innovation & Business",
@@ -52,6 +53,7 @@ export default async function SitePage() {
 
       <main className="after" id="after">
         <section className="sec card" id="spec" data-chrome="light">
+          <CardReveal photo="/site/card-bg.jpg" />
           <div className="wrap">
             <p className="mono eyebrow">{DIFFERENCE.eyebrow}</p>
             <h2 className="d h2">{DIFFERENCE.headline}</h2>

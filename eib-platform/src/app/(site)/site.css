@@ -190,7 +190,18 @@
    so scrolling carries it over the reel instead of carrying the reel away */
 .after { position: relative; z-index: 20; background: var(--paper); }
 .motes { position: fixed; inset: 0; z-index: 19; pointer-events: none; display: none; }
-.card { background: var(--card); color: var(--ink-text); }
+/* tall enough that the notebook page is fully exposed while still on screen */
+.card { background: var(--card); color: var(--ink-text); overflow: clip; min-height: 150vh; min-height: 150dvh; }
+/* the notebook photo under the card: a sticky full-height layer so it reads as
+   the surface beneath the page, and a white veil whose opacity CardReveal
+   drives from scroll (1 while the card covers the reel, thinning after) */
+.cardbg { position: absolute; inset: 0; z-index: 0; }
+.cardbg-img { position: sticky; top: 0; height: 100vh; height: 100dvh;
+  background-size: cover; background-position: 50% 60%; }
+.cardbg-veil { position: absolute; inset: 0; background: var(--card); opacity: var(--veil, 1); }
+.card > .wrap { position: relative; z-index: 1; }
+.card .h2, .card .lede, .card .eyebrow, .card .mission p {
+  text-shadow: 0 0 2px var(--card), 0 0 14px var(--card), 0 0 28px var(--card); }
 .card .eyebrow { color: var(--accent-ink); }
 .card .lede { color: var(--ink-text-2); }
 .paper { background: var(--paper); color: var(--ink-text); }
