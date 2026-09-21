@@ -95,9 +95,9 @@ export const REEL = {
 
 export const DIFFERENCE = {
   eyebrow: "The EIB difference",
-  headline: "Schools teach business. We run a pre-incubator.",
-  lede: "EIB is the pre-seed process a real company runs, compressed into a school term and taught inside the timetable. Students do not study founders. They do the work founders do, on a problem they picked, in front of people who will tell them the truth about it.",
-  mission: "A student’s first company should happen while there is still someone around to help them build it.",
+  headline: "A reason to walk back into the building.",
+  lede: "Every mentor in an EIB room comes out of the school's own community, bringing with them years of experience. By pressing student teams on their ventures, they pass hard-won knowledge to the next generation of founders while closing the distance between the classroom and the real world.",
+  mission: "A student's first company should happen while there is still someone around to help them build it.",
   rows: [
     ["A unit about entrepreneurship", "A venture the students own"],
     ["Case studies of other people's companies", "Twenty interviews they ran themselves"],
