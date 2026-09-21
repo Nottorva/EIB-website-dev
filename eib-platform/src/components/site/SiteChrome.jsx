@@ -68,6 +68,10 @@ export default function SiteChrome({ ticker, user, identity, authMode }) {
         </div>
       </div>
       <nav className="nav glass" aria-label="Primary">
+        {/* the travelling highlight: a translated strip inside a clipped box,
+            so the animation runs on the compositor instead of repainting the
+            bar (and re-blurring what is behind it) every frame */}
+        <i className="sheen" aria-hidden="true" />
         <a className="brand" href="#reel">
           <span className="mark">EIB</span>
         </a>

@@ -20,6 +20,14 @@ const P = {
   orient: "vertical",
 };
 
+// The wipes follow the scroll through a short low-pass, so a mouse wheel's
+// 100px notches read as one continuous sweep instead of a series of jumps.
+// Only the diagonals are smoothed; the card and the word field stay locked
+// to the real scroll position because the card itself moves with the page.
+const SMOOTH_MS = 70;
+// Word field: text this small does not need a full 2x backing store.
+const MAX_DPR = 1.5;
+
 const clamp = (n, a, b) => (n < a ? a : n > b ? b : n);
 const smooth = (t) => t * t * (3 - 2 * t);
 
@@ -139,11 +147,26 @@ export default function Reel({ reel }) {
       el.style.maskImage = v;
     }
 
+    // With no feather the reveal band is a hard edge, so the caption windows
+    // can be cut with the same clip-path polygon as the photos. A polygon
+    // clip is applied by the compositor; the gradient masks it replaces were
+    // re-rasterised at full stage size on every frame. The mask path is kept
+    // for a feathered band.
+    const useClip = P.feather === 0;
+    const setClip = (el, v) => {
+      el.style.clipPath = v;
+    };
+    if (useClip) {
+      wIn.forEach((el) => setMask(el, "none"));
+      wOut.forEach((el) => setMask(el, "none"));
+    }
+
     /* --------------------------------------------------- the diagonals --- */
     function runReel(p) {
       const seg = 1 / N;
       const [from, to] = travel();
       const stop = [];
+      const XT = [], XB = [];
 
       for (let i = 1; i <= N; i++) {
         const local = clamp((p - (i - 1) * seg) / seg, 0, 1);
@@ -151,9 +174,11 @@ export default function Reel({ reel }) {
         const xt = from + (to - from) * e;
         const xb = xt - P.lean;
 
-        const s = shots[i - 1].style;
-        s.setProperty("--xt", xt.toFixed(3) + "%");
-        s.setProperty("--xb", xb.toFixed(3) + "%");
+        XT[i] = xt.toFixed(3);
+        XB[i] = xb.toFixed(3);
+        // the polygon is written directly: a custom property would put a
+        // style recalc on the shot and its shade every frame for no gain
+        setClip(shots[i - 1], "polygon(" + XT[i] + "% 0%, 190% 0%, 190% 100%, " + XB[i] + "% 100%)");
 
         const tp = (xt / 100) * W, bp = (xb / 100) * W;
         const es = edges[i - 1].style;
@@ -173,6 +198,13 @@ export default function Reel({ reel }) {
         const live = !(tIn >= 1 + half) && !(tOut <= -half);
         wOut[c].style.visibility = live ? "visible" : "hidden";
         if (!live) continue;
+        if (useClip) {
+          // same side of the same line as the photo it belongs to, and the
+          // complement of the next line
+          setClip(wIn[c], c === 0 || tIn <= 0 ? "none" : "polygon(" + XT[c] + "% 0%, 190% 0%, 190% 100%, " + XB[c] + "% 100%)");
+          setClip(wOut[c], c === N || tOut >= 1 ? "none" : "polygon(-90% 0%, " + XT[c + 1] + "% 0%, " + XB[c + 1] + "% 100%, -90% 100%)");
+          continue;
+        }
         setMask(wIn[c], c === 0 || tIn <= -half ? "none" : band(tIn, false));
         setMask(wOut[c], c === N || tOut >= 1 + half ? "none" : band(tOut, true));
       }
@@ -183,17 +215,26 @@ export default function Reel({ reel }) {
        viewport, so through the build-up it creeps from just under the fold to the
        bottom border, then rises to cover at 1:1 with the scroll, with no change of
        speed when the stage unpins and the page carries on normally. */
+    let lastEdge = -1, lastDens = -1;
     function runCard(over) {
       const cardTop = H + holdLen - over; // viewport y of the card's top edge
       const dens = clamp(over / holdLen, 0, 1);
 
       if (over <= 0 || cardTop <= 0) {
-        motes.style.display = "none";
+        if (motes.style.display !== "none") motes.style.display = "none";
+        lastEdge = -1;
         return;
       }
-      motes.style.display = "block";
+      if (motes.style.display !== "block") motes.style.display = "block";
 
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const edgeY = Math.min(H, cardTop);
+      // the field is a pure function of these two numbers; skip the redraw
+      // when a frame lands on the same values
+      if (edgeY === lastEdge && dens === lastDens) return;
+      lastEdge = edgeY;
+      lastDens = dens;
+
+      const dpr = Math.min(MAX_DPR, window.devicePixelRatio || 1);
       if (motes.width !== Math.round(W * dpr)) motes.width = Math.round(W * dpr);
       if (motes.height !== Math.round(H * dpr)) motes.height = Math.round(H * dpr);
 
@@ -201,11 +242,9 @@ export default function Reel({ reel }) {
       g.setTransform(dpr, 0, 0, dpr, 0, 0);
       g.clearRect(0, 0, W, H);
 
-      const sizeScale = clamp(W / 1440, 0.5, 1.15);
       const fringe = H * P.fringeMax * (0.3 + 0.7 * dens);
       // through the build-up the words pile against the bottom border; after that
       // the solid edge of the card itself carries them up
-      const edgeY = Math.min(H, cardTop);
       const n = Math.min(P.words, field.length);
 
       g.fillStyle = "#fff";
@@ -221,7 +260,7 @@ export default function Reel({ reel }) {
         if (a <= 0.012) continue;
 
         g.globalAlpha = a;
-        g.font = "600 " + ((11 + 33 * Math.pow(w.u, 0.75)) * w.s * sizeScale).toFixed(1) + "px " + FONT;
+        g.font = w.font;
         const x = w.x * W;
         if (P.orient === "vertical" || (P.orient === "mixed" && w.v)) {
           g.save();
@@ -247,11 +286,33 @@ export default function Reel({ reel }) {
     }
 
     /* ----------------------------------------------------------- loop ---- */
-    function update() {
+    let target = 0, shown = 0, easing = false, lastT = 0;
+    function step(now) {
+      const dt = Math.min(64, now - lastT);
+      lastT = now;
+      shown += (target - shown) * (1 - Math.exp(-dt / SMOOTH_MS));
+      if (Math.abs(target - shown) < 0.0003) {
+        shown = target;
+        easing = false;
+      }
+      runReel(shown);
+      if (easing) requestAnimationFrame(step);
+    }
+    function update(snap) {
       const span = diagLen + holdLen + slideLen;
       const scrolled = clamp(-reelEl.getBoundingClientRect().top, 0, span);
-      runReel(clamp(scrolled / diagLen, 0, 1));
+      target = clamp(scrolled / diagLen, 0, 1);
       runCard(clamp(scrolled - diagLen, 0, holdLen + slideLen));
+      if (snap || target === shown) {
+        shown = target;
+        runReel(shown);
+        return;
+      }
+      if (!easing) {
+        easing = true;
+        lastT = performance.now();
+        requestAnimationFrame(step);
+      }
     }
 
     function measure() {
@@ -264,7 +325,10 @@ export default function Reel({ reel }) {
       reelEl.style.height = Math.round(H + diagLen + holdLen + slideLen) + "px";
       after.style.marginTop = -Math.round(slideLen) + "px";
       geometry();
-      update();
+      const sizeScale = clamp(W / 1440, 0.5, 1.15);
+      for (const w of field) w.font = "600 " + ((11 + 33 * Math.pow(w.u, 0.75)) * w.s * sizeScale).toFixed(1) + "px " + FONT;
+      lastEdge = -1;
+      update(true);
     }
 
     let queued = false;
@@ -272,7 +336,7 @@ export default function Reel({ reel }) {
       if (queued) return;
       queued = true;
       requestAnimationFrame(() => {
-        update();
+        update(false);
         queued = false;
       });
     };
@@ -290,6 +354,7 @@ export default function Reel({ reel }) {
     return () => {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", measure);
+      easing = false;
       skipFn.current = null;
       reelEl.style.height = "";
       after.style.marginTop = "";

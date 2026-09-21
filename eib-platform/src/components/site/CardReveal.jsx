@@ -2,8 +2,9 @@
 // The white card's backdrop: the design-notebook photo sits under a white
 // veil. The card arrives plain white over the reel, then during the last
 // stretch of its slide the veil thins to a white tint, so by the time the
-// copy is in reading position the sketch is already there behind it. Driven from scroll with rAF and
-// a CSS variable, no React state per frame.
+// copy is in reading position the sketch is already there behind it. Driven
+// from scroll with rAF, written as opacity on the veil (its own compositor
+// layer), no React state per frame.
 import { useEffect, useRef } from "react";
 
 const FADE_FROM = 0.62; // card top at this fraction of the viewport: still plain white
@@ -16,11 +17,14 @@ export default function CardReveal({ photo }) {
   useEffect(() => {
     const el = ref.current;
     const card = el && el.parentElement;
-    if (!card) return undefined;
+    const veil = el && el.querySelector(".cardbg-veil");
+    if (!card || !veil) return undefined;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduced) {
-      card.style.setProperty("--veil", String(VEIL_MIN));
-      return () => card.style.removeProperty("--veil");
+      veil.style.opacity = String(VEIL_MIN);
+      return () => {
+        veil.style.opacity = "";
+      };
     }
 
     let queued = false;
@@ -28,7 +32,8 @@ export default function CardReveal({ photo }) {
       const top = card.getBoundingClientRect().top;
       const H = window.innerHeight;
       const p = Math.min(1, Math.max(0, (FADE_FROM * H - top) / ((FADE_FROM - FADE_TO) * H)));
-      card.style.setProperty("--veil", String(1 - p * (1 - VEIL_MIN)));
+      const next = (1 - p * (1 - VEIL_MIN)).toFixed(3);
+      if (veil.style.opacity !== next) veil.style.opacity = next;
     };
     const onScroll = () => {
       if (queued) return;
@@ -44,7 +49,7 @@ export default function CardReveal({ photo }) {
     return () => {
       window.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", update);
-      card.style.removeProperty("--veil");
+      veil.style.opacity = "";
     };
   }, []);
 
