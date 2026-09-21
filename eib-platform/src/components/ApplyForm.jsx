@@ -40,7 +40,9 @@ const fmtSubmitted = (v) => {
   return /T/.test(String(v)) ? d.toLocaleString(undefined, { dateStyle: "long", timeStyle: "short" }) : d.toLocaleDateString(undefined, { dateStyle: "long", timeZone: "UTC" });
 };
 
-function Shell({ children, title = "Apply to EIB", sub = "Weekly Tuesday sessions, November to March. Tell us about yourself and a problem you'd want to work on." }) {
+const FEE_LINE = "Program fee: $525 for the year.";
+
+function Shell({ children, title = "Apply to EIB", sub = "Weekly Tuesday sessions, November to April. Tell us about yourself and a problem you'd want to work on.", fee = true }) {
   return (
     <div style={{ background: COLORS.bg, minHeight: "100%", padding: "44px 20px 80px" }}>
       <div style={{ maxWidth: 640, margin: "0 auto" }}>
@@ -48,6 +50,7 @@ function Shell({ children, title = "Apply to EIB", sub = "Weekly Tuesday session
           <div style={{ fontSize: 13, fontWeight: 800, color: COLORS.indigo, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>EIB · Application</div>
           <div style={{ fontSize: 30, fontWeight: 800, color: COLORS.text }}>{title}</div>
           {sub && <div style={{ fontSize: 15, color: COLORS.sub, marginTop: 8, lineHeight: 1.6 }}>{sub}</div>}
+          {sub && fee && <div style={{ fontSize: 15, color: COLORS.text, fontWeight: 800, marginTop: 6, lineHeight: 1.6 }}>{FEE_LINE}</div>}
         </div>
         {children}
       </div>

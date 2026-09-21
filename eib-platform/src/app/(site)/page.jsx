@@ -3,8 +3,8 @@
 // Nothing student-facing (links, deliverables, rooms) ever reaches this page.
 import Link from "next/link";
 import { getCurrentUser, getSessionIdentity, authMode } from "@/lib/auth";
-import { getSiteTicker, getApplicationWindow, windowState } from "@/lib/data/settings";
-import { REEL, DIFFERENCE, CARD_QUOTES, CURRICULUM, FOOTER, groupLessons } from "@/lib/siteContent";
+import { getSiteTicker, getApplicationWindow, windowState, getCohortYear } from "@/lib/data/settings";
+import { REEL, DIFFERENCE, CARD_QUOTES, CURRICULUM, COST, FOOTER, groupLessons } from "@/lib/siteContent";
 import SiteChrome from "@/components/site/SiteChrome";
 import Reel from "@/components/site/Reel";
 import Curriculum from "@/components/site/Curriculum";
@@ -16,20 +16,24 @@ export const metadata = {
   description: "A venture track inside the school timetable, built around agency, judgment, consequence and community.",
 };
 
-function applicationLine(win) {
+// "2026–27" from the cohort year setting.
+const cohortLabel = (year) => `${year}–${String(year + 1).slice(-2)}`;
+
+function applicationLine(win, year) {
   const fmt = (iso) => new Date(iso).toLocaleDateString("en-CA", { month: "long", day: "numeric", timeZone: "America/Toronto" });
   const state = windowState(win);
   if (state === "upcoming") return `Applications open ${fmt(win.opensAt)}`;
   if (state === "closed") return "Applications for this cohort have closed";
-  return win.closesAt ? `Applications open until ${fmt(win.closesAt)}` : "Applications open for the next cohort";
+  return `Applications open for the ${cohortLabel(year)} cohort`;
 }
 
 export default async function SitePage() {
-  const [user, identity, ticker, win] = await Promise.all([
+  const [user, identity, ticker, win, year] = await Promise.all([
     getCurrentUser(),
     authMode === "google" ? getSessionIdentity() : null,
     getSiteTicker(),
     getApplicationWindow(),
+    getCohortYear(),
   ]);
 
   const stages = groupLessons(CURRICULUM);
@@ -37,7 +41,7 @@ export default async function SitePage() {
   return (
     <div className="site">
       <SiteChrome
-        ticker={[applicationLine(win), ...ticker]}
+        ticker={[applicationLine(win, Number(year)), ...ticker]}
         user={user ? { name: user.name, role: user.role } : null}
         identity={identity ? { name: identity.name } : null}
         authMode={authMode}
@@ -62,6 +66,17 @@ export default async function SitePage() {
         </section>
 
         <Curriculum stages={stages} />
+
+        <section className="sec paper cost" id="cost" data-chrome="light">
+          <div className="wrap">
+            <p className="mono eyebrow">{COST.eyebrow}</p>
+            <h2 className="d h2">{COST.headline}</h2>
+            <p className="lede">{COST.body}</p>
+            <Link className="apply" href="/apply">
+              Apply now
+            </Link>
+          </div>
+        </section>
       </main>
 
       <footer className="foot" data-chrome="light">

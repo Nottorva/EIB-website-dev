@@ -89,11 +89,18 @@ export async function saveApplicationWindow(input) {
 // The scrolling strip at the very top of the public site. The application
 // status line is generated from the application window; these are the extra
 // items after it. Super admin edits them on the Website page.
-export const DEFAULT_TICKER = ["Term begins January", "Demo Day in March", "Toronto · London, Ontario", "Now matching ventures with mentors"];
+// The first ticker item (applications open / opens on / closed) is generated
+// from the application window on the site page; these follow it.
+export const DEFAULT_TICKER = ["Sessions begin in November", "Weekly Tuesday sessions", "Student Showcase on April 23", "Toronto · London, Ontario", "Now matching ventures with mentors"];
+// What the ticker said before 2026-09-20. A saved copy of it is treated as
+// "never edited" so the new default applies without a manual reset.
+const OLD_DEFAULT_TICKER = ["Term begins January", "Demo Day in March", "Toronto · London, Ontario", "Now matching ventures with mentors"];
 
 export async function getSiteTicker() {
   const v = await getSetting("siteTicker");
-  return Array.isArray(v) ? v : DEFAULT_TICKER;
+  if (!Array.isArray(v)) return DEFAULT_TICKER;
+  if (v.length === OLD_DEFAULT_TICKER.length && v.every((s, i) => s === OLD_DEFAULT_TICKER[i])) return DEFAULT_TICKER;
+  return v;
 }
 
 export async function saveSiteTicker(items) {

@@ -45,7 +45,7 @@ export const REEL = {
       accent: "#FFB3A7",
       kicker: "01 — Agency",
       headline: "Work on something you care about.",
-      body: "Students choose the problem themselves. No assigned case, no brief handed down, no invented company to practise on. What a student picks in week one is what they try and solve for twelve weeks.",
+      body: "Students choose the problem themselves. No assigned case, no brief handed down, no invented company to practise on. What a student picks in week one is what they try and solve for the year.",
       meta: "In practice · every venture starts from a problem the student named",
     },
     {
@@ -75,7 +75,7 @@ export const REEL = {
       meta: "In practice · the prototype is used by someone outside the school",
     },
     {
-      // The Demo Day room: the panel and audience, a bright warm frame, so
+      // The Showcase room: the panel and audience, a bright warm frame, so
       // it gets the heaviest shade and a crop that keeps faces right of the text.
       photo: "/site/stage-4.jpg",
       position: "0% 50%",
@@ -86,7 +86,7 @@ export const REEL = {
       accent: "#FFD59E",
       kicker: "04 — Community",
       headline: "Get the network ten years early.",
-      body: "Founders, operators and investors sit with each venture during the term, then a panel of them judges it at the end. Students leave the twelve weeks with top business people already knowing their name.",
+      body: "Founders, operators and investors sit with each venture during the term, then a panel of them judges it at the end. Students leave the sixteen sessions with top business people already knowing their name.",
       meta: "In practice · operators and investors in the room give feedback on student ventures",
     },
   ],
@@ -143,12 +143,19 @@ export const LEXICON = [
   "marketplaces", "hardware", "local delivery", "education", "sustainability", "apps", "media",
 ];
 
+// Under the curriculum, before the footer.
+export const COST = {
+  eyebrow: "Cost and logistics",
+  headline: "$525 for the year.",
+  body: "Sixteen Tuesday sessions from November to April, a mentor matched to your venture, a working budget, and a place at the April 23 Student Showcase.",
+};
+
 export const FOOTER = {
   tagline: "Entrepreneurship, Innovation & Business",
   meta: [
     ["Operated by", "Nemosyne LTD · est. 2024"],
     ["Partner school", "Toronto French School"],
-    ["Based in", "Toronto, Ontario"],
+    ["Based in", "Toronto and London, Ontario"],
   ],
 };
 

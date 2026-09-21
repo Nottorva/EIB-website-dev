@@ -27,7 +27,7 @@ const FORM_QUESTIONS = [
   {
     id: "q_commit",
     type: "choice",
-    label: "Can you commit to weekly Tuesday sessions, Nov to Mar?",
+    label: "Can you commit to weekly Tuesday sessions, Nov to Apr?",
     required: true,
     options: ["Yes", "No", "Depends on the week"],
   },

@@ -8,7 +8,7 @@ import { Globe, Plus, Trash2, ExternalLink, RotateCcw, Quote } from "lucide-reac
 import { COLORS, PageTitle, Card, FieldLabel, fieldStyle, Notice, SaveIndicator, Loading, PrimaryButton, IconButton, SectionLabel } from "./ui";
 import { api, useDebouncedSaver } from "@/lib/api";
 
-const ROLE_SUGGESTIONS = ["Student", "Faculty sponsor", "Mentor", "Head of school", "Demo Day panel"];
+const ROLE_SUGGESTIONS = ["Student", "Faculty sponsor", "Mentor", "Head of school", "Showcase panel"];
 
 function OnOff({ value, onChange, onLabel, offLabel }) {
   const btn = (active, label, on) => (
@@ -50,7 +50,7 @@ function TickerPanel({ ticker, defaults, onChange }) {
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {ticker.map((t, i) => (
           <div key={i} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <input value={t} onChange={(e) => set(i, e.target.value)} placeholder="Demo Day in March" style={{ ...fieldStyle, padding: "10px 14px" }} />
+            <input value={t} onChange={(e) => set(i, e.target.value)} placeholder="Student Showcase on April 23" style={{ ...fieldStyle, padding: "10px 14px" }} />
             <IconButton icon={Trash2} title="Remove" onClick={() => remove(i)} color={COLORS.red} />
           </div>
         ))}
