@@ -1,13 +1,14 @@
 "use client";
 // The white card's backdrop: the design-notebook photo sits under a white
-// veil. Once the card has finished riding up over the reel (its top reaches
-// the top of the viewport) the veil thins as the visitor keeps scrolling, so
-// the sketches show through beneath the copy. Driven from scroll with rAF and
+// veil. The card arrives plain white over the reel; once it has landed (its
+// top reaches the top of the viewport) the veil thins to a white tint as the
+// visitor keeps scrolling, so the sketch becomes the section's background. Driven from scroll with rAF and
 // a CSS variable, no React state per frame.
 import { useEffect, useRef } from "react";
 
-const FADE_SPAN = 0.45; // fraction of a viewport of scrolling the fade takes
-const VEIL_MIN = 0.14; // how much white stays at the end, so the copy still reads
+const HOLD = 0.08; // fraction of a viewport the card stays plain white after landing
+const FADE_SPAN = 0.35; // fraction of a viewport of scrolling the fade takes
+const VEIL_MIN = 0.5; // the white tint that stays over the photo
 
 export default function CardReveal({ photo }) {
   const ref = useRef(null);
@@ -25,8 +26,8 @@ export default function CardReveal({ photo }) {
     let queued = false;
     const update = () => {
       const top = card.getBoundingClientRect().top;
-      const span = window.innerHeight * FADE_SPAN;
-      const p = Math.min(1, Math.max(0, -top / span));
+      const H = window.innerHeight;
+      const p = Math.min(1, Math.max(0, (-top - H * HOLD) / (H * FADE_SPAN)));
       card.style.setProperty("--veil", String(1 - p * (1 - VEIL_MIN)));
     };
     const onScroll = () => {
