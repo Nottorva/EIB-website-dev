@@ -12,6 +12,15 @@ const USERS = [
 ];
 
 const FORM_QUESTIONS = [
+  {
+    id: "q_fee",
+    type: "notice",
+    label: "Program fee: $525, non-refundable",
+    detail: "If you are offered a place and accept it, you will be charged $525. The fee is non-refundable. If it is not paid, your place goes to the next applicant.",
+    ack: "I understand",
+    required: true,
+    options: [],
+  },
   { id: "q_grade", type: "choice", label: "Grade", required: true, options: ["9", "10", "11", "12"] },
   { id: "q_why", type: "long", label: "Why do you want to join EIB?", required: true, options: [] },
   { id: "q_problem", type: "long", label: "Describe a problem you've noticed that you'd want to solve", required: true, options: [] },

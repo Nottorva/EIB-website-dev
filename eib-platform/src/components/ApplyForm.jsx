@@ -2,13 +2,36 @@
 
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { Link2, CheckCircle2, Send, LogIn, LogOut, CalendarClock, Lock, ShieldCheck, Clock, ArrowRight } from "lucide-react";
+import { Link2, CheckCircle2, Send, LogIn, LogOut, CalendarClock, Lock, ShieldCheck, Clock, ArrowRight, AlertTriangle } from "lucide-react";
 import { signOut as nextAuthSignOut } from "next-auth/react";
 import { COLORS, fieldStyle, Notice, Loading } from "./ui";
 import { api } from "@/lib/api";
 import { GoogleSignInButton } from "./GoogleButtons";
 
 const fmt = (iso) => (iso ? new Date(iso).toLocaleString(undefined, { dateStyle: "long", timeStyle: "short" }) : null);
+// A notice in the form: big and bold, impossible to miss, with a tick-box the
+// applicant has to check (when the notice is marked required) before the
+// browser will let the form submit. The server checks it again.
+function NoticeCard({ q, ticked, onTick }) {
+  const ack = q.ack || "I understand";
+  return (
+    <div style={{ background: COLORS.amberSoft, border: `2px solid ${COLORS.amber}`, borderRadius: 14, padding: "20px 22px" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+        <AlertTriangle size={26} color={COLORS.amber} style={{ flexShrink: 0, marginTop: 4 }} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 24, lineHeight: 1.2, fontWeight: 900, color: COLORS.text, letterSpacing: -0.2 }}>{q.label}</div>
+          {q.detail && <div style={{ fontSize: 15.5, lineHeight: 1.55, color: COLORS.text, marginTop: 10, whiteSpace: "pre-wrap" }}>{q.detail}</div>}
+        </div>
+      </div>
+      <label style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 16, background: "#fff", border: `1px solid ${ticked ? COLORS.green : COLORS.amberBorder}`, borderRadius: 12, padding: "13px 16px", cursor: "pointer", fontSize: 16, fontWeight: 800, color: COLORS.text }}>
+        <input type="checkbox" checked={ticked} onChange={(e) => onTick(e.target.checked)} required={q.required} style={{ width: 20, height: 20, accentColor: COLORS.green, cursor: "pointer" }} />
+        {ack}
+        {q.required && !ticked && <span style={{ marginLeft: "auto", fontSize: 12.5, fontWeight: 700, color: COLORS.amber }}>Required to submit</span>}
+      </label>
+    </div>
+  );
+}
+
 // Older applications stored a date only; show those without a time.
 const fmtSubmitted = (v) => {
   if (!v) return null;
@@ -332,7 +355,9 @@ export default function ApplyForm() {
       {error && <Notice onClose={() => setError(null)}>{error}</Notice>}
 
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        {status.form.map((q) => (
+        {status.form.map((q) => q.type === "notice" ? (
+          <NoticeCard key={q.id} q={q} ticked={answers[q.id] === (q.ack || "I understand")} onTick={(on) => set(q.id, on ? q.ack || "I understand" : "")} />
+        ) : (
           <div key={q.id} style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 18 }}>
             <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.text, marginBottom: 10 }}>
               {q.label}

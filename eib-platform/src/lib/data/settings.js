@@ -4,22 +4,29 @@
 
 import { getSetting, setSetting } from "./store";
 
-export const QUESTION_TYPE_IDS = ["short", "long", "choice", "link"];
+// "notice" is not a question: a big, bold statement (a fee, a commitment)
+// the applicant has to tick to acknowledge before the form will submit.
+export const QUESTION_TYPE_IDS = ["short", "long", "choice", "link", "notice"];
+export const DEFAULT_ACK = "I understand";
 
 export async function getApplicationForm() {
   return (await getSetting("applicationForm")) || [];
 }
 
 export async function saveApplicationForm(questions) {
-  const cleaned = (Array.isArray(questions) ? questions : []).map((q) => ({
-    id: String(q.id),
-    key: q.key || undefined,
-    locked: Boolean(q.locked),
-    type: QUESTION_TYPE_IDS.includes(q.type) ? q.type : q.type === "file" ? "link" : "short",
-    label: String(q.label || ""),
-    required: Boolean(q.required),
-    options: Array.isArray(q.options) ? q.options.map(String) : [],
-  }));
+  const cleaned = (Array.isArray(questions) ? questions : []).map((q) => {
+    const type = QUESTION_TYPE_IDS.includes(q.type) ? q.type : q.type === "file" ? "link" : "short";
+    return {
+      id: String(q.id),
+      key: q.key || undefined,
+      locked: Boolean(q.locked),
+      type,
+      label: String(q.label || ""),
+      required: Boolean(q.required),
+      options: Array.isArray(q.options) ? q.options.map(String) : [],
+      ...(type === "notice" ? { detail: String(q.detail || ""), ack: String(q.ack || "").trim() || DEFAULT_ACK } : {}),
+    };
+  });
   // Name and email come from the applicant's signed-in TFS account, never
   // from a question, so any legacy identity questions are dropped on save.
   return setSetting("applicationForm", cleaned.filter((q) => !q.locked && q.key !== "name" && q.key !== "email"));

@@ -5,7 +5,7 @@
 //   - one application per email
 import { open, readJson, HttpError } from "@/lib/auth";
 import { getApplicant, emailOnDomain } from "@/lib/applicant";
-import { getApplicationForm, getApplicationWindow, windowState } from "@/lib/data/settings";
+import { getApplicationForm, getApplicationWindow, windowState, DEFAULT_ACK } from "@/lib/data/settings";
 import { createApplication, findApplicationByEmail } from "@/lib/data/applications";
 
 export const POST = open(async ({ req }) => {
@@ -24,6 +24,11 @@ export const POST = open(async ({ req }) => {
   const answers = Array.isArray(body.answers) ? body.answers : [];
   const answerFor = (q) => answers.find((a) => a.questionId === q.id)?.answer ?? "";
   for (const q of form) {
+    if (q.type === "notice") {
+      // the answer to a notice is the acknowledgement text itself, or nothing
+      if (q.required && String(answerFor(q)).trim() !== (q.ack || DEFAULT_ACK)) throw new HttpError(400, `Please tick "${q.ack || DEFAULT_ACK}" under "${q.label}" before submitting.`);
+      continue;
+    }
     if (q.required && String(answerFor(q)).trim() === "") throw new HttpError(400, `"${q.label}" is required.`);
   }
 

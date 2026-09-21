@@ -86,7 +86,10 @@ Things worth trying, in order:
    placeholder in the student's text box. "Preview" on a card is a blank,
    unsaved copy of the widget for trying it out. Table deliverables can name
    their rows as well as their columns.
-10. **Application link and window.** Student Manager → Forms. Copy the
+10. **Application link and window.** Student Manager → Forms. **Add notice**
+    puts a big, bold statement in the form (the seed carries the $525
+    non-refundable fee) that applicants must tick "I understand" on before
+    the form will submit; the server refuses the submission without it. Copy the
     permanent link, then set Opens / Closes. Set Closes to a past time and
     open the link in a new tab: "Applications have closed". Set Opens to a
     future time: "not open yet". Clear both: live. Applicants must sign in

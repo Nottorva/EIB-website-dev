@@ -10,6 +10,7 @@ import {
   AlignLeft,
   ListChecks,
   Link2,
+  Megaphone,
   Table as TableIcon,
   CheckSquare,
   AlertCircle,
@@ -52,6 +53,7 @@ export const QUESTION_TYPES = [
   { id: "long", label: "Long Answer", icon: AlignLeft },
   { id: "choice", label: "Multiple Choice", icon: ListChecks },
   { id: "link", label: "Link", icon: Link2 },
+  { id: "notice", label: "Notice", icon: Megaphone },
 ];
 export const questionType = (id) => QUESTION_TYPES.find((t) => t.id === id) || QUESTION_TYPES[0];
 

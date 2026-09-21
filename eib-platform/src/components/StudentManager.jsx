@@ -5,6 +5,7 @@ import { FileText, Users, ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Mail,
 import {
   COLORS,
   QUESTION_TYPES,
+  fieldStyle,
   questionType,
   EditableInput,
   ModalShell,
@@ -191,14 +192,18 @@ function QuestionEditor({ question, index, total, onChange, onDelete, onMove }) 
           )}
           <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: COLORS.sub, fontWeight: 700, marginLeft: "auto" }}>
             <input type="checkbox" checked={question.required} disabled={locked} onChange={(e) => onChange({ ...question, required: e.target.checked })} />
-            Required
+            {question.type === "notice" ? "Must be ticked to submit" : "Required"}
           </label>
           <button type="button" onClick={onDelete} disabled={locked} style={{ border: "none", background: "transparent", color: locked ? "#d7dbe4" : COLORS.faint, cursor: locked ? "default" : "pointer", padding: 4 }}>
             <Trash2 size={16} />
           </button>
         </div>
 
-        <EditableInput value={question.label} onChange={(v) => onChange({ ...question, label: v })} placeholder="Question" style={{ fontSize: 15.5, fontWeight: 700, color: COLORS.text }} />
+        {question.type === "notice" ? (
+          <NoticeEditor question={question} onChange={onChange} />
+        ) : (
+          <EditableInput value={question.label} onChange={(v) => onChange({ ...question, label: v })} placeholder="Question" style={{ fontSize: 15.5, fontWeight: 700, color: COLORS.text }} />
+        )}
 
         {question.type === "choice" && (
           <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
@@ -228,6 +233,27 @@ function QuestionEditor({ question, index, total, onChange, onDelete, onMove }) 
             </button>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// A notice is shown to applicants the way it is edited here: the headline
+// big and bold, the detail under it, and the tick-box text.
+function NoticeEditor({ question, onChange }) {
+  return (
+    <div style={{ background: COLORS.amberSoft, border: `1px solid ${COLORS.amberBorder}`, borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 8 }}>
+      <EditableInput value={question.label} onChange={(v) => onChange({ ...question, label: v })} placeholder="Headline, shown big and bold" style={{ fontSize: 21, fontWeight: 900, color: COLORS.text, background: "#fff" }} />
+      <textarea
+        value={question.detail || ""}
+        onChange={(e) => onChange({ ...question, detail: e.target.value })}
+        placeholder="Smaller text under the headline (optional)"
+        rows={3}
+        style={{ ...fieldStyle, resize: "vertical", fontSize: 14, background: "#fff" }}
+      />
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ fontSize: 12, fontWeight: 800, color: COLORS.faint, textTransform: "uppercase", letterSpacing: 0.4, whiteSpace: "nowrap" }}>Tick-box says</span>
+        <EditableInput value={question.ack ?? "I understand"} onChange={(v) => onChange({ ...question, ack: v })} placeholder="I understand" style={{ fontSize: 14, fontWeight: 800, color: COLORS.text, background: "#fff", flex: 1 }} />
       </div>
     </div>
   );
@@ -390,6 +416,7 @@ function FormsTab({ saver }) {
     commit(next);
   };
   const addQuestion = () => commit([...questions, { id: nextId("q"), type: "short", label: "New question", required: true, options: [] }]);
+  const addNotice = () => commit([...questions, { id: nextId("q"), type: "notice", label: "Important notice", detail: "", ack: "I understand", required: true, options: [] }]);
 
   if (error) return <Notice>{error}</Notice>;
   if (!questions) return <Loading />;
@@ -413,13 +440,23 @@ function FormsTab({ saver }) {
         ))}
       </div>
 
-      <button
-        type="button"
-        onClick={addQuestion}
-        style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 8, border: `1px dashed ${COLORS.border}`, background: "#fff", color: COLORS.indigo, fontWeight: 800, fontSize: 14, borderRadius: 14, padding: "12px 16px", cursor: "pointer", width: "100%", justifyContent: "center" }}
-      >
-        <Plus size={16} /> Add question
-      </button>
+      <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
+        <button
+          type="button"
+          onClick={addQuestion}
+          style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, border: `1px dashed ${COLORS.border}`, background: "#fff", color: COLORS.indigo, fontWeight: 800, fontSize: 14, borderRadius: 14, padding: "12px 16px", cursor: "pointer", justifyContent: "center" }}
+        >
+          <Plus size={16} /> Add question
+        </button>
+        <button
+          type="button"
+          onClick={addNotice}
+          title="A big, bold statement applicants must tick to acknowledge (a fee, a commitment)"
+          style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, border: `1px dashed ${COLORS.amberBorder}`, background: COLORS.amberSoft, color: COLORS.amber, fontWeight: 800, fontSize: 14, borderRadius: 14, padding: "12px 16px", cursor: "pointer", justifyContent: "center" }}
+        >
+          <Megaphone size={16} /> Add notice
+        </button>
+      </div>
     </div>
   );
 }
@@ -611,7 +648,15 @@ function StudentDetail({ student, account, isSuperAdmin, onSuspend, questions, l
             return (
               <div key={q.id} style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 16 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.sub, marginBottom: 8 }}>{q.label}</div>
-                {q.type === "link" ? (
+                {q.type === "notice" ? (
+                  answer ? (
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 14, fontWeight: 800, color: COLORS.green }}>
+                      <Check size={15} /> Ticked "{String(answer)}"
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: 13.5, color: COLORS.faint, fontStyle: "italic" }}>Not acknowledged</div>
+                  )
+                ) : q.type === "link" ? (
                   answer ? (
                     <a href={String(answer)} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 14, color: COLORS.indigo, fontWeight: 700, textDecoration: "none", wordBreak: "break-all" }}>
                       <Link2 size={14} /> {String(answer)} <ExternalLink size={13} />
