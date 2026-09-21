@@ -11,7 +11,7 @@
 // the super admin can suspend one from the Student Manager instead.
 
 import { findAll, findOne, findById, insert, updateOne, newId } from "./store";
-import { upsertStudent } from "./users";
+import { upsertStudent, setSuspended } from "./users";
 
 export const APPLICATION_STATUSES = ["pending", "interview", "waitlist", "approved", "denied"];
 // Statuses an applicant can be told about. Pending and interview stay "under review".
@@ -45,7 +45,11 @@ export async function createApplication({ name, email, answers }) {
   });
 }
 
-// Review step: change the status only. No account, nothing shown to the applicant.
+// Review step: change the status only. No account is created and nothing is
+// shown to the applicant. The one side effect: if this applicant already
+// holds a student account from an earlier release and the status moves off
+// "approved", that account is suspended, so a waitlisted or denied person
+// cannot keep signing in. Re-approving and releasing reinstates it.
 export async function setStatus(id, status) {
   if (!APPLICATION_STATUSES.includes(status)) {
     const err = new Error(`Unknown status "${status}".`);
@@ -55,6 +59,7 @@ export async function setStatus(id, status) {
   const app = await getApplication(id);
   if (!app) return null;
   if (app.status === status) return app;
+  if (app.studentId && status !== "approved") await setSuspended(app.studentId, true);
   return updateOne("applications", id, { status, decisionReleased: false, releasedAt: null });
 }
 

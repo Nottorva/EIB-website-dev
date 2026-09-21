@@ -34,7 +34,9 @@ export async function createLeader({ name, email }) {
 // who happens to be a leader or super admin never demotes them.
 export async function upsertStudent({ name, email }) {
   const existing = await getUserByEmail(email);
-  if (existing) return updateOne("users", existing.id, { name: name.trim() });
+  // an approved applicant being (re)released gets a live account, even if it
+  // was suspended when their status was moved off approved earlier
+  if (existing) return updateOne("users", existing.id, { name: name.trim(), suspended: false, suspendedAt: null });
   return insert("users", { id: newId("user"), name: name.trim(), email: email.trim(), role: "student" });
 }
 
