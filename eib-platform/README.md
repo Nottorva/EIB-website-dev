@@ -14,6 +14,16 @@ npm run dev
 Open http://localhost:3000. The first request creates `data/db.json` from the
 seed data. To start over: `npm run db:reset` (or delete `data/db.json`).
 
+**Regression suite.** With the dev server running (file store, no Google
+sign-in), `npm run smoke` moves `data/db.json` aside so the server reseeds,
+then checks every role against every page and API route, the whole
+application lifecycle (window, form rules, decisions, release, accounts,
+suspension, clean reset), the CRM, lessons, submissions and grading, the
+public site and the Website admin: about 130 checks, no dependencies
+(`scripts/smoke.mjs`). Add `--keep` to run against the current database
+instead of a fresh seed. It lives in the repo on purpose: an earlier copy in
+a temp folder was lost to a disk clean-up.
+
 `/` is the public website (see "Public site" below). The platform tools start
 at `/platform`.
 
