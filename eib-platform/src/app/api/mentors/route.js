@@ -2,7 +2,7 @@ import { guarded } from "@/lib/auth";
 import { listMentors, createMentor } from "@/lib/data/mentors";
 import { getCohortYear } from "@/lib/data/settings";
 
-const CRM_ROLES = ["superAdmin", "studentLeader"];
+const CRM_ROLES = ["superAdmin", "studentLeader", "advancement"];
 
 export const GET = guarded(CRM_ROLES, async () => {
   const [mentors, cohortYear] = await Promise.all([listMentors(), getCohortYear()]);

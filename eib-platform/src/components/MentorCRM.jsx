@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { ArrowLeft, Plus, Trash2, Mail, Phone, MessageCircle, Calendar, Star, Eye, BookOpen, UserCheck, Lock } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Mail, Phone, MessageCircle, Calendar, Star, Eye, BookOpen, UserCheck, Lock, UserPlus, Users } from "lucide-react";
 import {
   COLORS,
   EditableInput,
@@ -17,6 +17,9 @@ import {
   SegmentedTabs,
   PageTitle,
   nextId,
+  ModalShell,
+  PrimaryButton,
+  useDangerConfirm,
 } from "./ui";
 import { api, useDebouncedSaver } from "@/lib/api";
 
@@ -361,7 +364,9 @@ function MentorDetail({ mentor, mentors, lessons, cohortYear, onBack, onUpdate, 
 }
 
 /* ---------- App ---------- */
-export default function MentorCRM() {
+export default function MentorCRM({ user }) {
+  const [teamOpen, setTeamOpen] = useState(false);
+  const [confirmDanger, confirmUI] = useDangerConfirm();
   const [mentors, setMentors] = useState(null);
   const [lessons, setLessons] = useState([]);
   const [cohortYear, setCohortYear] = useState(new Date().getFullYear());
@@ -401,9 +406,9 @@ export default function MentorCRM() {
       setOpenId(fresh.id);
     });
 
-  const removeMentor = (id) => {
+  const removeMentor = async (id) => {
     const m = mentors.find((x) => x.id === id);
-    if (!window.confirm(`Remove ${m.name} from the CRM?`)) return;
+    if (!(await confirmDanger({ title: `Remove ${m.name} from the CRM?`, body: "Their contact history and lesson assignments go with them.", label: "Remove mentor" }))) return;
     saver.immediate(async () => {
       await api.del(`/api/mentors/${id}`);
       setMentors((prev) => prev.filter((x) => x.id !== id));
@@ -433,6 +438,8 @@ export default function MentorCRM() {
 
   return (
     <div style={{ background: COLORS.bg, minHeight: "100%", padding: "28px 20px" }}>
+      {confirmUI}
+      {teamOpen && <AdvancementModal onClose={() => setTeamOpen(false)} />}
       <PageTitle
         title="EIB Mentor CRM"
         right={
@@ -472,13 +479,25 @@ export default function MentorCRM() {
             search={search}
             setSearch={setSearch}
             right={
-              <button
-                type="button"
-                onClick={addMentor}
-                style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 800, fontSize: 13, borderRadius: 999, padding: "7px 14px", cursor: "pointer" }}
-              >
-                <Plus size={14} /> Add mentor
-              </button>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={addMentor}
+                  style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 800, fontSize: 13, borderRadius: 999, padding: "7px 14px", cursor: "pointer" }}
+                >
+                  <Plus size={14} /> Add mentor
+                </button>
+                {user?.role === "superAdmin" && (
+                  <button
+                    type="button"
+                    onClick={() => setTeamOpen(true)}
+                    title="Create and remove advancement team accounts (they get this CRM and nothing else)"
+                    style={{ display: "flex", alignItems: "center", gap: 6, border: `1px solid ${COLORS.indigoBorder}`, background: COLORS.indigoSoft, color: COLORS.indigo, fontWeight: 800, fontSize: 13, borderRadius: 999, padding: "7px 14px", cursor: "pointer" }}
+                  >
+                    <UserPlus size={14} /> New advancement team member
+                  </button>
+                )}
+              </div>
             }
           />
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -490,5 +509,95 @@ export default function MentorCRM() {
         </div>
       )}
     </div>
+  );
+}
+/* ================= Advancement team (super admin) ================= */
+// Lists the advancement team accounts, creates one from an email (name is
+// optional; it is derived from the email until they sign in), and removes
+// one behind the two-step confirm. These accounts open the Mentor CRM only.
+function AdvancementModal({ onClose }) {
+  const [rows, setRows] = useState(null);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [confirmDanger, confirmUI] = useDangerConfirm();
+  const canCreate = /\S+@\S+\.\S+/.test(email.trim());
+
+  useEffect(() => {
+    api.get("/api/users?role=advancement").then(setRows).catch((e) => setError(e.message));
+  }, []);
+
+  const create = async () => {
+    if (!canCreate || busy) return;
+    setBusy(true);
+    try {
+      const created = await api.post("/api/users", { name: name.trim(), email: email.trim(), role: "advancement" });
+      setRows((prev) => [...(prev || []), created]);
+      setName("");
+      setEmail("");
+      setError(null);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const remove = async (u) => {
+    if (!(await confirmDanger({ title: `Remove ${u.name}?`, body: `${u.email} will no longer be able to sign in.`, label: "Remove account" }))) return;
+    try {
+      await api.del(`/api/users/${u.id}`);
+      setRows((prev) => prev.filter((x) => x.id !== u.id));
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+
+  const inputStyle = { width: "100%", boxSizing: "border-box", border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "9px 12px", fontSize: 14, outline: "none" };
+  const label = { fontSize: 11.5, fontWeight: 800, color: COLORS.faint, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 };
+
+  return (
+    <ModalShell eyebrow="Super admin" title="Advancement team" onClose={onClose} maxWidth={640}>
+      {confirmUI}
+      <div style={{ fontSize: 14, color: COLORS.sub, marginBottom: 16, lineHeight: 1.55 }}>
+        Advancement team accounts open the Mentor CRM and nothing else. Add an email; they sign in with that Google account straight away.
+      </div>
+      {error && <Notice onClose={() => setError(null)}>{error}</Notice>}
+      <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 14, marginBottom: 16, display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
+        <div style={{ flex: "1 1 220px" }}>
+          <div style={label}>Email</div>
+          <input value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && create()} placeholder="name@example.com" autoFocus style={inputStyle} />
+        </div>
+        <div style={{ flex: "1 1 160px" }}>
+          <div style={label}>Name (optional)</div>
+          <input value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && create()} placeholder="Full name" style={inputStyle} />
+        </div>
+        <PrimaryButton onClick={create} disabled={!canCreate || busy} icon={UserPlus}>
+          {busy ? "Creating…" : "Create account"}
+        </PrimaryButton>
+      </div>
+      {!rows ? (
+        <Loading />
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {rows.length === 0 && <EmptyState>No advancement team accounts yet.</EmptyState>}
+          {rows.map((u) => (
+            <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 12, background: "#fff", border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: "12px 16px" }}>
+              <Avatar name={u.name} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.text }}>{u.name}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: COLORS.faint, marginTop: 2 }}>
+                  <Mail size={12} /> {u.email}
+                </div>
+              </div>
+              <button type="button" onClick={() => remove(u)} title="Remove this account" style={{ border: "none", background: "transparent", color: COLORS.faint, cursor: "pointer", padding: 4 }}>
+                <Trash2 size={15} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </ModalShell>
   );
 }

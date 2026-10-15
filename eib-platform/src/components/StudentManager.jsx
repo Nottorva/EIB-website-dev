@@ -9,6 +9,7 @@ import {
   questionType,
   EditableInput,
   ModalShell,
+  useDangerConfirm,
   StatusBadge,
   StatusDropdown,
   FilterBar,
@@ -422,8 +423,9 @@ function FormsTab({ saver, user }) {
   const [error, setError] = useState(null);
   const [loadingCanonical, setLoadingCanonical] = useState(false);
 
+  const [confirmDanger, confirmUI] = useDangerConfirm();
   const loadCanonical = async () => {
-    if (!window.confirm("Replace the current form with the 2026-27 application? Every question currently in the form will be removed. Applications already submitted keep their answers.")) return;
+    if (!(await confirmDanger({ title: "Replace the current form with the 2026-27 application?", body: "Every question currently in the form will be removed. Applications already submitted keep their answers.", label: "Replace the form" }))) return;
     setLoadingCanonical(true);
     try {
       setQuestions(await api.post("/api/form/reset", {}));
@@ -458,6 +460,7 @@ function FormsTab({ saver, user }) {
 
   return (
     <div style={{ maxWidth: 720, margin: "0 auto" }}>
+      {confirmUI}
       <div style={{ marginBottom: 18, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div>
           <div style={{ fontSize: 22, fontWeight: 900, color: COLORS.text }}>EIB Application 2026-27</div>
@@ -647,9 +650,10 @@ function AccountCard({ student, account, onSuspend }) {
 // scratch. Used for test runs; irreversible, so it asks first.
 function ResetCard({ student, onReset }) {
   const [busy, setBusy] = useState(false);
+  const [confirmDanger, confirmUI] = useDangerConfirm();
   const go = async () => {
     const what = student.studentId ? "their application, their student account and all their submissions" : "their application";
-    if (!window.confirm(`Delete ${student.name} (${student.email}) completely? This removes ${what}. Nothing is kept, and they can apply again from scratch.`)) return;
+    if (!(await confirmDanger({ title: `Delete ${student.name} completely?`, body: `${student.email}: this removes ${what}. Nothing is kept, and they can apply again from scratch.`, label: "Delete application and account" }))) return;
     setBusy(true);
     try {
       await onReset();
@@ -659,6 +663,7 @@ function ResetCard({ student, onReset }) {
   };
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: "12px 16px", marginBottom: 16 }}>
+      {confirmUI}
       <div style={{ fontSize: 13, color: COLORS.sub }}>
         <span style={{ fontWeight: 800, color: COLORS.text }}>Clean reset.</span> Deletes the application{student.studentId ? ", the account and their work" : ""} so this email can apply again from scratch.
       </div>
@@ -1091,8 +1096,9 @@ function AccManagerTab({ saver }) {
     });
   };
 
-  const removeLeader = (l) => {
-    if (!window.confirm(`Remove ${l.name}? They will no longer be able to sign in.`)) return;
+  const [confirmDanger, confirmUI] = useDangerConfirm();
+  const removeLeader = async (l) => {
+    if (!(await confirmDanger({ title: `Remove ${l.name}?`, body: `${l.email} will no longer be able to sign in.`, label: "Remove account" }))) return;
     saver.immediate(async () => {
       try {
         await api.del(`/api/users/${l.id}`);
@@ -1107,6 +1113,7 @@ function AccManagerTab({ saver }) {
 
   return (
     <div style={{ maxWidth: 720, margin: "0 auto" }}>
+      {confirmUI}
       <div style={{ marginBottom: 18 }}>
         <div style={{ fontSize: 22, fontWeight: 900, color: COLORS.text }}>Student Leaders</div>
         <div style={{ fontSize: 14, color: COLORS.sub, marginTop: 4 }}>Enter a name and email, then create the student leader. They can sign in with that Google account straight away.</div>
@@ -1156,6 +1163,9 @@ function AccManagerTab({ saver }) {
 /* ================= App ================= */
 export default function StudentManager({ user }) {
   const [tab, setTab] = useState("students");
+  // bumping this remounts the students tab, which drops any open student,
+  // filter and search back to the plain list
+  const [listKey, setListKey] = useState(0);
   const saver = useDebouncedSaver();
   const isSuperAdmin = user.role === "superAdmin";
 
@@ -1163,6 +1173,17 @@ export default function StudentManager({ user }) {
   useEffect(() => {
     const wanted = new URLSearchParams(window.location.search).get("tab");
     if (wanted && ["forms", "students", "accmanager"].includes(wanted)) setTab(wanted);
+  }, []);
+  // The Student Manager link in the top bar always comes back to the
+  // students list, whatever tab or student was open.
+  useEffect(() => {
+    const onHome = (e) => {
+      if (e.detail !== "/manager") return;
+      setTab("students");
+      setListKey((k) => k + 1);
+    };
+    window.addEventListener("eib:tool-home", onHome);
+    return () => window.removeEventListener("eib:tool-home", onHome);
   }, []);
 
   const tabs = [
@@ -1184,7 +1205,7 @@ export default function StudentManager({ user }) {
       />
       <div style={{ maxWidth: 720, margin: "0 auto" }}>{saver.error && <Notice onClose={saver.clearError}>{saver.error}</Notice>}</div>
 
-      {tab === "forms" ? <FormsTab saver={saver} user={user} /> : tab === "students" ? <StudentsTab saver={saver} user={user} /> : <AccManagerTab saver={saver} />}
+      {tab === "forms" ? <FormsTab saver={saver} user={user} /> : tab === "students" ? <StudentsTab key={listKey} saver={saver} user={user} /> : <AccManagerTab saver={saver} />}
     </div>
   );
 }

@@ -2,7 +2,7 @@
 import { guarded, readJson, HttpError } from "@/lib/auth";
 import { getClassSizeCap, setClassSizeCap, getCohortYear } from "@/lib/data/settings";
 
-export const GET = guarded(["superAdmin", "studentLeader"], async () => {
+export const GET = guarded(["superAdmin", "studentLeader", "advancement"], async () => {
   const [classSizeCap, cohortYear] = await Promise.all([getClassSizeCap(), getCohortYear()]);
   return Response.json({ classSizeCap, cohortYear });
 });

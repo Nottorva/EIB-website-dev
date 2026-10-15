@@ -27,7 +27,7 @@ const TOOLS = [
     href: "/crm",
     label: "Mentor CRM",
     icon: Users,
-    roles: ["superAdmin", "studentLeader"],
+    roles: ["superAdmin", "studentLeader", "advancement"],
     blurb: "Track mentor outreach and assign one mentor per lesson per cohort.",
   },
   {
@@ -61,7 +61,7 @@ const TOOLS = [
   },
 ];
 
-const ROLE_LABEL = { superAdmin: "Super admin", studentLeader: "Student leader", student: "Student" };
+const ROLE_LABEL = { superAdmin: "Super admin", studentLeader: "Student leader", advancement: "Advancement team", student: "Student" };
 
 export default async function Home() {
   const { user, identity } = await getAccessState();
@@ -70,6 +70,10 @@ export default async function Home() {
   if (!user && identity) redirect("/apply");
   // Students have one page; skip the menu.
   if (user?.role === "student") redirect("/lessons");
+  // The advancement team has one tool too.
+  if (user?.role === "advancement") redirect("/crm");
+  // The advancement team has one tool too.
+  if (user?.role === "advancement") redirect("/crm");
   const signInMissing = !user && authMode !== "google" && process.env.NODE_ENV === "production";
   const allowed = TOOLS.filter((t) => user && t.roles.includes(user.role));
 

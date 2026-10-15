@@ -39,6 +39,7 @@ builds and whenever Google sign-in is on.
 |---|---|
 | Josef Marshall (super admin) | Lesson Editor, Mentor CRM, Student Manager (all three tabs), Lessons (leader preview) |
 | Jack Harlow (student leader) | Mentor CRM, Student Manager (Forms + Students only), Lessons (leader mode) |
+| Advancement team (created by the super admin from the CRM's **New advancement team member** button) | Mentor CRM only; the hub sends them straight there |
 | Amara Chen (student) | Lessons (student mode, own submissions only) |
 | Not on the allow-list | Nothing except the public application form |
 

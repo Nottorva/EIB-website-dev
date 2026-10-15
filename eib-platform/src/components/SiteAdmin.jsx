@@ -5,7 +5,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Globe, Plus, Trash2, ExternalLink, RotateCcw, Quote } from "lucide-react";
-import { COLORS, PageTitle, Card, FieldLabel, fieldStyle, Notice, SaveIndicator, Loading, PrimaryButton, IconButton, SectionLabel } from "./ui";
+import { COLORS, PageTitle, Card, FieldLabel, fieldStyle, Notice, SaveIndicator, Loading, PrimaryButton, IconButton, SectionLabel, useDangerConfirm } from "./ui";
 import { api, useDebouncedSaver } from "@/lib/api";
 
 const ROLE_SUGGESTIONS = ["Student", "Faculty sponsor", "Mentor", "Head of school", "Showcase panel"];
@@ -154,8 +154,9 @@ export default function SiteAdmin() {
     }
   };
 
+  const [confirmDanger, confirmUI] = useDangerConfirm();
   const deleteTestimonial = async (id) => {
-    if (!window.confirm("Delete this testimonial? This cannot be undone.")) return;
+    if (!(await confirmDanger({ title: "Delete this testimonial?", label: "Delete testimonial" }))) return;
     try {
       await api.del(`/api/site/testimonials/${id}`);
       setData((d) => ({ ...d, testimonials: d.testimonials.filter((t) => t.id !== id) }));
@@ -168,6 +169,7 @@ export default function SiteAdmin() {
 
   return (
     <div style={{ maxWidth: 960, margin: "0 auto", padding: "36px 24px 80px" }}>
+      {confirmUI}
       <PageTitle
         title="Website"
         right={

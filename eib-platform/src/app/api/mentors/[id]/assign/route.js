@@ -4,7 +4,7 @@ import { guarded, readJson, HttpError } from "@/lib/auth";
 import { assignLesson } from "@/lib/data/mentors";
 import { getCohortYear } from "@/lib/data/settings";
 
-export const POST = guarded(["superAdmin", "studentLeader"], async ({ req, params }) => {
+export const POST = guarded(["superAdmin", "studentLeader", "advancement"], async ({ req, params }) => {
   const body = await readJson(req);
   if (body.lessonNumber === undefined) throw new HttpError(400, "lessonNumber is required.");
   const cohortYear = body.cohortYear ?? (await getCohortYear());

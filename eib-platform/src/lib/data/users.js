@@ -4,7 +4,11 @@
 
 import { findAll, findOne, findById, insert, updateOne, removeOne, newId } from "./store";
 
-export const ROLES = ["superAdmin", "studentLeader", "student"];
+// "advancement": the advancement team. They get the Mentor CRM and nothing
+// else. Only the super admin creates or removes them.
+export const ROLES = ["superAdmin", "studentLeader", "advancement", "student"];
+// Accounts the super admin creates by hand (students come from applications).
+export const STAFF_ROLES = ["studentLeader", "advancement"];
 
 export async function listUsers(filter = {}) {
   return findAll("users", (u) => (filter.role ? u.role === filter.role : true));
@@ -19,14 +23,28 @@ export async function getUserByEmail(email) {
   return findOne("users", (u) => u.email.toLowerCase() === target);
 }
 
-export async function createLeader({ name, email }) {
+// A readable name from an email when none was typed: jane.doe@x -> Jane Doe.
+export function nameFromEmail(email) {
+  return String(email || "").split("@")[0].split(/[._-]+/).filter(Boolean).map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(" ") || String(email || "");
+}
+
+export async function createStaff({ name, email, role }) {
+  if (!STAFF_ROLES.includes(role)) {
+    const err = new Error(`Cannot create a ${role} account here.`);
+    err.status = 400;
+    throw err;
+  }
   const existing = await getUserByEmail(email);
   if (existing) {
     const err = new Error(`A user with email ${email} already exists (${existing.role}).`);
     err.status = 409;
     throw err;
   }
-  return insert("users", { id: newId("user"), name: name.trim(), email: email.trim(), role: "studentLeader" });
+  return insert("users", { id: newId("user"), name: String(name || "").trim() || nameFromEmail(email), email: email.trim(), role });
+}
+
+export async function createLeader({ name, email }) {
+  return createStaff({ name, email, role: "studentLeader" });
 }
 
 // Called by the application-approval handler. If the email already has a row,

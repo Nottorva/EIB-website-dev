@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -585,6 +585,61 @@ export function Loading({ label = "Loading…" }) {
 }
 
 /* ---------- Modal shell ---------- */
+// Two-step confirmation for anything destructive. Usage:
+//   const [confirmDanger, confirmUI] = useDangerConfirm();
+//   if (!(await confirmDanger({ title, body, label }))) return;   ...and render {confirmUI}
+// The first click on the red button arms it; only a second click confirms.
+export function useDangerConfirm() {
+  const [req, setReq] = useState(null);
+  const confirm = useCallback((opts) => new Promise((resolve) => setReq({ ...opts, resolve })), []);
+  const done = useCallback(
+    (ok) => {
+      setReq((r) => {
+        if (r) r.resolve(ok);
+        return null;
+      });
+    },
+    []
+  );
+  const ui = req ? <DangerConfirm title={req.title} body={req.body} label={req.label} onDone={done} /> : null;
+  return [confirm, ui];
+}
+
+function DangerConfirm({ title, body, label = "Delete", onDone }) {
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    const onKey = (e) => e.key === "Escape" && onDone(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onDone]);
+  return (
+    <div
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onDone(false);
+      }}
+      style={{ position: "fixed", inset: 0, background: "rgba(15,18,34,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, zIndex: 120 }}
+    >
+      <div role="alertdialog" aria-modal="true" style={{ background: "#fff", borderRadius: 20, width: "100%", maxWidth: 460, padding: "26px 28px", boxShadow: "0 20px 60px rgba(15,23,42,0.25)", boxSizing: "border-box" }}>
+        <div style={{ fontSize: 12.5, fontWeight: 800, color: COLORS.red, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>This cannot be undone</div>
+        <div style={{ fontSize: 21, fontWeight: 900, color: COLORS.text, lineHeight: 1.25 }}>{title}</div>
+        {body && <div style={{ fontSize: 14.5, color: COLORS.sub, lineHeight: 1.55, marginTop: 10 }}>{body}</div>}
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 22, flexWrap: "wrap" }}>
+          <button type="button" onClick={() => onDone(false)} autoFocus style={{ border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.sub, fontWeight: 800, fontSize: 13.5, borderRadius: 10, padding: "10px 16px", cursor: "pointer" }}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => (armed ? onDone(true) : setArmed(true))}
+            style={{ border: `1px solid ${armed ? COLORS.red : COLORS.redBorder}`, background: armed ? COLORS.red : COLORS.redSoft, color: armed ? "#fff" : COLORS.red, fontWeight: 800, fontSize: 13.5, borderRadius: 10, padding: "10px 16px", cursor: "pointer" }}
+          >
+            {armed ? "Are you sure? Click again to confirm" : label}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ModalShell({ eyebrow, title, onClose, children, headerRight, maxWidth = 760 }) {
   return (
     <div

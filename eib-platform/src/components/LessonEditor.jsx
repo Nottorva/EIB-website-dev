@@ -17,6 +17,7 @@ import {
   Loading,
   TypeChip,
   nextId,
+  useDangerConfirm,
 } from "./ui";
 import { api, useDebouncedSaver } from "@/lib/api";
 import { DeliverablePreview, DeliverableInput, ExampleBlock } from "./DeliverableInputs";
@@ -527,8 +528,11 @@ function LessonCard({ lesson, onPatch, onDelete }) {
       <div style={{ display: "flex", gap: 20, paddingRight: 50 }}>
         <div
           style={{
-            width: 54,
+            // grows with the number: two digits no longer clip
+            minWidth: 54,
             height: 54,
+            padding: "0 6px",
+            boxSizing: "border-box",
             borderRadius: 14,
             background: COLORS.indigoSoft,
             color: COLORS.indigo,
@@ -540,7 +544,7 @@ function LessonCard({ lesson, onPatch, onDelete }) {
             flexShrink: 0,
           }}
         >
-          <EditableInput value={lesson.number} onChange={(v) => onPatch({ number: v })} style={{ textAlign: "center", fontSize: 24, fontWeight: 800, color: COLORS.indigo, width: 36 }} />
+          <EditableInput value={lesson.number} onChange={(v) => onPatch({ number: v })} style={{ textAlign: "center", fontSize: 24, fontWeight: 800, color: COLORS.indigo, width: Math.max(2, String(lesson.number || "").length) * 16 + 10, padding: "4px 0" }} />
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 14, fontWeight: 800, color: COLORS.indigo, marginBottom: 4 }}>
@@ -651,9 +655,10 @@ export default function LessonEditor({ user }) {
       setLessons((prev) => [...prev, created]);
     });
 
-  const deleteLesson = (id) => {
+  const [confirmDanger, confirmUI] = useDangerConfirm();
+  const deleteLesson = async (id) => {
     const lesson = lessons.find((l) => l.id === id);
-    if (!window.confirm(`Delete "${lesson.title}"? Student submissions for it will no longer be visible.`)) return;
+    if (!(await confirmDanger({ title: `Delete "${lesson.title}"?`, body: "Student submissions for it will no longer be visible.", label: "Delete lesson" }))) return;
     saver.immediate(async () => {
       await api.del(`/api/lessons/${id}`);
       setLessons((prev) => prev.filter((l) => l.id !== id));
@@ -662,6 +667,7 @@ export default function LessonEditor({ user }) {
 
   return (
     <div style={{ background: COLORS.bg, minHeight: "100%" }}>
+      {confirmUI}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 40px", borderBottom: `1px solid ${COLORS.border}`, background: "#fff" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <div style={{ width: 40, height: 40, borderRadius: 11, background: COLORS.indigo, display: "flex", alignItems: "center", justifyContent: "center" }}>

@@ -7,11 +7,11 @@ import { BookOpen, Pencil, Users, ClipboardList, GraduationCap, FileText, Globe 
 import { COLORS } from "./ui";
 import { GoogleSignInButton, GoogleSignOutButton } from "./GoogleButtons";
 
-const ROLE_LABEL = { superAdmin: "Super admin", studentLeader: "Student leader", student: "Student" };
+const ROLE_LABEL = { superAdmin: "Super admin", studentLeader: "Student leader", advancement: "Advancement team", student: "Student" };
 
 const NAV = [
   { href: "/editor", label: "Lesson Editor", icon: Pencil, roles: ["superAdmin"] },
-  { href: "/crm", label: "Mentor CRM", icon: Users, roles: ["superAdmin", "studentLeader"] },
+  { href: "/crm", label: "Mentor CRM", icon: Users, roles: ["superAdmin", "studentLeader", "advancement"] },
   { href: "/manager", label: "Student Manager", icon: ClipboardList, roles: ["superAdmin", "studentLeader"] },
   { href: "/lessons", label: "Lessons", icon: GraduationCap, roles: ["superAdmin", "studentLeader", "student"] },
   { href: "/website", label: "Website", icon: Globe, roles: ["superAdmin"] },
@@ -60,7 +60,7 @@ export default function TopBar({ user, authMode, identity }) {
   const pathname = usePathname();
   // Students have exactly one place to be, so they get no menu at all.
   const visibleNav = user && user.role !== "student" ? NAV.filter((n) => n.roles.includes(user.role)) : [];
-  const home = user?.role === "student" ? "/lessons" : "/platform";
+  const home = user?.role === "student" ? "/lessons" : user?.role === "advancement" ? "/crm" : "/platform";
 
   return (
     <header
@@ -82,6 +82,10 @@ export default function TopBar({ user, authMode, identity }) {
               <Link
                 key={n.href}
                 href={n.href}
+                // Clicking a tool in the bar always lands on that tool's home
+                // view, even when it is already open (a Link to the same URL
+                // does not remount), so tools listen for this and reset.
+                onClick={() => window.dispatchEvent(new CustomEvent("eib:tool-home", { detail: n.href }))}
                 style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13.5, fontWeight: 800, color: active ? COLORS.indigo : COLORS.sub, background: active ? COLORS.indigoSoft : "transparent", borderRadius: 9, padding: "7px 12px", textDecoration: "none" }}
               >
                 <Icon size={15} /> {n.label}
