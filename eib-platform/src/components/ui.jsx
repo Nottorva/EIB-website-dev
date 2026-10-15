@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -97,10 +97,19 @@ export function EditableInput({ value, onChange, placeholder, style, type = "tex
   );
 }
 
+// Grows with its content (no inner scrollbar); `rows` is only the minimum height.
 export function EditableTextarea({ value, onChange, placeholder, style, rows = 3 }) {
   const [focused, setFocused] = useState(false);
+  const ref = useRef(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
   return (
     <textarea
+      ref={ref}
       value={value ?? ""}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
@@ -117,7 +126,8 @@ export function EditableTextarea({ value, onChange, placeholder, style, rows = 3
         outline: "none",
         width: "100%",
         boxSizing: "border-box",
-        resize: "vertical",
+        resize: "none",
+        overflow: "hidden",
         ...style,
       }}
     />

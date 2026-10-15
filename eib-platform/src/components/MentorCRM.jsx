@@ -1,12 +1,11 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { ArrowLeft, Plus, Trash2, Mail, Phone, MessageCircle, Calendar, Star, Eye, BookOpen, UserCheck, Lock, UserPlus, Users } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Mail, Phone, MessageCircle, Star, Eye, BookOpen, UserCheck, Lock, UserPlus, Users } from "lucide-react";
 import {
   COLORS,
   EditableInput,
   EditableTextarea,
-  StatusBadge,
   StatusDropdown,
   FilterBar,
   Avatar,
@@ -29,7 +28,6 @@ const STATUSES = [
   { id: "unresponsive", label: "Unresponsive", color: COLORS.red, soft: COLORS.redSoft, border: COLORS.redBorder },
   { id: "confirmed", label: "Confirmed", color: COLORS.amber, soft: COLORS.amberSoft, border: COLORS.amberBorder },
 ];
-const statusOf = (id) => STATUSES.find((s) => s.id === id) || STATUSES[0];
 
 const CONTACT_METHODS = ["Email", "Phone", "Discord", "Other"];
 const methodIcon = (method) => (method === "Email" ? Mail : method === "Phone" ? Phone : MessageCircle);
@@ -238,15 +236,12 @@ function MentorRow({ mentor, cohortYear, onOpen, onStatusChange }) {
       <Avatar name={mentor.name} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.text }}>{mentor.name}</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 2, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 12.5, color: COLORS.faint }}>{mentor.lastContactedAt ? `Last contacted ${mentor.lastContactedAt}` : "Not contacted yet"}</span>
-          {thisYear.length > 0 && (
-            <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 700, color: COLORS.amber }}>
-              <BookOpen size={12} />
-              {thisYear.map((a) => `L${a.lessonNumber}`).join(", ")}
-            </span>
-          )}
-        </div>
+        {thisYear.length > 0 && (
+          <span style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2, fontSize: 12, fontWeight: 700, color: COLORS.amber }}>
+            <BookOpen size={12} />
+            {thisYear.map((a) => `L${a.lessonNumber}`).join(", ")}
+          </span>
+        )}
       </div>
       <StatusDropdown value={mentor.status} onChange={onStatusChange} statuses={STATUSES} />
     </div>
@@ -277,14 +272,11 @@ function MentorDetail({ mentor, mentors, lessons, cohortYear, onBack, onUpdate, 
               <div style={{ fontSize: 19, fontWeight: 900, color: COLORS.text, minWidth: 120, flex: 1 }}>
                 <EditableInput value={mentor.name} onChange={(v) => onUpdate({ ...mentor, name: v })} style={{ fontSize: 19, fontWeight: 900 }} />
               </div>
-              <StatusBadge status={statusOf(mentor.status)} size="sm" />
+              <StatusDropdown value={mentor.status} onChange={(status) => onUpdate({ ...mentor, status })} statuses={STATUSES} />
             </div>
             <div style={{ display: "flex", gap: 14, marginTop: 4, flexWrap: "wrap" }}>
               <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: COLORS.faint, fontWeight: 600 }}>
                 <MessageCircle size={12} /> {contactPreview || "No public contact set"}
-              </span>
-              <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: COLORS.faint, fontWeight: 600 }}>
-                <Calendar size={12} /> {mentor.lastContactedAt || "Never contacted"}
               </span>
             </div>
           </div>
@@ -307,21 +299,6 @@ function MentorDetail({ mentor, mentors, lessons, cohortYear, onBack, onUpdate, 
             <div style={{ fontSize: 13, fontWeight: 800, color: COLORS.indigo, letterSpacing: 0.4, marginBottom: 10 }}>Contact methods</div>
             <ContactsEditor contacts={mentor.contacts} onChange={(contacts) => onUpdate({ ...mentor, contacts })} />
             <div style={{ fontSize: 12, color: COLORS.faint, marginTop: 8 }}>Private contacts never leave the server on student-facing routes.</div>
-          </div>
-
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 800, color: COLORS.indigo, letterSpacing: 0.4, marginBottom: 10 }}>Status</div>
-            <StatusDropdown value={mentor.status} onChange={(status) => onUpdate({ ...mentor, status })} statuses={STATUSES} />
-          </div>
-
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 800, color: COLORS.indigo, letterSpacing: 0.4, marginBottom: 10 }}>Last contacted</div>
-            <input
-              type="date"
-              value={mentor.lastContactedAt || ""}
-              onChange={(e) => onUpdate({ ...mentor, lastContactedAt: e.target.value })}
-              style={{ border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "8px 12px", fontSize: 14, color: COLORS.text }}
-            />
           </div>
 
           <div>
