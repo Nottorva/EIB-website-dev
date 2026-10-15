@@ -175,6 +175,8 @@ let mentorId = null;
   mentorId = made.json?.id;
   const st = await req(leader, "PATCH", `/api/mentors/${mentorId}`, { status: "confirmed", name: "Smoke Mentor" });
   check("PATCH status + name", ["confirmed", "Smoke Mentor"], [st.json?.status, st.json?.name]);
+  const yt = await req(leader, "PATCH", `/api/mentors/${mentorId}`, { years: "'26 | '27", tags: ["panelist", "bogus", "speaker"] });
+  check("years saved, tags kept to the known set in order", ["'26 | '27", "speaker,panelist"], [yt.json?.years, (yt.json?.tags || []).join(",")]);
   check("assign lesson 1 (already Trent's) -> 409", 409, await code(leader, "POST", `/api/mentors/${mentorId}/assign`, { lessonNumber: "1", assign: true }));
   const a = await req(leader, "POST", `/api/mentors/${mentorId}/assign`, { lessonNumber: "99", assign: true });
   check("assign free lesson 99 -> 200", true, a.status === 200 && a.json.assignedLessons.some((x) => x.lessonNumber === "99"));

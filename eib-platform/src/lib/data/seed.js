@@ -183,6 +183,8 @@ const MENTORS = [
     contacts: [{ id: "c_1", method: "Email", value: "trent@example.com", preferred: true, public: true }],
     notes: "Sourced through Josef's network. Happy to do one session per term, prefers a week's notice.",
     lastContactedAt: "2026-09-02",
+    years: "'25 | '26",
+    tags: ["panelist", "speaker"],
     assignedLessons: [{ lessonNumber: "1", cohortYear: COHORT_YEAR }],
     publicRole: "CEO, Terra CO2 · EIB Panelist",
     publicBio:
@@ -198,6 +200,8 @@ const MENTORS = [
     ],
     notes: "Replied fast to the first email, still confirming which week works.",
     lastContactedAt: "2026-09-08",
+    years: "'26",
+    tags: ["mentor"],
     assignedLessons: [{ lessonNumber: "2", cohortYear: COHORT_YEAR }],
     publicRole: "Product Lead, Northbridge Ventures",
     publicBio: "Dana leads product at Northbridge Ventures and has run customer-discovery workshops for three student cohorts.",

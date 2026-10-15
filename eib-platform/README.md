@@ -60,6 +60,10 @@ Things worth trying, in order:
 2. **One mentor per lesson per cohort.** In the CRM, open Marcus Ilunga and
    try to assign Lesson 1. The server rejects it (Trent has it) and the error
    shows at the top of the page. Unassign Trent first, then it works.
+   Beside a mentor's name sit the years they took part (free text, e.g.
+   `'25 | '26`) and tags (Speaker, Mentor, Panelist, any mix). Both show in
+   the list and the profile and are edited only in the profile; neither reaches
+   a student route.
 3. **Private contacts stay private.** Open Dana Whitfield. Her phone is
    Preferred but Private; her email is Public. Switch to Amara, open Lessons →
    Chapter 2 → Mentor pill: the popup shows the email, never the phone. The

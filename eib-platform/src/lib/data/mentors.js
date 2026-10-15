@@ -6,6 +6,9 @@
 import { findAll, findById, insert, updateOne, removeOne, newId } from "./store";
 
 export const MENTOR_STATUSES = ["contacted", "responsive", "unresponsive", "confirmed"];
+// Internal-only labels for what a mentor has done with EIB. `years` is free
+// text shown beside the name ("'26 | '27"). Neither reaches a student route.
+export const MENTOR_TAGS = ["speaker", "mentor", "panelist"];
 
 export async function listMentors() {
   return findAll("mentors");
@@ -23,6 +26,8 @@ export async function createMentor(input = {}) {
     contacts: [],
     notes: "",
     lastContactedAt: "",
+    years: "",
+    tags: [],
     assignedLessons: [],
     publicRole: "",
     publicBio: "",
@@ -32,10 +37,15 @@ export async function createMentor(input = {}) {
 // Updates everything except assignedLessons, which only assignLesson touches.
 export async function updateMentor(id, patch) {
   const allowed = {};
-  for (const key of ["name", "status", "contacts", "notes", "lastContactedAt", "publicRole", "publicBio"]) {
+  for (const key of ["name", "status", "contacts", "notes", "lastContactedAt", "years", "tags", "publicRole", "publicBio"]) {
     if (key in patch) allowed[key] = patch[key];
   }
   if (allowed.status && !MENTOR_STATUSES.includes(allowed.status)) delete allowed.status;
+  if ("years" in allowed) allowed.years = String(allowed.years ?? "").slice(0, 60);
+  if ("tags" in allowed) {
+    const list = Array.isArray(allowed.tags) ? allowed.tags : [];
+    allowed.tags = MENTOR_TAGS.filter((t) => list.includes(t));
+  }
   if (allowed.contacts) {
     allowed.contacts = allowed.contacts.map((c) => ({
       id: c.id || newId("contact"),

@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { ArrowLeft, Plus, Trash2, Mail, Phone, MessageCircle, Star, Eye, BookOpen, UserCheck, Lock, UserPlus, Users } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { ArrowLeft, Plus, Trash2, Mail, Phone, MessageCircle, Star, X, Eye, BookOpen, UserCheck, Lock, UserPlus, Users } from "lucide-react";
 import {
   COLORS,
   EditableInput,
@@ -30,6 +30,90 @@ const STATUSES = [
 ];
 
 const CONTACT_METHODS = ["Email", "Phone", "Discord", "Other"];
+
+// What a mentor has done with EIB. Shown in the list and the profile; edited
+// only in the profile. Keep in step with MENTOR_TAGS on the server.
+const MENTOR_TAGS = [
+  { id: "speaker", label: "Speaker" },
+  { id: "mentor", label: "Mentor" },
+  { id: "panelist", label: "Panelist" },
+];
+const tagLabel = (id) => MENTOR_TAGS.find((t) => t.id === id)?.label || id;
+
+function TagChip({ id, onRemove }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11.5, fontWeight: 800, color: COLORS.sub, background: "#f3f4f8", border: `1px solid ${COLORS.border}`, borderRadius: 999, padding: "3px 9px", lineHeight: 1.2, whiteSpace: "nowrap" }}>
+      {tagLabel(id)}
+      {onRemove && (
+        <button type="button" title="Remove tag" onClick={(e) => { e.stopPropagation(); onRemove(); }} style={{ border: "none", background: "transparent", padding: 0, margin: "0 -3px 0 1px", display: "flex", cursor: "pointer", color: COLORS.faint }}>
+          <X size={11} strokeWidth={3} />
+        </button>
+      )}
+    </span>
+  );
+}
+
+/* Read-only chips (list rows). */
+function TagChips({ tags }) {
+  if (!tags?.length) return null;
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+      {tags.map((t) => <TagChip key={t} id={t} />)}
+    </span>
+  );
+}
+
+/* Editable chips plus an "Add tag" menu (profile view). */
+function TagsEditor({ tags, onChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", close);
+    return () => document.removeEventListener("mousedown", close);
+  }, [open]);
+  const remaining = MENTOR_TAGS.filter((t) => !tags.includes(t.id));
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+      {tags.map((t) => <TagChip key={t} id={t} onRemove={() => onChange(tags.filter((x) => x !== t))} />)}
+      {remaining.length > 0 && (
+        <div ref={ref} style={{ position: "relative" }}>
+          <button type="button" onClick={() => setOpen((o) => !o)} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11.5, fontWeight: 800, color: COLORS.indigo, background: "#fff", border: `1px dashed ${COLORS.indigoBorder}`, borderRadius: 999, padding: "3px 9px", cursor: "pointer", lineHeight: 1.2, fontFamily: "inherit" }}>
+            <Plus size={11} strokeWidth={3} /> Add tag
+          </button>
+          {open && (
+            <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 20, background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: 6, boxShadow: "0 8px 24px rgba(20,20,40,0.12)", display: "flex", flexDirection: "column", minWidth: 130 }}>
+              {remaining.map((t) => (
+                <button key={t.id} type="button" onClick={() => { onChange([...tags, t.id]); setOpen(false); }} style={{ textAlign: "left", border: "none", background: "transparent", padding: "7px 10px", borderRadius: 8, fontSize: 13, fontWeight: 700, color: COLORS.text, cursor: "pointer", fontFamily: "inherit" }}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* An inline input exactly as wide as its text, so the fields beside it move
+   as you type. A hidden mirror span sets the width; the input sits on top. */
+function AutoInput({ value, onChange, placeholder, style }) {
+  const text = value ?? "";
+  const font = { lineHeight: 1.3, ...style };
+  return (
+    <span style={{ position: "relative", display: "inline-block", maxWidth: "100%", whiteSpace: "pre", padding: "0 2px", ...font }}>
+      <span aria-hidden style={{ visibility: "hidden" }}>{text || placeholder}</span>
+      <EditableInput
+        value={text}
+        onChange={onChange}
+        placeholder={placeholder}
+        style={{ position: "absolute", left: -7, top: -3, margin: 0, width: "calc(100% + 14px)", height: "calc(100% + 6px)", minWidth: 0, ...font, padding: "3px 7px" }}
+      />
+    </span>
+  );
+}
 const methodIcon = (method) => (method === "Email" ? Mail : method === "Phone" ? Phone : MessageCircle);
 
 /* Same derivation the server uses for the student-facing route. */
@@ -235,7 +319,11 @@ function MentorRow({ mentor, cohortYear, onOpen, onStatusChange }) {
     >
       <Avatar name={mentor.name} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.text }}>{mentor.name}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 15, fontWeight: 800, color: COLORS.text }}>{mentor.name}</span>
+          {mentor.years && <span style={{ fontSize: 13.5, fontWeight: 700, color: COLORS.text, whiteSpace: "pre" }}>{mentor.years}</span>}
+          <TagChips tags={mentor.tags} />
+        </div>
         {thisYear.length > 0 && (
           <span style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2, fontSize: 12, fontWeight: 700, color: COLORS.amber }}>
             <BookOpen size={12} />
@@ -254,7 +342,7 @@ function MentorDetail({ mentor, mentors, lessons, cohortYear, onBack, onUpdate, 
   const contactPreview = publicContactPreview(mentor);
 
   return (
-    <div style={{ maxWidth: 680, margin: "0 auto" }}>
+    <div style={{ maxWidth: 720, margin: "0 auto" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
         <button type="button" onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.sub, fontWeight: 700, fontSize: 13.5, cursor: "pointer", padding: "4px 0" }}>
           <ArrowLeft size={15} /> Back to list
@@ -267,18 +355,21 @@ function MentorDetail({ mentor, mentors, lessons, cohortYear, onBack, onUpdate, 
       <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 20, marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <Avatar name={mentor.name} size={48} />
-          <div style={{ flex: 1 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ fontSize: 19, fontWeight: 900, color: COLORS.text, minWidth: 120, flex: 1 }}>
-                <EditableInput value={mentor.name} onChange={(v) => onUpdate({ ...mentor, name: v })} style={{ fontSize: 19, fontWeight: 900 }} />
-              </div>
-              <StatusDropdown value={mentor.status} onChange={(status) => onUpdate({ ...mentor, status })} statuses={STATUSES} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            {/* Name, years and tags wrap as a group; the status pill stays top-right outside the wrap. */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", minHeight: 30 }}>
+              <AutoInput value={mentor.name} onChange={(v) => onUpdate({ ...mentor, name: v })} placeholder="Name" style={{ fontSize: 19, fontWeight: 900, color: COLORS.text }} />
+              <AutoInput value={mentor.years} onChange={(v) => onUpdate({ ...mentor, years: v })} placeholder="'26" style={{ fontSize: 15, fontWeight: 700, color: COLORS.text }} />
+              <TagsEditor tags={mentor.tags || []} onChange={(tags) => onUpdate({ ...mentor, tags })} />
             </div>
             <div style={{ display: "flex", gap: 14, marginTop: 4, flexWrap: "wrap" }}>
               <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: COLORS.faint, fontWeight: 600 }}>
                 <MessageCircle size={12} /> {contactPreview || "No public contact set"}
               </span>
             </div>
+          </div>
+          <div style={{ alignSelf: "flex-start", flexShrink: 0 }}>
+            <StatusDropdown value={mentor.status} onChange={(status) => onUpdate({ ...mentor, status })} statuses={STATUSES} />
           </div>
         </div>
 
