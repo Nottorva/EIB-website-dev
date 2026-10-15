@@ -398,7 +398,7 @@ export function StatusDropdown({ value, onChange, statuses }) {
   );
 }
 
-export function FilterBar({ filter, setFilter, statuses, search, setSearch, right }) {
+export function FilterBar({ filter, setFilter, statuses, search, setSearch, right, placeholder = "Search name" }) {
   return (
     <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 14, flexWrap: "wrap" }}>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -448,14 +448,14 @@ export function FilterBar({ filter, setFilter, statuses, search, setSearch, righ
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search name"
+          placeholder={placeholder}
           style={{
             border: `1px solid ${COLORS.border}`,
             borderRadius: 999,
             padding: "7px 12px 7px 30px",
             fontSize: 13.5,
             outline: "none",
-            width: 170,
+            width: Math.max(170, placeholder.length * 7 + 44),
             fontFamily: "inherit",
           }}
         />

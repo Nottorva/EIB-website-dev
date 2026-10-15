@@ -499,10 +499,15 @@ export default function MentorCRM({ user }) {
     });
 
   const openMentor = mentors?.find((m) => m.id === openId);
+  // Search covers the name, the years text and the tag labels; apostrophes
+  // are ignored so "26" finds "'26".
+  const norm = (s) => String(s || "").toLowerCase().replace(/['’]/g, "");
+  const query = norm(search).trim();
   const filtered = (mentors || []).filter((m) => {
     if (filter !== "all" && m.status !== filter) return false;
-    if (search && !m.name.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
+    if (!query) return true;
+    const hay = norm([m.name, m.years, ...(m.tags || []).map(tagLabel)].join(" "));
+    return hay.includes(query);
   });
 
   return (
@@ -546,6 +551,7 @@ export default function MentorCRM({ user }) {
             setFilter={setFilter}
             statuses={STATUSES}
             search={search}
+            placeholder="Search name, year or tag"
             setSearch={setSearch}
             right={
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
