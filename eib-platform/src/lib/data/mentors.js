@@ -5,7 +5,7 @@
 
 import { findAll, findById, insert, updateOne, removeOne, newId } from "./store";
 
-export const MENTOR_STATUSES = ["contacted", "responsive", "unresponsive", "confirmed"];
+export const MENTOR_STATUSES = ["contacted", "responsive", "unresponsive", "unsure", "confirmed"];
 // Internal-only labels for what a mentor has done with EIB. `years` is free
 // text shown beside the name ("'26 | '27"). Neither reaches a student route.
 export const MENTOR_TAGS = ["speaker", "mentor", "panelist"];

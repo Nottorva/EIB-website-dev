@@ -26,6 +26,7 @@ const STATUSES = [
   { id: "contacted", label: "Contacted", color: COLORS.indigo, soft: COLORS.indigoSoft, border: COLORS.indigoBorder },
   { id: "responsive", label: "Responsive", color: COLORS.green, soft: COLORS.greenSoft, border: COLORS.greenBorder },
   { id: "unresponsive", label: "Unresponsive", color: COLORS.red, soft: COLORS.redSoft, border: COLORS.redBorder },
+  { id: "unsure", label: "Unsure", color: COLORS.sub, soft: "#f3f4f8", border: "#e2e6ee" },
   { id: "confirmed", label: "Confirmed", color: COLORS.amber, soft: COLORS.amberSoft, border: COLORS.amberBorder },
 ];
 
