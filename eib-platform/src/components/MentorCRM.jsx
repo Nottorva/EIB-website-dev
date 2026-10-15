@@ -359,7 +359,7 @@ function MentorDetail({ mentor, mentors, lessons, cohortYear, onBack, onUpdate, 
             {/* Name, years and tags wrap as a group; the status pill stays top-right outside the wrap. */}
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", minHeight: 30 }}>
               <AutoInput value={mentor.name} onChange={(v) => onUpdate({ ...mentor, name: v })} placeholder="Name" style={{ fontSize: 19, fontWeight: 900, color: COLORS.text }} />
-              <AutoInput value={mentor.years} onChange={(v) => onUpdate({ ...mentor, years: v })} placeholder="'26" style={{ fontSize: 15, fontWeight: 700, color: COLORS.text }} />
+              <AutoInput value={mentor.years} onChange={(v) => onUpdate({ ...mentor, years: v })} placeholder="Add years" style={{ fontSize: 15, fontWeight: 700, color: COLORS.text }} />
               <TagsEditor tags={mentor.tags || []} onChange={(tags) => onUpdate({ ...mentor, tags })} />
             </div>
             <div style={{ display: "flex", gap: 14, marginTop: 4, flexWrap: "wrap" }}>
