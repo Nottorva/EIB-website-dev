@@ -53,6 +53,13 @@ builds and whenever Google sign-in is on.
 | Amara Chen (student) | Lessons (student mode, own submissions only) |
 | Not on the allow-list | Nothing except the public application form |
 
+**Slides.** `/slides` is a public page that shows the EIB Night deck in the
+browser (pdf.js from cdnjs, one slide under the next, rendered as they scroll
+into view) with a download link. The PDF is `public/site/eib-night-2027.pdf`;
+the title and blurb are in `src/app/(site)/slides/page.jsx`. The yellow
+"EIB Night slides" button in the home page bar links to it. To swap the deck,
+replace the PDF and update the title there.
+
 Things worth trying, in order:
 
 1. **Editor → CRM wiring.** In Lesson Editor, flip lesson 3 to "Yes Mentor".

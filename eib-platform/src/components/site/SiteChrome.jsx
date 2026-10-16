@@ -75,6 +75,9 @@ export default function SiteChrome({ ticker, user, identity, authMode }) {
         <a className="brand" href="#reel">
           <span className="mark">EIB</span>
         </a>
+        <Link className="deck" href="/slides">
+          EIB Night<span className="deck-x"> slides</span>
+        </Link>
         {user ? (
           <Link className="apply" href="/platform">
             Open the platform
