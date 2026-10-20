@@ -372,7 +372,7 @@ export default function MentorCRM({ user }) {
   const [lessons, setLessons] = useState([]);
   const [cohortYear, setCohortYear] = useState(new Date().getFullYear());
   const [openId, setOpenId] = useState(null);
-  const [tab, setTab] = useState("mentors");
+  const [tab, setTab] = useState("sessions");
   // the New mentor popup: null, or { lessonNumber } (null lessonNumber = from the Mentors tab)
   const [newMentor, setNewMentor] = useState(null);
   // bumping this remounts the Sessions tab, dropping any open session
@@ -392,16 +392,16 @@ export default function MentorCRM({ user }) {
       .catch((e) => setError(e.message));
   }, []);
 
-  // /crm?tab=sessions deep-links to the Sessions tab.
+  // Sessions is the landing tab; /crm?tab=mentors deep-links to the mentors list.
   useEffect(() => {
     const wanted = new URLSearchParams(window.location.search).get("tab");
-    if (wanted === "sessions") setTab("sessions");
+    if (wanted === "mentors") setTab("mentors");
   }, []);
-  // The Mentor CRM link in the top bar always comes back to the mentors list.
+  // The Mentor CRM link in the top bar always comes back to the sessions list.
   useEffect(() => {
     const onHome = (e) => {
       if (e.detail !== "/crm") return;
-      setTab("mentors");
+      setTab("sessions");
       setOpenId(null);
       setSessionsKey((k) => k + 1);
     };
@@ -521,8 +521,8 @@ export default function MentorCRM({ user }) {
           onChange={(t) => { setTab(t); setOpenId(null); }}
           style={{ marginBottom: 18 }}
           options={[
-            { id: "mentors", label: "Mentors", icon: Users },
             { id: "sessions", label: "Sessions", icon: CalendarDays },
+            { id: "mentors", label: "Mentors", icon: Users },
           ]}
         />
       </div>

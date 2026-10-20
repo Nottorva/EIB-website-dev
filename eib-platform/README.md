@@ -64,7 +64,8 @@ Things worth trying, in order:
 
 1. **Editor → CRM wiring.** In Lesson Editor, flip lesson 3 to "Yes Mentor".
    Open Mentor CRM → Sessions: lesson 3 now appears as a session.
-2. **Sessions.** The CRM's Sessions tab (`/crm?tab=sessions`) lists every
+2. **Sessions.** The CRM opens on its Sessions tab (Mentors is the second tab,
+   `/crm?tab=mentors`), which lists every
    lesson flagged "Yes Mentor". Open one: time, room and a note on the kind
    of mentor the advancement team should find (the super admin edits these in
    place; leaders and the advancement team read them; students never receive
