@@ -58,9 +58,11 @@ function Identity({ user, identity, authMode, pathname }) {
 
 export default function TopBar({ user, authMode, identity }) {
   const pathname = usePathname();
-  // Students have exactly one place to be, so they get no menu at all.
-  const visibleNav = user && user.role !== "student" ? NAV.filter((n) => n.roles.includes(user.role)) : [];
-  const home = user?.role === "student" ? "/lessons" : user?.role === "advancement" ? "/crm" : "/platform";
+  // Students and the advancement team have exactly one place to be, so they
+  // get no menu: the advancement team's only link is back to the website.
+  const single = !user || user.role === "student" || user.role === "advancement";
+  const visibleNav = single ? [] : NAV.filter((n) => n.roles.includes(user.role));
+  const home = user?.role === "student" ? "/lessons" : user?.role === "advancement" ? "/" : "/platform";
 
   return (
     <header
@@ -92,7 +94,12 @@ export default function TopBar({ user, authMode, identity }) {
               </Link>
             );
           })}
-          {user && user.role !== "student" && (
+          {user && user.role === "advancement" && (
+            <Link href="/" style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13.5, fontWeight: 800, color: COLORS.sub, borderRadius: 9, padding: "7px 12px", textDecoration: "none" }}>
+              <Globe size={15} /> Back to the website
+            </Link>
+          )}
+          {user && !single && (
             <Link
               href="/apply"
               style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13.5, fontWeight: 800, color: pathname === "/apply" ? COLORS.amber : COLORS.faint, background: pathname === "/apply" ? COLORS.amberSoft : "transparent", borderRadius: 9, padding: "7px 12px", textDecoration: "none" }}
