@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Plus, Trash2, Mail, Phone, MessageCircle, Star, X, Eye, BookOpen, UserCheck, Lock, UserPlus, Users, CalendarDays } from "lucide-react";
 import SessionsTab, { ownerOfLesson } from "./SessionsTab";
+import { CalendarDays as EventIcon } from "lucide-react";
 import {
   COLORS,
   EditableInput,
@@ -248,8 +249,9 @@ function StudentFacingPreview({ mentor }) {
 }
 
 /* ---------- List row ---------- */
-function MentorRow({ mentor, cohortYear, onOpen, onStatusChange }) {
+function MentorRow({ mentor, cohortYear, events, onOpen, onStatusChange }) {
   const thisYear = mentor.assignedLessons.filter((a) => a.cohortYear === cohortYear);
+  const onEvents = (events || []).filter((e) => (e.mentorIds || []).includes(mentor.id));
   return (
     <div
       onClick={onOpen}
@@ -262,11 +264,20 @@ function MentorRow({ mentor, cohortYear, onOpen, onStatusChange }) {
           {mentor.years && <span style={{ fontSize: 13.5, fontWeight: 700, color: COLORS.text, whiteSpace: "pre" }}>{mentor.years}</span>}
           <TagChips tags={mentor.tags} />
         </div>
-        {thisYear.length > 0 && (
-          <span style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2, fontSize: 12, fontWeight: 700, color: COLORS.amber }}>
-            <BookOpen size={12} />
-            {thisYear.map((a) => `L${a.lessonNumber}`).join(", ")}
-          </span>
+        {(thisYear.length > 0 || onEvents.length > 0) && (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 3, flexWrap: "wrap" }}>
+            {thisYear.length > 0 && (
+              <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 700, color: COLORS.amber }}>
+                <BookOpen size={12} />
+                {thisYear.map((a) => `L${a.lessonNumber}`).join(", ")}
+              </span>
+            )}
+            {onEvents.map((e) => (
+              <span key={e.id} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11.5, fontWeight: 800, color: COLORS.indigo, background: COLORS.indigoSoft, border: `1px solid ${COLORS.indigoBorder}`, borderRadius: 999, padding: "2px 8px" }}>
+                <EventIcon size={11} /> {e.title || "Event"}
+              </span>
+            ))}
+          </div>
         )}
       </div>
       <StatusDropdown value={mentor.status} onChange={onStatusChange} statuses={STATUSES} />
@@ -370,6 +381,9 @@ export default function MentorCRM({ user }) {
   const [confirmDanger, confirmUI] = useDangerConfirm();
   const [mentors, setMentors] = useState(null);
   const [lessons, setLessons] = useState([]);
+  const [events, setEvents] = useState([]);
+  // what the Sessions tab has open: { kind: "lesson" | "event", id } or null
+  const [openSession, setOpenSession] = useState(null);
   const [cohortYear, setCohortYear] = useState(new Date().getFullYear());
   const [openId, setOpenId] = useState(null);
   const [tab, setTab] = useState("sessions");
@@ -383,11 +397,12 @@ export default function MentorCRM({ user }) {
   const saver = useDebouncedSaver();
 
   useEffect(() => {
-    Promise.all([api.get("/api/mentors"), api.get("/api/lessons")])
-      .then(([m, l]) => {
+    Promise.all([api.get("/api/mentors"), api.get("/api/lessons"), api.get("/api/events")])
+      .then(([m, l, e]) => {
         setMentors(m.mentors);
         setCohortYear(m.cohortYear);
         setLessons(l);
+        setEvents(e.events);
       })
       .catch((e) => setError(e.message));
   }, []);
@@ -403,6 +418,7 @@ export default function MentorCRM({ user }) {
       if (e.detail !== "/crm") return;
       setTab("sessions");
       setOpenId(null);
+      setOpenSession(null);
       setSessionsKey((k) => k + 1);
     };
     window.addEventListener("eib:tool-home", onHome);
@@ -429,9 +445,10 @@ export default function MentorCRM({ user }) {
     const made = await api.post("/api/mentors", { name, status });
     const fresh = await api.patch(`/api/mentors/${made.id}`, { contacts, notes });
     setMentors((prev) => [fresh, ...prev]);
-    const { lessonNumber } = newMentor;
+    const { lessonNumber, eventId } = newMentor;
     setNewMentor(null);
     if (lessonNumber) await assignMentor(lessonNumber, fresh.id);
+    else if (eventId) await setEventPeople(eventId, [...((events.find((e) => e.id === eventId) || {}).mentorIds || []), fresh.id]);
     else { setTab("mentors"); setOpenId(fresh.id); }
   };
 
@@ -441,6 +458,7 @@ export default function MentorCRM({ user }) {
     saver.immediate(async () => {
       await api.del(`/api/mentors/${id}`);
       setMentors((prev) => prev.filter((x) => x.id !== id));
+      setEvents((prev) => prev.map((e) => ((e.mentorIds || []).includes(id) ? { ...e, mentorIds: e.mentorIds.filter((m) => m !== id) } : e)));
       setOpenId(null);
     });
   };
@@ -484,6 +502,64 @@ export default function MentorCRM({ user }) {
     setOpenId(id);
   };
 
+  /* ---- events: CRM-only, super admin creates / edits / orders / deletes;
+          every CRM role may change who is on one ---- */
+  const addEvent = () =>
+    saver.immediate(async () => {
+      try {
+        const sessions = lessons.filter((l) => l.mentorEnabled);
+        const anchor = sessions.length ? sessions[sessions.length - 1].number : "start";
+        const ranks = events.filter((e) => e.anchor === anchor).map((e) => e.rank || 0);
+        const fresh = await api.post("/api/events", { title: "New event", anchor, rank: ranks.length ? Math.max(...ranks) + 1 : 0 });
+        setEvents((prev) => [...prev, fresh]);
+        setOpenSession({ kind: "event", id: fresh.id });
+        setError(null);
+      } catch (e) {
+        setError(e.message);
+      }
+    });
+  const patchEvent = (id, fields) => {
+    setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, ...fields } : e)));
+    saver.schedule(`event:${id}`, async () => {
+      const current = events.find((e) => e.id === id) || {};
+      const body = {};
+      for (const k of ["title", "date", "startTime", "endTime", "location", "note"]) if (k in fields || k in current) body[k] = k in fields ? fields[k] : current[k];
+      await api.patch(`/api/events/${id}`, body);
+    });
+  };
+  const placeEvent = (id, pos) => {
+    setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, ...pos } : e)));
+    saver.immediate(async () => {
+      try {
+        await api.patch(`/api/events/${id}`, pos);
+        setError(null);
+      } catch (e) {
+        setError(e.message);
+      }
+    });
+  };
+  const setEventPeople = (id, mentorIds) => {
+    setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, mentorIds } : e)));
+    return saver.immediate(async () => {
+      try {
+        const saved = await api.patch(`/api/events/${id}`, { mentorIds });
+        setEvents((prev) => prev.map((e) => (e.id === id ? saved : e)));
+        setError(null);
+      } catch (e) {
+        setError(e.message);
+      }
+    });
+  };
+  const deleteEvent = async (id) => {
+    const ev = events.find((e) => e.id === id);
+    if (!(await confirmDanger({ title: `Delete "${ev?.title || "this event"}"?`, body: "It disappears from the Sessions tab and from the mentors who were on it. Nothing else is affected.", label: "Delete event" }))) return;
+    saver.immediate(async () => {
+      await api.del(`/api/events/${id}`);
+      setEvents((prev) => prev.filter((e) => e.id !== id));
+      setOpenSession(null);
+    });
+  };
+
   const openMentor = mentors?.find((m) => m.id === openId);
   // Search covers the name, the years text and the tag labels; apostrophes
   // are ignored so "26" finds "'26".
@@ -492,7 +568,7 @@ export default function MentorCRM({ user }) {
   const filtered = (mentors || []).filter((m) => {
     if (filter !== "all" && m.status !== filter) return false;
     if (!query) return true;
-    const hay = norm([m.name, m.years, ...(m.tags || []).map(tagLabel)].join(" "));
+    const hay = norm([m.name, m.years, ...(m.tags || []).map(tagLabel), ...events.filter((e) => (e.mentorIds || []).includes(m.id)).map((e) => e.title)].join(" "));
     return hay.includes(query);
   });
 
@@ -500,7 +576,7 @@ export default function MentorCRM({ user }) {
     <div style={{ background: COLORS.bg, minHeight: "100%", padding: "28px 20px" }}>
       {confirmUI}
       {teamOpen && <AdvancementModal onClose={() => setTeamOpen(false)} />}
-      {newMentor && <NewMentorModal forLesson={newMentor.lessonNumber} onClose={() => setNewMentor(null)} onCreate={createMentor} />}
+      {newMentor && <NewMentorModal forLesson={newMentor.lessonNumber} forEvent={newMentor.eventId ? (events.find((e) => e.id === newMentor.eventId) || {}).title : null} onClose={() => setNewMentor(null)} onCreate={createMentor} />}
       <PageTitle
         title="EIB Mentor CRM"
         right={
@@ -518,7 +594,7 @@ export default function MentorCRM({ user }) {
         {saver.error && <Notice onClose={saver.clearError}>{saver.error}</Notice>}
         <SegmentedTabs
           value={tab}
-          onChange={(t) => { setTab(t); setOpenId(null); }}
+          onChange={(t) => { setTab(t); setOpenId(null); setOpenSession(null); }}
           style={{ marginBottom: 18 }}
           options={[
             { id: "sessions", label: "Sessions", icon: CalendarDays },
@@ -534,14 +610,22 @@ export default function MentorCRM({ user }) {
           key={sessionsKey}
           user={user}
           lessons={lessons}
+          events={events}
           mentors={mentors}
           cohortYear={cohortYear}
           statuses={STATUSES}
+          open={openSession}
+          setOpen={setOpenSession}
           onPatchLesson={patchLesson}
           onAssign={assignMentor}
           onUnassign={unassignMentor}
-          onNewMentor={(lessonNumber) => setNewMentor({ lessonNumber })}
+          onNewMentor={(target) => setNewMentor(target)}
           onOpenMentor={openMentorFromSession}
+          onAddEvent={addEvent}
+          onPatchEvent={patchEvent}
+          onPlaceEvent={placeEvent}
+          onSetPeople={setEventPeople}
+          onDeleteEvent={deleteEvent}
         />
       ) : openMentor ? (
         <MentorDetail
@@ -584,7 +668,7 @@ export default function MentorCRM({ user }) {
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {filtered.length === 0 && <EmptyState>No mentors match this filter.</EmptyState>}
             {filtered.map((m) => (
-              <MentorRow key={m.id} mentor={m} cohortYear={cohortYear} onOpen={() => setOpenId(m.id)} onStatusChange={(status) => setStatus(m.id, status)} />
+              <MentorRow key={m.id} mentor={m} cohortYear={cohortYear} events={events} onOpen={() => setOpenId(m.id)} onStatusChange={(status) => setStatus(m.id, status)} />
             ))}
           </div>
         </div>
@@ -596,7 +680,7 @@ export default function MentorCRM({ user }) {
 // The Internal side of a profile, filled in before the mentor exists: name,
 // status, contact methods and notes. Years, tags and the student-facing
 // fields are edited on the profile afterwards.
-function NewMentorModal({ forLesson, onClose, onCreate }) {
+function NewMentorModal({ forLesson, forEvent, onClose, onCreate }) {
   const [name, setName] = useState("");
   const [status, setStatus] = useState("contacted");
   const [contacts, setContacts] = useState([]);
@@ -617,7 +701,7 @@ function NewMentorModal({ forLesson, onClose, onCreate }) {
     }
   };
   return (
-    <ModalShell eyebrow={forLesson ? `Lesson ${forLesson}` : "Mentor CRM"} title="New mentor" onClose={onClose} maxWidth={640}>
+    <ModalShell eyebrow={forLesson ? `Lesson ${forLesson}` : forEvent ? forEvent : "Mentor CRM"} title="New mentor" onClose={onClose} maxWidth={640}>
       {error && <Notice onClose={() => setError(null)}>{error}</Notice>}
       <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
         <div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
@@ -653,7 +737,7 @@ function NewMentorModal({ forLesson, onClose, onCreate }) {
             Cancel
           </button>
           <PrimaryButton onClick={submit} disabled={!can} icon={Plus}>
-            {forLesson ? `Create and assign to L${forLesson}` : "Create mentor"}
+            {forLesson ? `Create and assign to L${forLesson}` : forEvent ? `Create and add to ${forEvent}` : "Create mentor"}
           </PrimaryButton>
         </div>
       </div>

@@ -379,6 +379,20 @@ export function sampleSeed() {
     lessons: LESSONS,
     submissions: SUBMISSIONS,
     mentors: MENTORS,
+    events: [
+      {
+        id: "event_eib_night",
+        title: "EIB Night",
+        date: "Oct 16, 2026",
+        startTime: "6:30 PM",
+        endTime: "8:00 PM",
+        location: "Auditorium",
+        note: "A founder who is also a TFS parent, for the founder spotlight. Ten minutes on building something from nothing.",
+        anchor: "start",
+        rank: 0,
+        mentorIds: ["mentor_trent"],
+      },
+    ],
     applications: APPLICATIONS,
     settings: {
       applicationForm: FORM_QUESTIONS,
@@ -402,6 +416,7 @@ export function minimalSeed({ adminEmail, adminName }) {
     lessons: [],
     submissions: [],
     mentors: [],
+    events: [],
     applications: [],
     settings: {
       applicationForm: FORM_QUESTIONS,

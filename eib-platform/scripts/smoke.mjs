@@ -191,6 +191,21 @@ let mentorId = null;
   check("view shows the mentor on lesson 99 without contacts", ["Smoke Mentor", false], [view.json?.lessons.find((l) => l.number === "99")?.mentor?.name, "contacts" in (view.json?.lessons.find((l) => l.number === "99")?.mentor || {})]);
   check("unassign -> 200", 200, await code(leader, "POST", `/api/mentors/${mentorId}/assign`, { lessonNumber: "99", assign: false }));
   check("assign without lessonNumber -> 400", 400, await code(leader, "POST", `/api/mentors/${mentorId}/assign`, {}));
+  // CRM-only events
+  check("events: student -> 403, stranger -> 401", [403, 401], [await code(student, "GET", "/api/events"), await code(stranger, "GET", "/api/events")]);
+  check("events: leader lists (seeded EIB Night)", "EIB Night", (await req(leader, "GET", "/api/events")).json?.events.find((e) => e.id === "event_eib_night")?.title);
+  check("leader POST event -> 403", 403, await code(leader, "POST", "/api/events", { title: "x" }));
+  const evMade = await req(admin, "POST", "/api/events", { title: "Smoke panel", anchor: "1", rank: 3 });
+  check("admin POST event -> 201 with anchor", [201, "1", 3], [evMade.status, evMade.json?.anchor, evMade.json?.rank]);
+  const evId = evMade.json?.id;
+  check("leader PATCH event title -> 403", 403, await code(leader, "PATCH", `/api/events/${evId}`, { title: "x" }));
+  const onEv = await req(leader, "PATCH", `/api/events/${evId}`, { mentorIds: [mentorId, mentorId, "ghost"] });
+  check("leader PATCH event people -> deduped list", [200, `${mentorId},ghost`], [onEv.status, (onEv.json?.mentorIds || []).join(",")]);
+  const moved = await req(admin, "PATCH", `/api/events/${evId}`, { anchor: "start", rank: -1, date: "Nov 3, 2026" });
+  check("admin moves event + sets date", ["start", -1, "Nov 3, 2026"], [moved.json?.anchor, moved.json?.rank, moved.json?.date]);
+  check("student view carries no events", false, JSON.stringify((await req(student, "GET", "/api/lessons/view")).json || {}).includes("Smoke panel"));
+  check("leader DELETE event -> 403", 403, await code(leader, "DELETE", `/api/events/${evId}`));
+  check("admin DELETE event -> 200", 200, await code(admin, "DELETE", `/api/events/${evId}`));
 }
 
 /* ---- 6. accounts: leaders, advancement team ---- */

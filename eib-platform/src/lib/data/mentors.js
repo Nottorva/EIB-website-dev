@@ -4,6 +4,7 @@
 //      Use toPublicMentor() for anything the lesson view receives.
 
 import { findAll, findById, insert, updateOne, removeOne, newId } from "./store";
+import { removeMentorFromEvents } from "./events";
 
 export const MENTOR_STATUSES = ["contacted", "responsive", "unresponsive", "unsure", "confirmed"];
 // Internal-only labels for what a mentor has done with EIB. `years` is free
@@ -59,6 +60,7 @@ export async function updateMentor(id, patch) {
 }
 
 export async function deleteMentor(id) {
+  await removeMentorFromEvents(id);
   return removeOne("mentors", id);
 }
 

@@ -72,7 +72,13 @@ Things worth trying, in order:
    the note), then the mentor for the current cohort with Open profile /
    Change mentor / Unassign. "Assign mentor" offers an existing mentor or
    opens the New mentor popup (name, status, contact methods, notes) and
-   assigns the result. The Mentors tab's "Add mentor" opens the same popup. One mentor per lesson per cohort is still enforced by the server; a
+   assigns the result. The Mentors tab's "Add mentor" opens the same popup.
+   **Events** (light purple rows) are CRM-only: EIB Night, a panel, a visit.
+   The super admin adds one with "Add event", edits it in place and drags it
+   into position among the lessons; every CRM role can put mentors or
+   community members on it. Events never reach students. They live in the
+   `events` collection (`anchor` = the lesson they follow, `rank` = order
+   among events on the same anchor). One mentor per lesson per cohort is still enforced by the server; a
    change of mentor unassigns the current one first.
    Beside a mentor's name sit the years they took part (free text, e.g.
    `'25 | '26`) and tags (Speaker, Mentor, Panelist, any mix). Both show in
