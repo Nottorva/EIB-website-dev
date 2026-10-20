@@ -373,6 +373,8 @@ export default function MentorCRM({ user }) {
   const [cohortYear, setCohortYear] = useState(new Date().getFullYear());
   const [openId, setOpenId] = useState(null);
   const [tab, setTab] = useState("mentors");
+  // the New mentor popup: null, or { lessonNumber } (null lessonNumber = from the Mentors tab)
+  const [newMentor, setNewMentor] = useState(null);
   // bumping this remounts the Sessions tab, dropping any open session
   const [sessionsKey, setSessionsKey] = useState(0);
   const [filter, setFilter] = useState("all");
@@ -420,12 +422,18 @@ export default function MentorCRM({ user }) {
     saver.immediate(() => api.patch(`/api/mentors/${id}`, { status }));
   };
 
-  const addMentor = () =>
-    saver.immediate(async () => {
-      const fresh = await api.post("/api/mentors", {});
-      setMentors((prev) => [fresh, ...prev]);
-      setOpenId(fresh.id);
-    });
+  // Both "Add mentor" buttons open the popup; on create the mentor is
+  // assigned to the session it came from, or its profile opens.
+  const addMentor = () => setNewMentor({ lessonNumber: null });
+  const createMentor = async ({ name, status, contacts, notes }) => {
+    const made = await api.post("/api/mentors", { name, status });
+    const fresh = await api.patch(`/api/mentors/${made.id}`, { contacts, notes });
+    setMentors((prev) => [fresh, ...prev]);
+    const { lessonNumber } = newMentor;
+    setNewMentor(null);
+    if (lessonNumber) await assignMentor(lessonNumber, fresh.id);
+    else { setTab("mentors"); setOpenId(fresh.id); }
+  };
 
   const removeMentor = async (id) => {
     const m = mentors.find((x) => x.id === id);
@@ -461,19 +469,6 @@ export default function MentorCRM({ user }) {
         setError(e.message);
       }
     });
-  // "Add a new mentor" from a session: created with the name, then assigned
-  // by the caller. Returns the new mentor, or null if the server refused.
-  const createMentorNamed = async (name) => {
-    try {
-      const fresh = await api.post("/api/mentors", { name });
-      setMentors((prev) => [fresh, ...prev]);
-      setError(null);
-      return fresh;
-    } catch (e) {
-      setError(e.message);
-      return null;
-    }
-  };
   // Session details (time, room, brief): super admin only; the server checks.
   const patchLesson = (id, fields) => {
     setLessons((prev) => prev.map((l) => (l.id === id ? { ...l, ...fields } : l)));
@@ -505,6 +500,7 @@ export default function MentorCRM({ user }) {
     <div style={{ background: COLORS.bg, minHeight: "100%", padding: "28px 20px" }}>
       {confirmUI}
       {teamOpen && <AdvancementModal onClose={() => setTeamOpen(false)} />}
+      {newMentor && <NewMentorModal forLesson={newMentor.lessonNumber} onClose={() => setNewMentor(null)} onCreate={createMentor} />}
       <PageTitle
         title="EIB Mentor CRM"
         right={
@@ -544,7 +540,7 @@ export default function MentorCRM({ user }) {
           onPatchLesson={patchLesson}
           onAssign={assignMentor}
           onUnassign={unassignMentor}
-          onCreateMentor={createMentorNamed}
+          onNewMentor={(lessonNumber) => setNewMentor({ lessonNumber })}
           onOpenMentor={openMentorFromSession}
         />
       ) : openMentor ? (
@@ -596,6 +592,75 @@ export default function MentorCRM({ user }) {
     </div>
   );
 }
+/* ================= New mentor (popup) ================= */
+// The Internal side of a profile, filled in before the mentor exists: name,
+// status, contact methods and notes. Years, tags and the student-facing
+// fields are edited on the profile afterwards.
+function NewMentorModal({ forLesson, onClose, onCreate }) {
+  const [name, setName] = useState("");
+  const [status, setStatus] = useState("contacted");
+  const [contacts, setContacts] = useState([]);
+  const [notes, setNotes] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const can = name.trim().length > 0 && !busy;
+  const label = { fontSize: 13, fontWeight: 800, color: COLORS.indigo, letterSpacing: 0.4, marginBottom: 10 };
+  const submit = async () => {
+    if (!can) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await onCreate({ name: name.trim(), status, contacts, notes });
+    } catch (e) {
+      setError(e.message);
+      setBusy(false);
+    }
+  };
+  return (
+    <ModalShell eyebrow={forLesson ? `Lesson ${forLesson}` : "Mentor CRM"} title="New mentor" onClose={onClose} maxWidth={640}>
+      {error && <Notice onClose={() => setError(null)}>{error}</Notice>}
+      <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+        <div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
+          <div style={{ flex: 1, minWidth: 220 }}>
+            <div style={label}>Name</div>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Mentor's name"
+              autoFocus
+              onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
+              style={{ width: "100%", boxSizing: "border-box", border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "9px 12px", fontSize: 15, fontWeight: 700, outline: "none", fontFamily: "inherit", color: COLORS.text }}
+            />
+          </div>
+          <div>
+            <div style={label}>Status</div>
+            <StatusDropdown value={status} onChange={setStatus} statuses={STATUSES} />
+          </div>
+        </div>
+        <div>
+          <div style={label}>Contact methods</div>
+          <ContactsEditor contacts={contacts} onChange={setContacts} />
+          <div style={{ fontSize: 12, color: COLORS.faint, marginTop: 8 }}>Private contacts never leave the server on student-facing routes.</div>
+        </div>
+        <div>
+          <div style={label}>Notes</div>
+          <div style={{ background: "#f7f8fb", border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "10px 12px" }}>
+            <EditableTextarea value={notes} onChange={setNotes} placeholder="Where they came from, what they said, anything worth remembering..." rows={3} style={{ fontSize: 13.5, color: COLORS.text, lineHeight: 1.5, background: "transparent" }} />
+          </div>
+        </div>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+          <button type="button" onClick={onClose} style={{ border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.sub, fontWeight: 800, fontSize: 13.5, borderRadius: 999, padding: "9px 16px", cursor: "pointer", fontFamily: "inherit" }}>
+            Cancel
+          </button>
+          <PrimaryButton onClick={submit} disabled={!can} icon={Plus}>
+            {forLesson ? `Create and assign to L${forLesson}` : "Create mentor"}
+          </PrimaryButton>
+        </div>
+      </div>
+    </ModalShell>
+  );
+}
+
 /* ================= Advancement team (super admin) ================= */
 // Lists the advancement team accounts, creates one from an email (name is
 // optional; it is derived from the email until they sign in), and removes

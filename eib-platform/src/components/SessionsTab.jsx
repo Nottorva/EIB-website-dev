@@ -1,10 +1,11 @@
 "use client";
 
 // Mentor CRM · Sessions tab. One row per lesson flagged "Yes Mentor" in the
-// Lesson Editor. Opening a session shows its details (time, room, a brief
-// for the mentor; the super admin edits these in place, everyone else reads)
-// and the mentor assigned for the current cohort, with a chooser that either
-// picks an existing mentor or creates a new one and assigns them.
+// Lesson Editor. Opening a session shows its details (time, room, and a note
+// on the kind of mentor the advancement team should find; the super admin
+// edits these in place, everyone else reads) and the mentor assigned for the
+// current cohort, with a chooser that picks an existing mentor or opens the
+// new-mentor popup and assigns the result.
 
 import React, { useState } from "react";
 import { ArrowLeft, Plus, Search, Clock, MapPin, ExternalLink, UserCheck, X, BookOpen } from "lucide-react";
@@ -18,7 +19,7 @@ const whenText = (l) => (l.startTime ? `${l.startTime}${l.endTime ? ` to ${l.end
 const whereText = (l) => l.room || "Room to be set";
 const kicker = (l) => [`Lesson ${l.number}`, l.chapterLabel].filter(Boolean).join(" · ");
 
-export default function SessionsTab({ user, lessons, mentors, cohortYear, statuses, onPatchLesson, onAssign, onUnassign, onCreateMentor, onOpenMentor }) {
+export default function SessionsTab({ user, lessons, mentors, cohortYear, statuses, onPatchLesson, onAssign, onUnassign, onNewMentor, onOpenMentor }) {
   const [openId, setOpenId] = useState(null);
   const sessions = lessons.filter((l) => l.mentorEnabled);
   const open = sessions.find((l) => l.id === openId);
@@ -35,7 +36,7 @@ export default function SessionsTab({ user, lessons, mentors, cohortYear, status
         onPatch={(fields) => onPatchLesson(open.id, fields)}
         onAssign={(mentorId) => onAssign(open.number, mentorId)}
         onUnassign={(mentorId) => onUnassign(open.number, mentorId)}
-        onCreateMentor={onCreateMentor}
+        onNewMentor={() => onNewMentor(open.number)}
         onOpenMentor={onOpenMentor}
       />
     );
@@ -82,7 +83,7 @@ export default function SessionsTab({ user, lessons, mentors, cohortYear, status
 }
 
 /* ---------- One session ---------- */
-function SessionDetail({ lesson, mentors, cohortYear, statuses, canEdit, onBack, onPatch, onAssign, onUnassign, onCreateMentor, onOpenMentor }) {
+function SessionDetail({ lesson, mentors, cohortYear, statuses, canEdit, onBack, onPatch, onAssign, onUnassign, onNewMentor, onOpenMentor }) {
   const [choosing, setChoosing] = useState(false);
   const owner = ownerOfLesson(mentors, lesson.number, cohortYear);
   const status = owner ? statuses.find((s) => s.id === owner.status) || statuses[0] : null;
@@ -91,10 +92,9 @@ function SessionDetail({ lesson, mentors, cohortYear, statuses, canEdit, onBack,
     await onAssign(mentorId);
     setChoosing(false);
   };
-  const create = async (name) => {
-    const fresh = await onCreateMentor(name);
-    if (fresh) await onAssign(fresh.id);
+  const addNew = () => {
     setChoosing(false);
+    onNewMentor();
   };
 
   return (
@@ -132,18 +132,18 @@ function SessionDetail({ lesson, mentors, cohortYear, statuses, canEdit, onBack,
           </Field>
         </div>
         <div style={{ background: "#f7f8fb", border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "10px 12px" }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: COLORS.faint, letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 6 }}>Brief for the mentor</div>
+          <div style={{ fontSize: 11, fontWeight: 800, color: COLORS.faint, letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 6 }}>Mentor we're looking for</div>
           {canEdit ? (
             <EditableTextarea
               value={lesson.mentorBrief}
               onChange={(v) => onPatch({ mentorBrief: v })}
-              placeholder="What this session covers, what the mentor should bring, how the hour runs..."
+              placeholder="For the advancement team: the kind of person to find for this session, their field, their experience, what they'd do with the room..."
               rows={3}
               style={{ fontSize: 13.5, color: COLORS.text, lineHeight: 1.5, background: "transparent" }}
             />
           ) : (
             <div style={{ fontSize: 13.5, color: lesson.mentorBrief ? COLORS.text : COLORS.faint, lineHeight: 1.5, whiteSpace: "pre-wrap", fontStyle: lesson.mentorBrief ? "normal" : "italic" }}>
-              {lesson.mentorBrief || "No brief written yet."}
+              {lesson.mentorBrief || "Nothing written yet about who to find."}
             </div>
           )}
         </div>
@@ -178,7 +178,7 @@ function SessionDetail({ lesson, mentors, cohortYear, statuses, canEdit, onBack,
           )
         )}
         {choosing && (
-          <MentorChooser mentors={mentors} cohortYear={cohortYear} currentId={owner?.id || null} lessonNumber={lesson.number} onPick={pick} onCreate={create} onClose={() => setChoosing(false)} />
+          <MentorChooser mentors={mentors} cohortYear={cohortYear} currentId={owner?.id || null} lessonNumber={lesson.number} onPick={pick} onNew={addNew} onClose={() => setChoosing(false)} />
         )}
       </Section>
     </div>
@@ -186,10 +186,8 @@ function SessionDetail({ lesson, mentors, cohortYear, statuses, canEdit, onBack,
 }
 
 /* ---------- Existing or new ---------- */
-function MentorChooser({ mentors, cohortYear, currentId, lessonNumber, onPick, onCreate, onClose }) {
-  const [mode, setMode] = useState("existing");
+function MentorChooser({ mentors, cohortYear, currentId, lessonNumber, onPick, onNew, onClose }) {
   const [search, setSearch] = useState("");
-  const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const q = search.trim().toLowerCase();
   const list = [...mentors]
@@ -205,8 +203,8 @@ function MentorChooser({ mentors, cohortYear, currentId, lessonNumber, onPick, o
     <div style={{ marginTop: 12, background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 14 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
         <SegmentedTabs
-          value={mode}
-          onChange={setMode}
+          value="existing"
+          onChange={(id) => { if (id === "new") onNew(); }}
           style={{ flex: 1 }}
           options={[
             { id: "existing", label: "Use an existing mentor" },
@@ -218,8 +216,6 @@ function MentorChooser({ mentors, cohortYear, currentId, lessonNumber, onPick, o
         </button>
       </div>
 
-      {mode === "existing" ? (
-        <>
           <div style={{ position: "relative", marginBottom: 10 }}>
             <Search size={14} color={COLORS.faint} style={{ position: "absolute", left: 11, top: 10 }} />
             <input
@@ -256,28 +252,6 @@ function MentorChooser({ mentors, cohortYear, currentId, lessonNumber, onPick, o
               );
             })}
           </div>
-        </>
-      ) : (
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Mentor's name"
-            autoFocus
-            onKeyDown={(e) => { if (e.key === "Enter" && name.trim() && !busy) run(() => onCreate(name.trim())); }}
-            style={{ flex: 1, minWidth: 200, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "9px 12px", fontSize: 14, outline: "none", fontFamily: "inherit" }}
-          />
-          <button
-            type="button"
-            disabled={!name.trim() || busy}
-            onClick={() => run(() => onCreate(name.trim()))}
-            style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: name.trim() ? COLORS.indigo : COLORS.border, color: name.trim() ? "#fff" : COLORS.faint, fontWeight: 800, fontSize: 13.5, borderRadius: 999, padding: "9px 16px", cursor: name.trim() && !busy ? "pointer" : "default" }}
-          >
-            <Plus size={14} /> Create and assign
-          </button>
-          <div style={{ width: "100%", fontSize: 12, color: COLORS.faint }}>Contact details, notes and tags go on their profile in the Mentors tab afterwards.</div>
-        </div>
-      )}
     </div>
   );
 }

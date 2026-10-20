@@ -65,12 +65,13 @@ Things worth trying, in order:
 1. **Editor → CRM wiring.** In Lesson Editor, flip lesson 3 to "Yes Mentor".
    Open Mentor CRM → Sessions: lesson 3 now appears as a session.
 2. **Sessions.** The CRM's Sessions tab (`/crm?tab=sessions`) lists every
-   lesson flagged "Yes Mentor". Open one: time, room and a brief for the
-   mentor (the super admin edits these in place; leaders and the advancement
-   team read them; students never receive the brief), then the mentor for
-   the current cohort with Open profile / Change mentor / Unassign. "Assign
-   mentor" offers an existing mentor or creates a new one by name and assigns
-   them. One mentor per lesson per cohort is still enforced by the server; a
+   lesson flagged "Yes Mentor". Open one: time, room and a note on the kind
+   of mentor the advancement team should find (the super admin edits these in
+   place; leaders and the advancement team read them; students never receive
+   the note), then the mentor for the current cohort with Open profile /
+   Change mentor / Unassign. "Assign mentor" offers an existing mentor or
+   opens the New mentor popup (name, status, contact methods, notes) and
+   assigns the result. The Mentors tab's "Add mentor" opens the same popup. One mentor per lesson per cohort is still enforced by the server; a
    change of mentor unassigns the current one first.
    Beside a mentor's name sit the years they took part (free text, e.g.
    `'25 | '26`) and tags (Speaker, Mentor, Panelist, any mix). Both show in
