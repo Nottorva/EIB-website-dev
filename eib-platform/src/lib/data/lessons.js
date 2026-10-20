@@ -61,6 +61,9 @@ export function normalizeLesson(input, id) {
     startTime: String(input.startTime ?? ""),
     endTime: String(input.endTime ?? ""),
     overview: String(input.overview ?? ""),
+    // Shown on the CRM's Sessions tab; the super admin writes it. Never sent
+    // to students (see the lessons routes).
+    mentorBrief: String(input.mentorBrief ?? ""),
     // Public website fields. Only `published` lessons appear on the site, and
     // only through toPublicLesson() below (never deliverables or links).
     published: Boolean(input.published),
@@ -107,11 +110,12 @@ export async function saveLesson(id, input) {
 }
 
 // Student leaders may change where and when a lesson meets, nothing else.
-export async function updateLessonLogistics(id, { room, startTime, endTime }) {
+export async function updateLessonLogistics(id, { room, startTime, endTime, mentorBrief }) {
   const patch = {};
   if (room !== undefined) patch.room = String(room);
   if (startTime !== undefined) patch.startTime = String(startTime);
   if (endTime !== undefined) patch.endTime = String(endTime);
+  if (mentorBrief !== undefined) patch.mentorBrief = String(mentorBrief);
   return updateOne("lessons", id, patch);
 }
 

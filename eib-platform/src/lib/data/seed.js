@@ -32,6 +32,7 @@ const LESSONS = [
     room: "Room 214",
     startTime: "3:30 PM",
     endTime: "4:15 PM",
+    mentorBrief: "Thirty minutes of theory from us, then the mentor takes the room: three teams pitch the problem they picked, the mentor presses on who actually has it and how they know.",
     overview:
       "This session is about learning to spot problems worth solving. You'll look at your own week for friction points, then start separating real, validated problems from ones you're just assuming exist.",
     deliverables: [

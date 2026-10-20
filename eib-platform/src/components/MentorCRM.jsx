@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Plus, Trash2, Mail, Phone, MessageCircle, Star, X, Eye, BookOpen, UserCheck, Lock, UserPlus, Users } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Mail, Phone, MessageCircle, Star, X, Eye, BookOpen, UserCheck, Lock, UserPlus, Users, CalendarDays } from "lucide-react";
+import SessionsTab, { ownerOfLesson } from "./SessionsTab";
 import {
   COLORS,
   EditableInput,
@@ -125,10 +126,6 @@ function publicContactPreview(mentor) {
   return `${chosen.method} (${chosen.value})`;
 }
 
-function ownerOfLesson(mentors, lessonNumber, cohortYear, excludeId) {
-  return mentors.find((m) => m.id !== excludeId && m.assignedLessons.some((a) => a.lessonNumber === lessonNumber && a.cohortYear === cohortYear));
-}
-
 function TogglePill({ active, onClick, icon: Icon, label, tone = "indigo" }) {
   const toneColor = tone === "amber" ? COLORS.amber : COLORS.indigo;
   const toneSoft = tone === "amber" ? COLORS.amberSoft : COLORS.indigoSoft;
@@ -227,66 +224,6 @@ function ContactsEditor({ contacts, onChange }) {
   );
 }
 
-/* ---------- Lesson assignment editor ---------- */
-function LessonAssignmentRow({ lesson, assigned, ownerName, onToggle }) {
-  const takenByOther = !assigned && Boolean(ownerName);
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        border: `1px solid ${assigned ? COLORS.amberBorder : COLORS.border}`,
-        background: assigned ? COLORS.amberSoft : "#fff",
-        borderRadius: 12,
-        padding: "10px 12px",
-        opacity: takenByOther ? 0.7 : 1,
-      }}
-    >
-      <button type="button" onClick={onToggle} style={{ display: "flex", alignItems: "center", gap: 8, border: "none", background: "transparent", cursor: "pointer", flex: 1, textAlign: "left", padding: 0 }}>
-        <div
-          style={{
-            width: 18,
-            height: 18,
-            borderRadius: 5,
-            border: `1.5px solid ${assigned ? COLORS.amber : COLORS.faint}`,
-            background: assigned ? COLORS.amber : "transparent",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-          }}
-        >
-          {assigned && <span style={{ color: "#fff", fontSize: 11, fontWeight: 900 }}>✓</span>}
-        </div>
-        <div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: COLORS.text }}>
-            Lesson {lesson.number} · {lesson.title}
-          </div>
-          <div style={{ fontSize: 12, color: COLORS.faint }}>{lesson.chapterLabel}</div>
-        </div>
-      </button>
-      {takenByOther && <span style={{ fontSize: 11.5, fontWeight: 700, color: COLORS.faint, whiteSpace: "nowrap" }}>Assigned to {ownerName}</span>}
-    </div>
-  );
-}
-
-function LessonAssignmentsEditor({ mentor, mentors, lessons, cohortYear, onToggle }) {
-  const mentorLessons = lessons.filter((l) => l.mentorEnabled);
-  if (mentorLessons.length === 0) {
-    return <div style={{ fontSize: 13.5, color: COLORS.faint, fontStyle: "italic" }}>No lessons are flagged "Yes Mentor" in the Lesson Editor yet.</div>;
-  }
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      {mentorLessons.map((lesson) => {
-        const assigned = mentor.assignedLessons.some((a) => a.lessonNumber === lesson.number && a.cohortYear === cohortYear);
-        const owner = ownerOfLesson(mentors, lesson.number, cohortYear, mentor.id);
-        return <LessonAssignmentRow key={lesson.id} lesson={lesson} assigned={assigned} ownerName={owner ? owner.name : null} onToggle={() => onToggle(lesson.number, !assigned)} />;
-      })}
-    </div>
-  );
-}
-
 /* ---------- Student-facing preview ---------- */
 function StudentFacingPreview({ mentor }) {
   const contactPreview = publicContactPreview(mentor);
@@ -338,7 +275,7 @@ function MentorRow({ mentor, cohortYear, onOpen, onStatusChange }) {
 }
 
 /* ---------- Detail view ---------- */
-function MentorDetail({ mentor, mentors, lessons, cohortYear, onBack, onUpdate, onDelete, onToggleLesson }) {
+function MentorDetail({ mentor, onBack, onUpdate, onDelete }) {
   const [tab, setTab] = useState("internal");
   const contactPreview = publicContactPreview(mentor);
 
@@ -405,11 +342,6 @@ function MentorDetail({ mentor, mentors, lessons, cohortYear, onBack, onUpdate, 
               />
             </div>
           </div>
-
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 800, color: COLORS.indigo, letterSpacing: 0.4, marginBottom: 10 }}>Assigned to lessons · Cohort {cohortYear}</div>
-            <LessonAssignmentsEditor mentor={mentor} mentors={mentors} lessons={lessons} cohortYear={cohortYear} onToggle={(lessonNumber, assign) => onToggleLesson(mentor.id, lessonNumber, assign)} />
-          </div>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
@@ -440,6 +372,9 @@ export default function MentorCRM({ user }) {
   const [lessons, setLessons] = useState([]);
   const [cohortYear, setCohortYear] = useState(new Date().getFullYear());
   const [openId, setOpenId] = useState(null);
+  const [tab, setTab] = useState("mentors");
+  // bumping this remounts the Sessions tab, dropping any open session
+  const [sessionsKey, setSessionsKey] = useState(0);
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [error, setError] = useState(null);
@@ -453,6 +388,23 @@ export default function MentorCRM({ user }) {
         setLessons(l);
       })
       .catch((e) => setError(e.message));
+  }, []);
+
+  // /crm?tab=sessions deep-links to the Sessions tab.
+  useEffect(() => {
+    const wanted = new URLSearchParams(window.location.search).get("tab");
+    if (wanted === "sessions") setTab("sessions");
+  }, []);
+  // The Mentor CRM link in the top bar always comes back to the mentors list.
+  useEffect(() => {
+    const onHome = (e) => {
+      if (e.detail !== "/crm") return;
+      setTab("mentors");
+      setOpenId(null);
+      setSessionsKey((k) => k + 1);
+    };
+    window.addEventListener("eib:tool-home", onHome);
+    return () => window.removeEventListener("eib:tool-home", onHome);
   }, []);
 
   const replaceMentor = (updated) => setMentors((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
@@ -485,18 +437,57 @@ export default function MentorCRM({ user }) {
     });
   };
 
-  // Server enforces one mentor per lesson per cohort year; a conflict comes
-  // back as 409 and is shown as-is.
-  const toggleLesson = (mentorId, lessonNumber, assign) =>
+  // Server enforces one mentor per lesson per cohort year (409 on conflict),
+  // so a change of mentor unassigns the current one first.
+  const setAssignment = (mentorId, lessonNumber, assign) =>
+    api.post(`/api/mentors/${mentorId}/assign`, { lessonNumber, cohortYear, assign }).then(replaceMentor);
+  const assignMentor = (lessonNumber, mentorId) =>
     saver.immediate(async () => {
       try {
-        const saved = await api.post(`/api/mentors/${mentorId}/assign`, { lessonNumber, cohortYear, assign });
-        replaceMentor(saved);
+        const current = ownerOfLesson(mentors, lessonNumber, cohortYear);
+        if (current && current.id !== mentorId) await setAssignment(current.id, lessonNumber, false);
+        if (!current || current.id !== mentorId) await setAssignment(mentorId, lessonNumber, true);
         setError(null);
       } catch (e) {
         setError(e.message);
       }
     });
+  const unassignMentor = (lessonNumber, mentorId) =>
+    saver.immediate(async () => {
+      try {
+        await setAssignment(mentorId, lessonNumber, false);
+        setError(null);
+      } catch (e) {
+        setError(e.message);
+      }
+    });
+  // "Add a new mentor" from a session: created with the name, then assigned
+  // by the caller. Returns the new mentor, or null if the server refused.
+  const createMentorNamed = async (name) => {
+    try {
+      const fresh = await api.post("/api/mentors", { name });
+      setMentors((prev) => [fresh, ...prev]);
+      setError(null);
+      return fresh;
+    } catch (e) {
+      setError(e.message);
+      return null;
+    }
+  };
+  // Session details (time, room, brief): super admin only; the server checks.
+  const patchLesson = (id, fields) => {
+    setLessons((prev) => prev.map((l) => (l.id === id ? { ...l, ...fields } : l)));
+    saver.schedule(`lesson:${id}`, async () => {
+      const merged = lessons.find((l) => l.id === id) || {};
+      const body = {};
+      for (const k of ["room", "startTime", "endTime", "mentorBrief"]) if (k in fields || k in merged) body[k] = k in fields ? fields[k] : merged[k];
+      await api.patch(`/api/lessons/${id}`, body);
+    });
+  };
+  const openMentorFromSession = (id) => {
+    setTab("mentors");
+    setOpenId(id);
+  };
 
   const openMentor = mentors?.find((m) => m.id === openId);
   // Search covers the name, the years text and the tag labels; apostrophes
@@ -529,20 +520,39 @@ export default function MentorCRM({ user }) {
       <div style={{ maxWidth: 720, margin: "0 auto" }}>
         {error && <Notice onClose={() => setError(null)}>{error}</Notice>}
         {saver.error && <Notice onClose={saver.clearError}>{saver.error}</Notice>}
+        <SegmentedTabs
+          value={tab}
+          onChange={(t) => { setTab(t); setOpenId(null); }}
+          style={{ marginBottom: 18 }}
+          options={[
+            { id: "mentors", label: "Mentors", icon: Users },
+            { id: "sessions", label: "Sessions", icon: CalendarDays },
+          ]}
+        />
       </div>
 
       {!mentors ? (
         <Loading />
+      ) : tab === "sessions" ? (
+        <SessionsTab
+          key={sessionsKey}
+          user={user}
+          lessons={lessons}
+          mentors={mentors}
+          cohortYear={cohortYear}
+          statuses={STATUSES}
+          onPatchLesson={patchLesson}
+          onAssign={assignMentor}
+          onUnassign={unassignMentor}
+          onCreateMentor={createMentorNamed}
+          onOpenMentor={openMentorFromSession}
+        />
       ) : openMentor ? (
         <MentorDetail
           mentor={openMentor}
-          mentors={mentors}
-          lessons={lessons}
-          cohortYear={cohortYear}
           onBack={() => setOpenId(null)}
           onUpdate={updateMentor}
           onDelete={() => removeMentor(openMentor.id)}
-          onToggleLesson={toggleLesson}
         />
       ) : (
         <div style={{ maxWidth: 720, margin: "0 auto" }}>

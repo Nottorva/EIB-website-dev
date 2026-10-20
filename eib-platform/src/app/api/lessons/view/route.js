@@ -16,7 +16,7 @@ export const GET = guarded(null, async ({ user }) => {
       m.assignedLessons.some((a) => a.lessonNumber === lesson.number && a.cohortYear === cohortYear)
     );
     return { ...lesson, mentor: toPublicMentor(owner) };
-  }).map((lesson) => (user.role === "student" ? { ...lesson, teachingPlanLink: "" } : lesson));
+  }).map((lesson) => (user.role === "student" ? { ...lesson, teachingPlanLink: "", mentorBrief: "" } : lesson));
 
   const mode = user.role === "student" ? "student" : "leader";
   const submissions = mode === "student" ? (await listSubmissions({ studentId: user.id })).map(stripUnreleased) : [];
