@@ -62,8 +62,11 @@ replace the PDF and update the title there.
 
 **Unfinished applications.** Signing in to the application form creates a
 draft (`applicationDrafts`) that is refreshed as the applicant types and
-deleted when they submit or are clean-reset. Student Manager → Unfinished
-lists them, newest activity first, with progress and the answers so far;
+deleted when they submit or are clean-reset. Student Manager → Analytics
+shows applications over time (new per day, running total against the class
+size, headline numbers; the day axis grows on its own while the window is
+open; a table view sits behind a toggle) and, underneath, the unfinished
+applications, newest activity first, with progress and the answers so far;
 the super admin can clear one. A returning applicant gets their answers back.
 
 Things worth trying, in order:

@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { FileText, Users, ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Mail, Calendar, Link2, UserPlus, Lock, ExternalLink, Send, Pencil, Copy, Check, CalendarClock, Megaphone, ShieldOff, ShieldCheck, FileClock, Clock } from "lucide-react";
+import { FileText, Users, ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Mail, Calendar, Link2, UserPlus, Lock, ExternalLink, Send, Pencil, Copy, Check, CalendarClock, Megaphone, ShieldOff, ShieldCheck, FileClock, Clock, ChartColumn, Table2 } from "lucide-react";
+import { buildDays, TimeChart, DaysTable, Stat } from "./ApplicationsChart";
 import {
   COLORS,
   QUESTION_TYPES,
@@ -1161,25 +1162,72 @@ function AccManagerTab({ saver }) {
 }
 
 /* ================= App ================= */
+/* ================= Analytics ================= */
+// Applications over time (auto-extending day axis), headline numbers, and
+// the unfinished applications underneath.
+function AnalyticsTab({ user }) {
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(null);
+  const [table, setTable] = useState(false);
+
+  useEffect(() => {
+    Promise.all([api.get("/api/applications"), api.get("/api/applications/drafts"), api.get("/api/form"), api.get("/api/settings"), api.get("/api/apply/status")])
+      .then(([applications, drafts, questions, settings, status]) => setData({ applications, drafts, questions, cap: settings.classSizeCap, opensAt: status.opensAt, closesAt: status.closesAt, state: status.state }))
+      .catch((e) => setError(e.message));
+  }, []);
+
+  if (error) return <div style={{ maxWidth: 720, margin: "0 auto" }}><Notice onClose={() => setError(null)}>{error}</Notice></div>;
+  if (!data) return <Loading />;
+
+  const { applications, drafts, questions, cap, opensAt, closesAt, state } = data;
+  const days = buildDays({ applications, drafts, opensAt, closesAt });
+  const submitted = applications.length;
+  const daysOpen = Math.max(1, days.length);
+  const perDay = submitted / daysOpen;
+  const msLeft = closesAt ? new Date(closesAt) - Date.now() : null;
+  const daysLeft = msLeft == null ? null : Math.max(0, Math.ceil(msLeft / 86400000));
+  const fmtDate = (iso) => (iso ? new Date(iso).toLocaleDateString("en-CA", { month: "long", day: "numeric", timeZone: "America/Toronto" }) : null);
+  const closing = state === "closed" ? "Applications closed" : state === "upcoming" ? `Opens ${fmtDate(opensAt)}` : closesAt ? `Closes ${fmtDate(closesAt)}` : "No close date set";
+
+  return (
+    <div style={{ maxWidth: 720, margin: "0 auto", display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10 }}>
+        <Stat label="Submitted" value={submitted} sub={cap ? `of ${cap} seats` : null} />
+        <Stat label="Unfinished" value={drafts.length} sub="signed in, not submitted" />
+        <Stat label="Per day" value={perDay >= 10 ? Math.round(perDay) : perDay.toFixed(1)} sub={`over ${daysOpen} day${daysOpen === 1 ? "" : "s"}`} />
+        <Stat label={daysLeft == null || state !== "open" ? "Window" : "Days left"} value={daysLeft != null && state === "open" ? daysLeft : state === "closed" ? "Closed" : state === "upcoming" ? "Soon" : "Open"} sub={closing} />
+      </div>
+
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+        <div style={{ fontSize: 13, fontWeight: 800, color: COLORS.indigo, letterSpacing: 0.4 }}>Applications over time</div>
+        <button type="button" onClick={() => setTable((t) => !t)} style={{ display: "flex", alignItems: "center", gap: 6, border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.sub, fontWeight: 800, fontSize: 12.5, borderRadius: 999, padding: "6px 12px", cursor: "pointer", fontFamily: "inherit" }}>
+          {table ? <ChartColumn size={13} /> : <Table2 size={13} />} {table ? "Show charts" : "Show as table"}
+        </button>
+      </div>
+      {table ? (
+        <DaysTable days={days} />
+      ) : (
+        <>
+          <TimeChart days={days} field="count" kind="bar" title="New applications per day" empty="No applications yet" />
+          <TimeChart days={days} field="total" kind="line" title="Running total" refLine={cap ? { value: cap, label: `${cap} seats` } : null} />
+        </>
+      )}
+
+      <div style={{ fontSize: 13, fontWeight: 800, color: COLORS.indigo, letterSpacing: 0.4, marginTop: 8 }}>Unfinished applications</div>
+      <UnfinishedList user={user} drafts={drafts} questions={questions} onChange={(next) => setData((d) => ({ ...d, drafts: next }))} />
+    </div>
+  );
+}
+
 /* ================= Unfinished applications ================= */
 // People who signed in to the form and have not submitted, with what they
 // typed so far. The super admin can clear one.
-function UnfinishedTab({ user }) {
-  const [drafts, setDrafts] = useState(null);
-  const [questions, setQuestions] = useState([]);
+function UnfinishedList({ user, drafts, questions, onChange }) {
   const [openId, setOpenId] = useState(null);
   const [error, setError] = useState(null);
   const [confirmDanger, confirmUI] = useDangerConfirm();
   const isSuperAdmin = user.role === "superAdmin";
-
-  useEffect(() => {
-    Promise.all([api.get("/api/applications/drafts"), api.get("/api/form")])
-      .then(([d, q]) => {
-        setDrafts(d);
-        setQuestions(q);
-      })
-      .catch((e) => setError(e.message));
-  }, []);
+  const setDrafts = (fn) => onChange(typeof fn === "function" ? fn(drafts) : fn);
 
   const answerable = questions.filter((q) => q.type !== "notice");
   const progress = (d) => {
@@ -1200,7 +1248,7 @@ function UnfinishedTab({ user }) {
   };
 
   return (
-    <div style={{ maxWidth: 720, margin: "0 auto" }}>
+    <div>
       {confirmUI}
       {error && <Notice onClose={() => setError(null)}>{error}</Notice>}
       <div style={{ fontSize: 12.5, color: COLORS.faint, marginBottom: 12 }}>
@@ -1272,7 +1320,8 @@ export default function StudentManager({ user }) {
   // /manager?tab=forms deep-links to a tab.
   useEffect(() => {
     const wanted = new URLSearchParams(window.location.search).get("tab");
-    if (wanted && ["forms", "students", "unfinished", "accmanager"].includes(wanted)) setTab(wanted);
+    if (wanted && ["forms", "students", "analytics", "accmanager"].includes(wanted)) setTab(wanted);
+    if (wanted === "unfinished") setTab("analytics");
   }, []);
   // The Student Manager link in the top bar always comes back to the
   // students list, whatever tab or student was open.
@@ -1289,7 +1338,7 @@ export default function StudentManager({ user }) {
   const tabs = [
     { id: "forms", label: "Forms", icon: FileText },
     { id: "students", label: "EIB Students", icon: Users },
-    { id: "unfinished", label: "Unfinished", icon: FileClock },
+    { id: "analytics", label: "Analytics", icon: ChartColumn },
     ...(isSuperAdmin ? [{ id: "accmanager", label: "Acc Manager", icon: UserPlus }] : []),
   ];
 
@@ -1306,7 +1355,7 @@ export default function StudentManager({ user }) {
       />
       <div style={{ maxWidth: 720, margin: "0 auto" }}>{saver.error && <Notice onClose={saver.clearError}>{saver.error}</Notice>}</div>
 
-      {tab === "forms" ? <FormsTab saver={saver} user={user} /> : tab === "students" ? <StudentsTab key={listKey} saver={saver} user={user} /> : tab === "unfinished" ? <UnfinishedTab key={listKey} user={user} /> : <AccManagerTab saver={saver} />}
+      {tab === "forms" ? <FormsTab saver={saver} user={user} /> : tab === "students" ? <StudentsTab key={listKey} saver={saver} user={user} /> : tab === "analytics" ? <AnalyticsTab key={listKey} user={user} /> : <AccManagerTab saver={saver} />}
     </div>
   );
 }
