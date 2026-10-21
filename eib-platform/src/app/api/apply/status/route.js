@@ -8,11 +8,12 @@ import { authMode } from "@/lib/auth";
 import { getApplicationForm, getApplicationWindow, windowState } from "@/lib/data/settings";
 import { findApplicationByEmail, applicantView } from "@/lib/data/applications";
 import { getUserByEmail } from "@/lib/data/users";
+import { findDraftByEmail } from "@/lib/data/drafts";
 import { APPLICATION_TITLE } from "@/lib/data/applicationForm2026";
 
 export const GET = open(async () => {
   const [form, win, applicant, viewer] = await Promise.all([getApplicationForm(), getApplicationWindow(), getApplicant(), getCurrentUser()]);
-  const [existing, row] = applicant ? await Promise.all([findApplicationByEmail(applicant.email), getUserByEmail(applicant.email)]) : [null, null];
+  const [existing, row, draft] = applicant ? await Promise.all([findApplicationByEmail(applicant.email), getUserByEmail(applicant.email), findDraftByEmail(applicant.email)]) : [null, null, null];
   return Response.json({
     state: windowState(win),
     opensAt: win.opensAt,
@@ -26,6 +27,8 @@ export const GET = open(async () => {
     appliedAt: existing?.submittedAt || null,
     application: applicantView(existing),
     account: row ? { role: row.role, suspended: Boolean(row.suspended) } : null,
+    // what they typed last time, if they signed in before and did not submit
+    draft: draft && !existing ? { answers: draft.answers || [], lastSeenAt: draft.lastSeenAt } : null,
     form,
     title: APPLICATION_TITLE,
     // The super admin can look at the form whatever the window state is,

@@ -275,6 +275,13 @@ let applicant = null;
   check("missing required -> 400", 400, await code(applicant, "POST", "/api/apply", { answers: [{ questionId: "q_level", answer: "Level 3" }] }));
   check("notice not ticked -> 400", 400, await code(applicant, "POST", "/api/apply", GOOD({ q_fee: "" })));
   check("notice wrong text -> 400", 400, await code(applicant, "POST", "/api/apply", GOOD({ q_fee: "yes" })));
+  // unfinished application: saved as they type, visible to the manager, restored on return
+  check("draft without sign-in -> 401", 401, await code(null, "POST", "/api/apply/draft", { answers: [] }));
+  check("applicant saves a draft -> 200", 200, await code(applicant, "POST", "/api/apply/draft", { answers: [{ questionId: "q_intro", answer: "Half done" }] }));
+  const drafts = await req(leader, "GET", "/api/applications/drafts");
+  check("leader sees the unfinished application", ["Half done"], (drafts.json || []).filter((d) => d.email === "smoke.applicant@tfs.ca").map((d) => d.answers[0]?.answer));
+  check("student GET drafts -> 403", 403, await code(student, "GET", "/api/applications/drafts"));
+  check("status returns the draft to the applicant", "Half done", (await req(applicant, "GET", "/api/apply/status")).json?.draft?.answers?.[0]?.answer);
   check("251 words -> 400", 400, await code(applicant, "POST", "/api/apply", GOOD({ q_problem: words(251) })));
   const ok = await req(applicant, "POST", "/api/apply", GOOD({ q_problem: words(250) }));
   check("250 words, optional blank -> 201", 201, ok.status);
@@ -289,6 +296,11 @@ let applicant = null;
 }
 
 /* ---- 9. decisions, release, accounts ---- */
+{
+  const after = await req(admin, "GET", "/api/applications/drafts");
+  check("draft gone once submitted", false, (after.json || []).some((d) => d.email === "smoke.applicant@tfs.ca"));
+}
+
 head("decisions and release");
 {
   const acct = async () => { const u = (await req(admin, "GET", "/api/users?role=student")).json.find((x) => x.email === "smoke.applicant@tfs.ca"); return u ? (u.suspended ? "suspended" : "active") : "none"; };

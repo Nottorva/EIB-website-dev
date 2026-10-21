@@ -261,12 +261,37 @@ export default function ApplyForm() {
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const load = () => api.get("/api/apply/status").then(setStatus).catch((e) => setError(e.message));
+  const [restored, setRestored] = useState(false);
+  const load = () =>
+    api
+      .get("/api/apply/status")
+      .then((s) => {
+        setStatus(s);
+        // first load with a saved draft: pick up where they left off
+        if (s.draft?.answers?.length) {
+          setAnswers((prev) => (Object.keys(prev).length ? prev : Object.fromEntries(s.draft.answers.map((a) => [a.questionId, a.answer]))));
+          setRestored(true);
+        }
+      })
+      .catch((e) => setError(e.message));
   useEffect(() => {
     load();
   }, []);
 
   const set = (id, value) => setAnswers((prev) => ({ ...prev, [id]: value }));
+
+  // While the form is open to a signed-in applicant, their answers are saved
+  // server-side as they type (debounced), and the first save marks them as
+  // having started. Nothing is saved in preview or once they have applied.
+  const formLive = Boolean(status?.applicant && status.state === "open" && status.domainOk !== false && !status.alreadyApplied && !status.account?.suspended);
+  useEffect(() => {
+    if (!formLive) return undefined;
+    const t = setTimeout(() => {
+      api.post("/api/apply/draft", { answers: status.form.map((q) => ({ questionId: q.id, answer: answers[q.id] ?? "" })) }).catch(() => {});
+    }, 900);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formLive, answers]);
 
   const signOut = async () => {
     if (status?.authMode === "google") {
@@ -385,6 +410,11 @@ export default function ApplyForm() {
           <button type="button" onClick={signOut} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.sub, fontWeight: 700, fontSize: 12.5, cursor: "pointer" }}>
             <LogOut size={13} /> Not you? Sign out
           </button>
+        </div>
+      )}
+      {!preview && (
+        <div style={{ fontSize: 12.5, color: COLORS.faint, margin: "-6px 2px 14px" }}>
+          {restored ? "Welcome back. Your answers from last time are here; carry on and submit when you're ready." : "Your answers save as you type, so you can come back and finish later."}
         </div>
       )}
       {status.closesAt && (!preview || status.state === "open") && (

@@ -13,6 +13,7 @@
 import { findAll, findOne, findById, insert, updateOne, newId, removeOne } from "./store";
 import { upsertStudent, setSuspended, deleteUser } from "./users";
 import { deleteSubmissionsFor } from "./submissions";
+import { deleteDraftByEmail } from "./drafts";
 
 export const APPLICATION_STATUSES = ["pending", "interview", "waitlist", "approved", "denied"];
 // Statuses an applicant can be told about. Pending and interview stay "under review".
@@ -102,6 +103,7 @@ export async function deleteApplicant(id) {
     if (await deleteUser(app.studentId)) removed.account = 1;
   }
   await removeOne("applications", id);
+  await deleteDraftByEmail(app.email);
   return removed;
 }
 

@@ -60,6 +60,12 @@ the title and blurb are in `src/app/(site)/slides/page.jsx`. The yellow
 "EIB Night slides" button in the home page bar links to it. To swap the deck,
 replace the PDF and update the title there.
 
+**Unfinished applications.** Signing in to the application form creates a
+draft (`applicationDrafts`) that is refreshed as the applicant types and
+deleted when they submit or are clean-reset. Student Manager → Unfinished
+lists them, newest activity first, with progress and the answers so far;
+the super admin can clear one. A returning applicant gets their answers back.
+
 Things worth trying, in order:
 
 1. **Editor → CRM wiring.** In Lesson Editor, flip lesson 3 to "Yes Mentor".

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { FileText, Users, ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Mail, Calendar, Link2, UserPlus, Lock, ExternalLink, Send, Pencil, Copy, Check, CalendarClock, Megaphone, ShieldOff, ShieldCheck } from "lucide-react";
+import { FileText, Users, ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Mail, Calendar, Link2, UserPlus, Lock, ExternalLink, Send, Pencil, Copy, Check, CalendarClock, Megaphone, ShieldOff, ShieldCheck, FileClock, Clock } from "lucide-react";
 import {
   COLORS,
   QUESTION_TYPES,
@@ -1161,6 +1161,106 @@ function AccManagerTab({ saver }) {
 }
 
 /* ================= App ================= */
+/* ================= Unfinished applications ================= */
+// People who signed in to the form and have not submitted, with what they
+// typed so far. The super admin can clear one.
+function UnfinishedTab({ user }) {
+  const [drafts, setDrafts] = useState(null);
+  const [questions, setQuestions] = useState([]);
+  const [openId, setOpenId] = useState(null);
+  const [error, setError] = useState(null);
+  const [confirmDanger, confirmUI] = useDangerConfirm();
+  const isSuperAdmin = user.role === "superAdmin";
+
+  useEffect(() => {
+    Promise.all([api.get("/api/applications/drafts"), api.get("/api/form")])
+      .then(([d, q]) => {
+        setDrafts(d);
+        setQuestions(q);
+      })
+      .catch((e) => setError(e.message));
+  }, []);
+
+  const answerable = questions.filter((q) => q.type !== "notice");
+  const progress = (d) => {
+    const filled = answerable.filter((q) => String((d.answers || []).find((a) => a.questionId === q.id)?.answer || "").trim() !== "").length;
+    return { filled, total: answerable.length };
+  };
+  const when = (iso) => (iso ? new Date(iso).toLocaleString("en-CA", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "");
+
+  const remove = async (d) => {
+    if (!(await confirmDanger({ title: `Clear ${d.name}'s unfinished application?`, body: "Their saved answers are deleted. They can still start again from the application link.", label: "Clear it" }))) return;
+    try {
+      await api.del(`/api/applications/drafts/${d.id}`);
+      setDrafts((prev) => prev.filter((x) => x.id !== d.id));
+      if (openId === d.id) setOpenId(null);
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+
+  return (
+    <div style={{ maxWidth: 720, margin: "0 auto" }}>
+      {confirmUI}
+      {error && <Notice onClose={() => setError(null)}>{error}</Notice>}
+      <div style={{ fontSize: 12.5, color: COLORS.faint, marginBottom: 12 }}>
+        Someone appears here the moment they sign in to the application form, and leaves the list when they submit. Newest activity first.
+      </div>
+      {!drafts ? (
+        <Loading />
+      ) : drafts.length === 0 ? (
+        <EmptyState>Nobody has an unfinished application right now.</EmptyState>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {drafts.map((d) => {
+            const p = progress(d);
+            const open = openId === d.id;
+            return (
+              <div key={d.id} style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 14, overflow: "hidden" }}>
+                <div onClick={() => setOpenId(open ? null : d.id)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", cursor: "pointer" }}>
+                  <Avatar name={d.name} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.text }}>{d.name}</div>
+                    <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 2, fontSize: 12.5, color: COLORS.faint, fontWeight: 600 }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Mail size={12} /> {d.email}</span>
+                      <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Clock size={12} /> last seen {when(d.lastSeenAt)}</span>
+                      <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Calendar size={12} /> started {when(d.startedAt)}</span>
+                    </div>
+                  </div>
+                  <span style={{ fontSize: 12.5, fontWeight: 800, color: p.filled ? COLORS.amber : COLORS.faint, background: p.filled ? COLORS.amberSoft : "#f1f3f7", border: `1px solid ${p.filled ? COLORS.amberBorder : COLORS.border}`, borderRadius: 999, padding: "4px 10px", whiteSpace: "nowrap" }}>
+                    {p.filled} of {p.total} answered
+                  </span>
+                  {open ? <ChevronUp size={16} color={COLORS.faint} /> : <ChevronDown size={16} color={COLORS.faint} />}
+                </div>
+                {open && (
+                  <div style={{ borderTop: `1px solid ${COLORS.border}`, padding: "12px 16px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+                    {answerable.map((q) => {
+                      const a = String((d.answers || []).find((x) => x.questionId === q.id)?.answer || "").trim();
+                      return (
+                        <div key={q.id}>
+                          <div style={{ fontSize: 12.5, fontWeight: 800, color: COLORS.sub }}>{q.label}</div>
+                          <div style={{ fontSize: 13.5, color: a ? COLORS.text : COLORS.faint, fontStyle: a ? "normal" : "italic", lineHeight: 1.5, whiteSpace: "pre-wrap", marginTop: 2 }}>{a || "Not answered yet"}</div>
+                        </div>
+                      );
+                    })}
+                    {isSuperAdmin && (
+                      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4 }}>
+                        <button type="button" onClick={() => remove(d)} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.faint, fontWeight: 700, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>
+                          <Trash2 size={14} /> Clear this unfinished application
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function StudentManager({ user }) {
   const [tab, setTab] = useState("students");
   // bumping this remounts the students tab, which drops any open student,
@@ -1172,7 +1272,7 @@ export default function StudentManager({ user }) {
   // /manager?tab=forms deep-links to a tab.
   useEffect(() => {
     const wanted = new URLSearchParams(window.location.search).get("tab");
-    if (wanted && ["forms", "students", "accmanager"].includes(wanted)) setTab(wanted);
+    if (wanted && ["forms", "students", "unfinished", "accmanager"].includes(wanted)) setTab(wanted);
   }, []);
   // The Student Manager link in the top bar always comes back to the
   // students list, whatever tab or student was open.
@@ -1189,6 +1289,7 @@ export default function StudentManager({ user }) {
   const tabs = [
     { id: "forms", label: "Forms", icon: FileText },
     { id: "students", label: "EIB Students", icon: Users },
+    { id: "unfinished", label: "Unfinished", icon: FileClock },
     ...(isSuperAdmin ? [{ id: "accmanager", label: "Acc Manager", icon: UserPlus }] : []),
   ];
 
@@ -1205,7 +1306,7 @@ export default function StudentManager({ user }) {
       />
       <div style={{ maxWidth: 720, margin: "0 auto" }}>{saver.error && <Notice onClose={saver.clearError}>{saver.error}</Notice>}</div>
 
-      {tab === "forms" ? <FormsTab saver={saver} user={user} /> : tab === "students" ? <StudentsTab key={listKey} saver={saver} user={user} /> : <AccManagerTab saver={saver} />}
+      {tab === "forms" ? <FormsTab saver={saver} user={user} /> : tab === "students" ? <StudentsTab key={listKey} saver={saver} user={user} /> : tab === "unfinished" ? <UnfinishedTab key={listKey} user={user} /> : <AccManagerTab saver={saver} />}
     </div>
   );
 }

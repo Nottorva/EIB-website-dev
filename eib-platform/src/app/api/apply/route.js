@@ -7,6 +7,7 @@ import { open, readJson, HttpError } from "@/lib/auth";
 import { getApplicant, emailOnDomain } from "@/lib/applicant";
 import { getApplicationForm, getApplicationWindow, windowState, DEFAULT_ACK, countWords } from "@/lib/data/settings";
 import { createApplication, findApplicationByEmail } from "@/lib/data/applications";
+import { deleteDraftByEmail } from "@/lib/data/drafts";
 
 export const POST = open(async ({ req }) => {
   const applicant = await getApplicant();
@@ -38,5 +39,6 @@ export const POST = open(async ({ req }) => {
     email: applicant.email,
     answers: form.map((q) => ({ questionId: q.id, answer: answerFor(q) })),
   });
+  await deleteDraftByEmail(applicant.email);
   return Response.json({ ok: true, id: created.id }, { status: 201 });
 });
