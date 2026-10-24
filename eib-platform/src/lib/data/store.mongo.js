@@ -19,7 +19,9 @@ const globalRef = globalThis;
 function getClientPromise() {
   if (!globalRef.__eibMongoClientPromise) {
     if (!uri) throw new Error("MONGODB_URI is not set.");
-    globalRef.__eibMongoClientPromise = new MongoClient(uri).connect();
+    // A small pool per serverless instance: many instances share one Atlas
+    // connection cap, and each request needs one connection at a time.
+    globalRef.__eibMongoClientPromise = new MongoClient(uri, { maxPoolSize: 5, serverSelectionTimeoutMS: 8000 }).connect();
   }
   return globalRef.__eibMongoClientPromise;
 }
@@ -28,7 +30,26 @@ async function db() {
   const client = await getClientPromise();
   const database = client.db(dbName);
   await ensureSeeded(database);
+  await ensureIndexes(database);
   return database;
+}
+
+// The lookups every request makes (by email) must be indexed, on a database
+// that was seeded before these collections existed too. createIndex is a
+// no-op when the index is already there; run once per process.
+async function ensureIndexes(database) {
+  if (globalRef.__eibMongoIndexed) return;
+  globalRef.__eibMongoIndexed = true;
+  const tryIndex = async (coll, spec, opts) => {
+    try {
+      await database.collection(coll).createIndex(spec, opts);
+    } catch (e) {
+      console.warn(`[eib] index on ${coll} ${JSON.stringify(spec)} not created: ${e.message}`);
+    }
+  };
+  await tryIndex("users", { email: 1 }, { unique: true });
+  await tryIndex("applications", { email: 1 });
+  await tryIndex("applicationDrafts", { email: 1 }, { unique: true });
 }
 
 // First run on an empty database: create the super admin from the
@@ -77,6 +98,22 @@ export async function findOne(collection, predicate) {
 
 export async function findById(collection, id) {
   return strip(await (await db()).collection(collection).findOne({ _id: id }));
+}
+
+export async function findOneBy(collection, field, value, predicate) {
+  const exact = strip(await (await db()).collection(collection).findOne({ [field]: value }));
+  if (exact || !predicate) return exact;
+  return findOne(collection, predicate);
+}
+
+export async function upsertBy(collection, field, value, insertDoc, patch) {
+  const { id: _i, _id: _m, ...setFields } = patch;
+  const onInsert = {};
+  for (const [k, v] of Object.entries({ ...insertDoc, _id: insertDoc.id })) if (!(k in setFields)) onInsert[k] = v;
+  const res = await (await db())
+    .collection(collection)
+    .findOneAndUpdate({ [field]: value }, { $set: setFields, $setOnInsert: onInsert }, { upsert: true, returnDocument: "after" });
+  return strip(res);
 }
 
 export async function insert(collection, doc) {

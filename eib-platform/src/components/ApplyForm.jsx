@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Link2, CheckCircle2, Send, LogIn, LogOut, CalendarClock, Lock, ShieldCheck, Clock, ArrowRight, AlertTriangle } from "lucide-react";
 import { signOut as nextAuthSignOut } from "next-auth/react";
@@ -269,7 +269,10 @@ export default function ApplyForm() {
         setStatus(s);
         // first load with a saved draft: pick up where they left off
         if (s.draft?.answers?.length) {
-          setAnswers((prev) => (Object.keys(prev).length ? prev : Object.fromEntries(s.draft.answers.map((a) => [a.questionId, a.answer]))));
+          const fromDraft = Object.fromEntries(s.draft.answers.map((a) => [a.questionId, a.answer]));
+          setAnswers((prev) => (Object.keys(prev).length ? prev : fromDraft));
+          // what the server already holds: no save until something changes
+          lastSaved.current = JSON.stringify({ answers: s.form.map((q) => ({ questionId: q.id, answer: fromDraft[q.id] ?? "" })) });
           setRestored(true);
         }
       })
@@ -281,17 +284,52 @@ export default function ApplyForm() {
   const set = (id, value) => setAnswers((prev) => ({ ...prev, [id]: value }));
 
   // While the form is open to a signed-in applicant, their answers are saved
-  // server-side as they type (debounced), and the first save marks them as
-  // having started. Nothing is saved in preview or once they have applied.
+  // server-side as they type: 2.5s after the last change, only when something
+  // changed since the last successful save, retried a few times on failure,
+  // and flushed with a beacon if they leave the page mid-way. The save state
+  // is shown under their name. Nothing is saved in preview or once applied.
   const formLive = Boolean(status?.applicant && status.state === "open" && status.domainOk !== false && !status.alreadyApplied && !status.account?.suspended);
+  const [saveState, setSaveState] = useState("idle"); // idle | saving | saved | error
+  const lastSaved = useRef(null);
+  const payloadRef = useRef(null);
+  const draftPayload = () => JSON.stringify({ answers: status.form.map((q) => ({ questionId: q.id, answer: answers[q.id] ?? "" })) });
+  const saveDraft = async (attempt = 0) => {
+    const body = payloadRef.current;
+    if (body == null || body === lastSaved.current) return;
+    setSaveState("saving");
+    try {
+      await api.post("/api/apply/draft", JSON.parse(body));
+      lastSaved.current = body;
+      setSaveState("saved");
+    } catch (err) {
+      if (err.status === 409 || err.status === 403 || err.status === 401) { setSaveState("idle"); return; } // not a form that can be saved any more
+      if (attempt < 3) {
+        setTimeout(() => saveDraft(attempt + 1), [2000, 5000, 10000][attempt]);
+        setSaveState("saving");
+      } else {
+        setSaveState("error");
+      }
+    }
+  };
   useEffect(() => {
     if (!formLive) return undefined;
-    const t = setTimeout(() => {
-      api.post("/api/apply/draft", { answers: status.form.map((q) => ({ questionId: q.id, answer: answers[q.id] ?? "" })) }).catch(() => {});
-    }, 900);
+    payloadRef.current = draftPayload();
+    if (payloadRef.current === lastSaved.current) return undefined;
+    const t = setTimeout(() => saveDraft(0), 2500);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formLive, answers]);
+  useEffect(() => {
+    if (!formLive) return undefined;
+    const flush = () => {
+      const body = payloadRef.current;
+      if (body == null || body === lastSaved.current || typeof navigator.sendBeacon !== "function") return;
+      if (navigator.sendBeacon("/api/apply/draft", new Blob([body], { type: "application/json" }))) lastSaved.current = body;
+    };
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flush(); });
+    return () => window.removeEventListener("pagehide", flush);
+  }, [formLive]);
 
   const signOut = async () => {
     if (status?.authMode === "google") {
@@ -413,8 +451,13 @@ export default function ApplyForm() {
         </div>
       )}
       {!preview && (
-        <div style={{ fontSize: 12.5, color: COLORS.faint, margin: "-6px 2px 14px" }}>
-          {restored ? "Welcome back. Your answers from last time are here; carry on and submit when you're ready." : "Your answers save as you type, so you can come back and finish later."}
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", fontSize: 12.5, color: COLORS.faint, margin: "-6px 2px 14px" }}>
+          <span>{restored ? "Welcome back. Your answers from last time are here; carry on and submit when you're ready." : "Your answers save as you type, so you can come back and finish later."}</span>
+          <span style={{ fontWeight: 700, color: saveState === "error" ? COLORS.red : saveState === "saved" ? COLORS.green : COLORS.faint, whiteSpace: "nowrap" }}>
+            {saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved" : saveState === "error" ? (
+              <>Not saved yet · <button type="button" onClick={() => saveDraft(0)} style={{ border: "none", background: "transparent", color: COLORS.red, fontWeight: 800, cursor: "pointer", padding: 0, fontFamily: "inherit", fontSize: 12.5, textDecoration: "underline" }}>retry</button></>
+            ) : ""}
+          </span>
         </div>
       )}
       {status.closesAt && (!preview || status.state === "open") && (

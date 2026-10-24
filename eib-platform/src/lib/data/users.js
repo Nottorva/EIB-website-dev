@@ -2,7 +2,7 @@
 // places: createLeader (Acc Manager tab, super admin only) and
 // upsertStudent (called when an application is approved).
 
-import { findAll, findOne, findById, insert, updateOne, removeOne, newId } from "./store";
+import { findAll, findOne, findById, insert, updateOne, removeOne, newId, findOneBy } from "./store";
 
 // "advancement": the advancement team. They get the Mentor CRM and nothing
 // else. Only the super admin creates or removes them.
@@ -20,7 +20,7 @@ export async function getUser(id) {
 
 export async function getUserByEmail(email) {
   const target = String(email || "").trim().toLowerCase();
-  return findOne("users", (u) => u.email.toLowerCase() === target);
+  return findOneBy("users", "email", target, (u) => String(u.email).toLowerCase() === target);
 }
 
 // A readable name from an email when none was typed: jane.doe@x -> Jane Doe.

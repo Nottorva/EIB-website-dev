@@ -10,7 +10,7 @@
 // the next release. Accounts are never revoked here (open item in the spec);
 // the super admin can suspend one from the Student Manager instead.
 
-import { findAll, findOne, findById, insert, updateOne, newId, removeOne } from "./store";
+import { findAll, findOne, findById, findOneBy, insert, updateOne, newId, removeOne } from "./store";
 import { upsertStudent, setSuspended, deleteUser } from "./users";
 import { deleteSubmissionsFor } from "./submissions";
 import { deleteDraftByEmail } from "./drafts";
@@ -30,7 +30,7 @@ export async function getApplication(id) {
 
 export async function findApplicationByEmail(email) {
   const target = String(email || "").trim().toLowerCase();
-  return findOne("applications", (a) => String(a.email).toLowerCase() === target);
+  return findOneBy("applications", "email", target, (a) => String(a.email).toLowerCase() === target);
 }
 
 export async function createApplication({ name, email, answers }) {
@@ -38,7 +38,7 @@ export async function createApplication({ name, email, answers }) {
     id: newId("app"),
     studentId: null,
     name: String(name || "").trim(),
-    email: String(email || "").trim(),
+    email: String(email || "").trim().toLowerCase(),
     answers: Array.isArray(answers) ? answers.map((a) => ({ questionId: String(a.questionId), answer: a.answer ?? "" })) : [],
     status: "pending",
     submittedAt: new Date().toISOString(),

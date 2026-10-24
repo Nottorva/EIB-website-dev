@@ -25,6 +25,12 @@ export function newId(prefix) {
 export const findAll = (...args) => impl.findAll(...args);
 export const findOne = (...args) => impl.findOne(...args);
 export const findById = (...args) => impl.findById(...args);
+// Indexed lookup by one field (email) instead of scanning the collection.
+// `predicate` is the slow fallback for rows stored in another case.
+export const findOneBy = (...args) => impl.findOneBy(...args);
+// Atomic "update if a row with field=value exists, else insert" (one row per
+// email even when two saves arrive at once).
+export const upsertBy = (...args) => impl.upsertBy(...args);
 export const insert = (...args) => impl.insert(...args);
 export const updateOne = (...args) => impl.updateOne(...args);
 export const replaceOne = (...args) => impl.replaceOne(...args);

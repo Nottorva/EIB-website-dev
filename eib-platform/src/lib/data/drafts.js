@@ -5,7 +5,7 @@
 // the super admin clean-resets the applicant). Read only by the Student
 // Manager's Unfinished tab.
 
-import { findAll, findOne, insert, updateOne, removeOne, newId } from "./store";
+import { findAll, findOneBy, upsertBy, removeOne, newId } from "./store";
 
 const COLLECTION = "applicationDrafts";
 
@@ -16,7 +16,7 @@ export async function listDrafts() {
 
 export async function findDraftByEmail(email) {
   const key = String(email || "").toLowerCase();
-  return findOne(COLLECTION, (r) => r.email === key);
+  return findOneBy(COLLECTION, "email", key);
 }
 
 function cleanAnswers(answers) {
@@ -27,24 +27,15 @@ function cleanAnswers(answers) {
     .slice(0, 100);
 }
 
-// Upsert by email. `answers` undefined = just mark them seen.
+// Upsert by email, in one atomic write (two saves arriving together still
+// leave one row). `answers` undefined = just mark them seen.
 export async function touchDraft({ name, email, answers }) {
   const key = String(email || "").toLowerCase();
   const now = new Date().toISOString();
-  const existing = await findDraftByEmail(key);
-  if (existing) {
-    const patch = { name: String(name || existing.name), lastSeenAt: now };
-    if (answers !== undefined) patch.answers = cleanAnswers(answers);
-    return updateOne(COLLECTION, existing.id, patch);
-  }
-  return insert(COLLECTION, {
-    id: newId("draft"),
-    email: key,
-    name: String(name || key),
-    startedAt: now,
-    lastSeenAt: now,
-    answers: cleanAnswers(answers),
-  });
+  const patch = { name: String(name || key), lastSeenAt: now };
+  if (answers !== undefined) patch.answers = cleanAnswers(answers);
+  const insertDoc = { id: newId("draft"), email: key, startedAt: now, ...(answers === undefined ? { answers: [] } : {}) };
+  return upsertBy(COLLECTION, "email", key, insertDoc, patch);
 }
 
 export async function deleteDraft(id) {

@@ -282,6 +282,8 @@ let applicant = null;
   check("leader sees the unfinished application", ["Half done"], (drafts.json || []).filter((d) => d.email === "smoke.applicant@tfs.ca").map((d) => d.answers[0]?.answer));
   check("student GET drafts -> 403", 403, await code(student, "GET", "/api/applications/drafts"));
   check("status returns the draft to the applicant", "Half done", (await req(applicant, "GET", "/api/apply/status")).json?.draft?.answers?.[0]?.answer);
+  await Promise.all([1, 2, 3, 4].map((i) => req(applicant, "POST", "/api/apply/draft", { answers: [{ questionId: "q_intro", answer: `Half done ${i}` }] })));
+  check("four saves at once -> still one draft row", 1, (await req(leader, "GET", "/api/applications/drafts")).json.filter((d) => d.email === "smoke.applicant@tfs.ca").length);
   check("251 words -> 400", 400, await code(applicant, "POST", "/api/apply", GOOD({ q_problem: words(251) })));
   const ok = await req(applicant, "POST", "/api/apply", GOOD({ q_problem: words(250) }));
   check("250 words, optional blank -> 201", 201, ok.status);

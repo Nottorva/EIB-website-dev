@@ -60,6 +60,12 @@ the title and blurb are in `src/app/(site)/slides/page.jsx`. The yellow
 "EIB Night slides" button in the home page bar links to it. To swap the deck,
 replace the PDF and update the title there.
 
+**Lookups by email** (users, applications, drafts) use `findOneBy`, an
+indexed query on MongoDB with a scan fallback, and the draft save is one
+atomic upsert; the Mongo client runs a 5-connection pool per instance. Each
+process creates the email indexes once (`ensureIndexes`), so an older
+database picks them up on its next deploy.
+
 **Unfinished applications.** Signing in to the application form creates a
 draft (`applicationDrafts`) that is refreshed as the applicant types and
 deleted when they submit or are clean-reset. Student Manager → Analytics

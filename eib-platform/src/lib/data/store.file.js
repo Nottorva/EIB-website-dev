@@ -44,6 +44,18 @@ export async function findById(collection, id) {
   return findOne(collection, (r) => r.id === id);
 }
 
+export async function findOneBy(collection, field, value, predicate) {
+  const exact = await findOne(collection, (r) => r[field] === value);
+  if (exact || !predicate) return exact;
+  return findOne(collection, predicate);
+}
+
+export async function upsertBy(collection, field, value, insertDoc, patch) {
+  const existing = await findOne(collection, (r) => r[field] === value);
+  if (existing) return updateOne(collection, existing.id, patch);
+  return insert(collection, { ...insertDoc, ...patch });
+}
+
 export async function insert(collection, doc) {
   const db = load();
   db[collection] = db[collection] || [];
