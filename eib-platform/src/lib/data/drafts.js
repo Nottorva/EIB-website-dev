@@ -5,13 +5,17 @@
 // the super admin clean-resets the applicant). Read only by the Student
 // Manager's Unfinished tab.
 
-import { findAll, findOneBy, upsertBy, removeOne, newId } from "./store";
+import { findAll, findById, findOneBy, upsertBy, removeOne, newId } from "./store";
 
 const COLLECTION = "applicationDrafts";
 
 export async function listDrafts() {
   const rows = await findAll(COLLECTION);
   return [...rows].sort((a, b) => String(b.lastSeenAt).localeCompare(String(a.lastSeenAt)));
+}
+
+export async function getDraft(id) {
+  return findById(COLLECTION, id);
 }
 
 export async function findDraftByEmail(email) {

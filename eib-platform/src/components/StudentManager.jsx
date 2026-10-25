@@ -1236,6 +1236,25 @@ function UnfinishedList({ user, drafts, questions, onChange }) {
   };
   const when = (iso) => (iso ? new Date(iso).toLocaleString("en-CA", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "");
 
+  // Super admin: submit the draft for them. Two clicks on the same button.
+  const [armedId, setArmedId] = useState(null);
+  const [info, setInfo] = useState(null);
+  const submitFor = async (d) => {
+    if (armedId !== d.id) {
+      setArmedId(d.id);
+      return;
+    }
+    setArmedId(null);
+    try {
+      const created = await api.post(`/api/applications/drafts/${d.id}/submit`);
+      setDrafts((prev) => prev.filter((x) => x.id !== d.id));
+      if (openId === d.id) setOpenId(null);
+      setInfo(`Submitted ${created.name}'s application with what they had. It is now in EIB Students as Pending; interview, approve and release as usual.`);
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+
   const remove = async (d) => {
     if (!(await confirmDanger({ title: `Clear ${d.name}'s unfinished application?`, body: "Their saved answers are deleted. They can still start again from the application link.", label: "Clear it" }))) return;
     try {
@@ -1251,6 +1270,7 @@ function UnfinishedList({ user, drafts, questions, onChange }) {
     <div>
       {confirmUI}
       {error && <Notice onClose={() => setError(null)}>{error}</Notice>}
+      {info && <Notice tone="info" onClose={() => setInfo(null)}>{info}</Notice>}
       <div style={{ fontSize: 12.5, color: COLORS.faint, marginBottom: 12 }}>
         Someone appears here the moment they sign in to the application form, and leaves the list when they submit. Newest activity first.
       </div>
@@ -1292,7 +1312,18 @@ function UnfinishedList({ user, drafts, questions, onChange }) {
                       );
                     })}
                     {isSuperAdmin && (
-                      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, marginTop: 6, flexWrap: "wrap" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                          <button
+                            type="button"
+                            onClick={() => submitFor(d)}
+                            onBlur={() => setArmedId((a) => (a === d.id ? null : a))}
+                            style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: armedId === d.id ? COLORS.amber : COLORS.indigo, color: "#fff", fontWeight: 800, fontSize: 13, borderRadius: 999, padding: "8px 14px", cursor: "pointer", fontFamily: "inherit" }}
+                          >
+                            <Send size={14} /> {armedId === d.id ? "Click again to submit it for them" : "Submit this for them"}
+                          </button>
+                          <span style={{ fontSize: 12, color: COLORS.faint }}>Creates their application with what they have, as if they had pressed Submit.</span>
+                        </div>
                         <button type="button" onClick={() => remove(d)} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.faint, fontWeight: 700, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>
                           <Trash2 size={14} /> Clear this unfinished application
                         </button>

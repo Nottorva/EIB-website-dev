@@ -301,6 +301,18 @@ let applicant = null;
 {
   const after = await req(admin, "GET", "/api/applications/drafts");
   check("draft gone once submitted", false, (after.json || []).some((d) => d.email === "smoke.applicant@tfs.ca"));
+  // super admin submits an unfinished application on the applicant's behalf
+  const half = stranger + "; " + (await applicantSession("Half Way", "half.way@tfs.ca")).cookie;
+  await req(half, "POST", "/api/apply/draft", { answers: [{ questionId: "q_problem", answer: "Only this much." }] });
+  const draftRow = (await req(admin, "GET", "/api/applications/drafts")).json.find((d) => d.email === "half.way@tfs.ca");
+  check("leader cannot submit for them -> 403", 403, await code(leader, "POST", `/api/applications/drafts/${draftRow?.id}/submit`));
+  const forced = await req(admin, "POST", `/api/applications/drafts/${draftRow?.id}/submit`);
+  check("admin submits for them -> 201 pending with their answer", [201, "pending", "Only this much."], [forced.status, forced.json?.status, forced.json?.answers?.find((a) => a.questionId === "q_problem")?.answer]);
+  check("their draft is gone", false, (await req(admin, "GET", "/api/applications/drafts")).json.some((d) => d.email === "half.way@tfs.ca"));
+  check("they now appear in applications", true, (await req(leader, "GET", "/api/applications")).json.some((a) => a.email === "half.way@tfs.ca"));
+  check("submit again -> 404 (draft gone)", 404, await code(admin, "POST", `/api/applications/drafts/${draftRow?.id}/submit`));
+  check("their status page says applied", true, (await req(half, "GET", "/api/apply/status")).json?.alreadyApplied);
+  check("clean reset of the forced application", 200, await code(admin, "DELETE", `/api/applications/${forced.json?.id}`));
 }
 
 head("decisions and release");

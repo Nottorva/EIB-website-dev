@@ -73,7 +73,10 @@ shows applications over time (new per day, running total against the class
 size, headline numbers; the day axis grows on its own while the window is
 open; a table view sits behind a toggle) and, underneath, the unfinished
 applications, newest activity first, with progress and the answers so far;
-the super admin can clear one. A returning applicant gets their answers back.
+the super admin can clear one, or **submit it for them** (two clicks): the
+draft becomes a pending application with whatever answers it holds, skipping
+the public form's checks, and goes through interview / approve / release like
+any other. A returning applicant gets their answers back.
 
 Things worth trying, in order:
 
