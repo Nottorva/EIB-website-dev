@@ -128,6 +128,19 @@ let tempLessonId = null;
   tempLessonId = made.json?.id;
   check("leader PATCH room -> 200", 200, await code(leader, "PATCH", `/api/lessons/${tempLessonId}`, { room: "Room 9" }));
   check("admin PATCH session date -> saved", "Nov 17, 2026", (await req(admin, "PATCH", `/api/lessons/${tempLessonId}`, { date: "Nov 17, 2026" })).json?.date);
+  check("leader PATCH mentorLocation -> 403", 403, await code(leader, "PATCH", `/api/lessons/${tempLessonId}`, { mentorLocation: "x" }));
+  check("admin PATCH mentor fields -> saved", ["Library", "4:45 PM"], (({ json }) => [json?.mentorLocation, json?.mentorStartTime])(await req(admin, "PATCH", `/api/lessons/${tempLessonId}`, { mentorLocation: "Library", mentorStartTime: "4:45 PM" })));
+  check("student lessons carry no mentor fields", false, (await req(student, "GET", "/api/lessons")).json.some((l) => "mentorLocation" in l || "mentorStartTime" in l || "mentorBrief" in l));
+  check("leader bulk defaults -> 403", 403, await code(leader, "POST", "/api/lessons/bulk-logistics", { student: { room: "x" } }));
+  const bulk = await req(admin, "POST", "/api/lessons/bulk-logistics", { student: { room: "Room 106", startTime: "4:00 PM", endTime: "5:30 PM" }, mentor: { mentorLocation: "TFS Sr. School", mentorStartTime: "4:30 PM", mentorEndTime: "5:30 PM" } });
+  check("admin bulk defaults -> every lesson changed", true, bulk.status === 200 && bulk.json?.changed === bulk.json?.lessons && bulk.json?.lessons >= 4);
+  {
+    const after = (await req(admin, "GET", "/api/lessons")).json;
+    const l1 = after.find((l) => l.number === "1");
+    const l3 = after.find((l) => l.number === "3");
+    check("bulk: lesson 1 (mentor) has both sets", ["Room 106", "4:00 PM", "TFS Sr. School", "4:30 PM"], [l1?.room, l1?.startTime, l1?.mentorLocation, l1?.mentorStartTime]);
+    check("bulk: lesson 3 (no mentor) has student set only", ["Room 106", ""], [l3?.room, l3?.mentorLocation || ""]);
+  }
   check("leader PATCH title -> 403", 403, await code(leader, "PATCH", `/api/lessons/${tempLessonId}`, { title: "x" }));
   check("leader PATCH mentorBrief -> 403", 403, await code(leader, "PATCH", `/api/lessons/${tempLessonId}`, { mentorBrief: "x" }));
   const brief = await req(admin, "PATCH", `/api/lessons/${tempLessonId}`, { mentorBrief: "Press on the problem." });

@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { BookOpen, Eye, Presentation, UserCheck, MapPin, Clock, ChevronDown, ChevronUp, MessageCircle, FileText, User, Lightbulb, ExternalLink, Pencil, CalendarDays } from "lucide-react";
 import { COLORS, Pill, ModalShell, HeaderButton, Notice, SaveIndicator, Loading, TypeChip, fieldStyle } from "./ui";
 import { api, useDebouncedSaver } from "@/lib/api";
+import { MENTOR_DEFAULTS, mentorWhere, mentorWhen } from "@/lib/sessionDefaults";
 import { DeliverableInput, DeliverablePreview, ExampleBlock } from "./DeliverableInputs";
 
 /* ---------- Modals ---------- */
@@ -131,7 +132,7 @@ function DeliverableAccordion({ item, mode, submission, onChangePayload }) {
 }
 
 /* ---------- Room / time (read-only for students, editable for leaders) ---------- */
-function Logistics({ lesson, editable, onChange }) {
+function Logistics({ lesson, editable, onChange, showMentor }) {
   const [editing, setEditing] = useState(false);
 
   if (!editable || !editing) {
@@ -152,6 +153,12 @@ function Logistics({ lesson, editable, onChange }) {
           {lesson.startTime || "TBD"}
           {lesson.endTime ? ` – ${lesson.endTime}` : ""}
         </div>
+        {showMentor && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, color: COLORS.sub, fontSize: 13.5, fontWeight: 600, background: COLORS.amberSoft, border: `1px solid ${COLORS.amberBorder}`, borderRadius: 999, padding: "4px 12px" }}>
+            <UserCheck size={14} color={COLORS.amber} strokeWidth={2.25} />
+            Mentor arrival · {mentorWhere(lesson)} · {mentorWhen(lesson)}
+          </div>
+        )}
         {editable && (
           <button
             type="button"
@@ -190,13 +197,35 @@ function Logistics({ lesson, editable, onChange }) {
           Done
         </button>
       </div>
-      <div style={{ fontSize: 12.5, color: COLORS.faint, marginTop: 8 }}>Saves as you type. Students and the Mentor CRM see the new room, date and time immediately.</div>
+      <div style={{ fontSize: 12.5, color: COLORS.faint, marginTop: 8 }}>Saves as you type. This is what students see; the date is shared with the mentor side.</div>
+      {showMentor && (
+        <div style={{ marginTop: 16, background: COLORS.amberSoft, border: `1px solid ${COLORS.amberBorder}`, borderRadius: 12, padding: "12px 14px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 800, color: COLORS.amber, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 8 }}>
+            <UserCheck size={13} strokeWidth={2.5} /> Mentor arrival
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12, alignItems: "end" }}>
+            <div>
+              <div style={label}>Mentor location</div>
+              <input value={lesson.mentorLocation || ""} onChange={(e) => onChange({ mentorLocation: e.target.value })} placeholder={MENTOR_DEFAULTS.mentorLocation} style={small} />
+            </div>
+            <div>
+              <div style={label}>Mentor start</div>
+              <input value={lesson.mentorStartTime || ""} onChange={(e) => onChange({ mentorStartTime: e.target.value })} placeholder={MENTOR_DEFAULTS.mentorStartTime} style={small} />
+            </div>
+            <div>
+              <div style={label}>Mentor end</div>
+              <input value={lesson.mentorEndTime || ""} onChange={(e) => onChange({ mentorEndTime: e.target.value })} placeholder={MENTOR_DEFAULTS.mentorEndTime} style={small} />
+            </div>
+          </div>
+          <div style={{ fontSize: 12.5, color: COLORS.sub, marginTop: 8 }}>What the Mentor CRM shows for this session. Blank means {MENTOR_DEFAULTS.mentorLocation}, {MENTOR_DEFAULTS.mentorStartTime} to {MENTOR_DEFAULTS.mentorEndTime}.</div>
+        </div>
+      )}
     </div>
   );
 }
 
 /* ---------- Lesson card ---------- */
-function LessonCard({ lesson, mode, submissions, onChangePayload, onChangeLogistics }) {
+function LessonCard({ lesson, mode, submissions, onChangePayload, onChangeLogistics, superAdmin }) {
   const [activeModal, setActiveModal] = useState(null);
   const eyebrow = lesson.chapterLabel || "Chapter";
 
@@ -217,7 +246,7 @@ function LessonCard({ lesson, mode, submissions, onChangePayload, onChangeLogist
         </div>
       </div>
 
-      <Logistics lesson={lesson} editable={mode === "leader"} onChange={(fields) => onChangeLogistics(lesson.id, fields)} />
+      <Logistics lesson={lesson} editable={mode === "leader"} onChange={(fields) => onChangeLogistics(lesson.id, fields)}  showMentor={superAdmin && Boolean(lesson.mentorEnabled)} />
 
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 24, paddingBottom: 24, borderBottom: `1px solid ${COLORS.border}` }}>
         <Pill icon={Eye} label="Student Overview" onClick={() => setActiveModal("overview")} />
@@ -306,7 +335,7 @@ export default function LessonView({ user }) {
         ) : (
           <LessonLayout lessons={lessons}>
             {lessons.map((lesson) => (
-              <LessonCard key={lesson.id} lesson={lesson} mode={mode} submissions={submissions} onChangePayload={changePayload} onChangeLogistics={changeLogistics} />
+              <LessonCard key={lesson.id} lesson={lesson} mode={mode} submissions={submissions} onChangePayload={changePayload} onChangeLogistics={changeLogistics} superAdmin={user.role === "superAdmin"} />
             ))}
           </LessonLayout>
         )}

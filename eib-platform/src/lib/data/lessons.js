@@ -57,10 +57,16 @@ export function normalizeLesson(input, id) {
     overviewLink: String(input.overviewLink ?? ""),
     teachingPlanLink: String(input.teachingPlanLink ?? ""),
     mentorEnabled: Boolean(input.mentorEnabled),
+    // Student-facing session: what /lessons shows and leaders edit there.
     room: String(input.room ?? ""),
     date: String(input.date ?? ""),
     startTime: String(input.startTime ?? ""),
     endTime: String(input.endTime ?? ""),
+    // Mentor-facing session (same date): what the Mentor CRM shows and the
+    // super admin edits. Blank = the defaults in lib/sessionDefaults.js.
+    mentorLocation: String(input.mentorLocation ?? ""),
+    mentorStartTime: String(input.mentorStartTime ?? ""),
+    mentorEndTime: String(input.mentorEndTime ?? ""),
     overview: String(input.overview ?? ""),
     // Shown on the CRM's Sessions tab; the super admin writes it. Never sent
     // to students (see the lessons routes).
@@ -111,14 +117,38 @@ export async function saveLesson(id, input) {
 }
 
 // Student leaders may change where and when a lesson meets, nothing else.
-export async function updateLessonLogistics(id, { room, date, startTime, endTime, mentorBrief }) {
+export const STUDENT_SESSION_KEYS = ["room", "date", "startTime", "endTime"];
+export const MENTOR_SESSION_KEYS = ["mentorLocation", "mentorStartTime", "mentorEndTime", "mentorBrief"];
+
+// Students never receive the mentor-facing fields.
+export function forStudent(lesson) {
+  const { mentorBrief, mentorLocation, mentorStartTime, mentorEndTime, ...rest } = lesson;
+  return rest;
+}
+
+export async function updateLessonLogistics(id, fields) {
   const patch = {};
-  if (room !== undefined) patch.room = String(room);
-  if (date !== undefined) patch.date = String(date);
-  if (startTime !== undefined) patch.startTime = String(startTime);
-  if (endTime !== undefined) patch.endTime = String(endTime);
-  if (mentorBrief !== undefined) patch.mentorBrief = String(mentorBrief);
+  for (const key of [...STUDENT_SESSION_KEYS, ...MENTOR_SESSION_KEYS]) if (fields[key] !== undefined) patch[key] = String(fields[key]);
   return updateOne("lessons", id, patch);
+}
+
+// One pass over every lesson: student values on all, mentor values on the
+// "Yes Mentor" ones. Blank request fields are skipped; dates are untouched.
+export async function bulkSessionDefaults({ student = {}, mentor = {} }) {
+  const all = await listLessons();
+  const pick = (src, keys) => Object.fromEntries(keys.filter((k) => String(src[k] ?? "").trim() !== "").map((k) => [k, String(src[k]).trim()]));
+  const studentPatch = pick(student, ["room", "startTime", "endTime"]);
+  const mentorPatch = pick(mentor, ["mentorLocation", "mentorStartTime", "mentorEndTime"]);
+  let changed = 0;
+  let mentorLessons = 0;
+  for (const l of all) {
+    const patch = { ...studentPatch, ...(l.mentorEnabled ? mentorPatch : {}) };
+    if (l.mentorEnabled) mentorLessons += 1;
+    if (Object.keys(patch).length === 0) continue;
+    await updateOne("lessons", l.id, patch);
+    changed += 1;
+  }
+  return { lessons: all.length, mentorLessons, changed, studentPatch, mentorPatch };
 }
 
 export async function deleteLesson(id) {

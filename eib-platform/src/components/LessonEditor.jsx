@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { BookOpen, Eye, Presentation, UserCheck, FileText, Trash2, Plus, Pencil, ExternalLink, Globe } from "lucide-react";
+import { BookOpen, Eye, Presentation, UserCheck, FileText, Trash2, Plus, Pencil, ExternalLink, Globe, CalendarCog } from "lucide-react";
+import { MENTOR_DEFAULTS, STUDENT_DEFAULTS } from "@/lib/sessionDefaults";
 import {
   COLORS,
   DELIVERABLE_TYPES,
@@ -18,6 +19,7 @@ import {
   TypeChip,
   nextId,
   useDangerConfirm,
+  PrimaryButton,
 } from "./ui";
 import { api, useDebouncedSaver } from "@/lib/api";
 import { DeliverablePreview, DeliverableInput, ExampleBlock } from "./DeliverableInputs";
@@ -634,6 +636,53 @@ function LessonCard({ lesson, onPatch, onDelete }) {
 }
 
 /* ---------- Main page ---------- */
+/* ---------- Session defaults: room and times on every lesson at once ---------- */
+function SessionDefaultsModal({ onClose, onApply }) {
+  const [student, setStudent] = useState({ ...STUDENT_DEFAULTS });
+  const [mentor, setMentor] = useState({ ...MENTOR_DEFAULTS });
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(null);
+  const label = { fontSize: 11.5, fontWeight: 800, color: COLORS.faint, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 };
+  const box = { ...fieldStyle, padding: "9px 12px", fontSize: 14, borderRadius: 10 };
+  const apply = async () => {
+    setBusy(true);
+    try {
+      const r = await onApply({ student, mentor });
+      if (r) setDone(r);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <ModalShell eyebrow="Lesson Editor" title="Session defaults" onClose={onClose} maxWidth={640}>
+      <div style={{ fontSize: 14, color: COLORS.sub, lineHeight: 1.55, marginBottom: 18 }}>
+        Writes these onto every lesson in one go. Student room and times go on all lessons; the mentor location and times go only on lessons flagged "Yes Mentor". Dates are left as they are. Leave a box blank to skip that field.
+      </div>
+      <div style={label}>Students · every lesson</div>
+      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 10, marginBottom: 18 }}>
+        <input value={student.room} onChange={(e) => setStudent({ ...student, room: e.target.value })} placeholder="Room" style={box} />
+        <input value={student.startTime} onChange={(e) => setStudent({ ...student, startTime: e.target.value })} placeholder="Start" style={box} />
+        <input value={student.endTime} onChange={(e) => setStudent({ ...student, endTime: e.target.value })} placeholder="End" style={box} />
+      </div>
+      <div style={label}>Mentor arrival · "Yes Mentor" lessons</div>
+      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 10, marginBottom: 22 }}>
+        <input value={mentor.mentorLocation} onChange={(e) => setMentor({ ...mentor, mentorLocation: e.target.value })} placeholder="Location" style={box} />
+        <input value={mentor.mentorStartTime} onChange={(e) => setMentor({ ...mentor, mentorStartTime: e.target.value })} placeholder="Start" style={box} />
+        <input value={mentor.mentorEndTime} onChange={(e) => setMentor({ ...mentor, mentorEndTime: e.target.value })} placeholder="End" style={box} />
+      </div>
+      {done && (
+        <Notice tone="info" onClose={() => setDone(null)}>
+          Updated {done.changed} of {done.lessons} lessons ({done.mentorLessons} with a mentor).
+        </Notice>
+      )}
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+        <button type="button" onClick={onClose} style={{ border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.sub, fontWeight: 800, fontSize: 13.5, borderRadius: 999, padding: "9px 16px", cursor: "pointer", fontFamily: "inherit" }}>Close</button>
+        <PrimaryButton onClick={apply} disabled={busy} icon={CalendarCog}>Apply to all lessons</PrimaryButton>
+      </div>
+    </ModalShell>
+  );
+}
+
 export default function LessonEditor({ user }) {
   const [lessons, setLessons] = useState(null);
   const [error, setError] = useState(null);
@@ -656,6 +705,17 @@ export default function LessonEditor({ user }) {
     });
 
   const [confirmDanger, confirmUI] = useDangerConfirm();
+  const [defaultsOpen, setDefaultsOpen] = useState(false);
+  const applyDefaults = async (body) => {
+    const n = (lessons || []).length;
+    if (!(await confirmDanger({ title: `Set the session on all ${n} lessons?`, body: "Student room and times go on every lesson; mentor location and times go on the \"Yes Mentor\" lessons. Dates are not touched. Fields left blank are skipped.", label: "Apply to all lessons" }))) return false;
+    const result = await api.post("/api/lessons/bulk-logistics", body);
+    const fresh = await api.get("/api/lessons");
+    setLessons(fresh);
+    setDefaultsOpen(false);
+    setError(null);
+    return result;
+  };
   const deleteLesson = async (id) => {
     const lesson = lessons.find((l) => l.id === id);
     if (!(await confirmDanger({ title: `Delete "${lesson.title}"?`, body: "Student submissions for it will no longer be visible.", label: "Delete lesson" }))) return;
@@ -668,6 +728,7 @@ export default function LessonEditor({ user }) {
   return (
     <div style={{ background: COLORS.bg, minHeight: "100%" }}>
       {confirmUI}
+      {defaultsOpen && <SessionDefaultsModal onClose={() => setDefaultsOpen(false)} onApply={applyDefaults} />}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 40px", borderBottom: `1px solid ${COLORS.border}`, background: "#fff" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <div style={{ width: 40, height: 40, borderRadius: 11, background: COLORS.indigo, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -676,6 +737,14 @@ export default function LessonEditor({ user }) {
           <span style={{ fontSize: 20, fontWeight: 800, color: COLORS.text }}>EIB Textbook</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <button
+            type="button"
+            onClick={() => setDefaultsOpen(true)}
+            title="Set the room and times on every lesson at once"
+            style={{ display: "flex", alignItems: "center", gap: 6, border: `1px solid ${COLORS.indigoBorder}`, background: COLORS.indigoSoft, color: COLORS.indigo, fontWeight: 800, fontSize: 13, borderRadius: 999, padding: "7px 14px", cursor: "pointer", fontFamily: "inherit" }}
+          >
+            <CalendarCog size={14} /> Session defaults
+          </button>
           <SaveIndicator status={saver.status} />
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div style={{ width: 34, height: 34, borderRadius: "50%", background: COLORS.indigoSoft, color: COLORS.indigo, fontWeight: 800, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>

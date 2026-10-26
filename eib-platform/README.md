@@ -53,6 +53,15 @@ builds and whenever Google sign-in is on.
 | Amara Chen (student) | Lessons (student mode, own submissions only) |
 | Not on the allow-list | Nothing except the public application form |
 
+**Two sessions per lesson.** A lesson's `room` / `date` / `startTime` /
+`endTime` are what students see (the Lessons page; leaders edit them there).
+`mentorLocation` / `mentorStartTime` / `mentorEndTime` (same date) are what
+the Mentor CRM shows and the super admin edits, on the CRM session page or in
+the "Mentor arrival" group on the Lessons page. Blank mentor fields fall back
+to `lib/sessionDefaults.js` (TFS Sr. School, 4:30 to 5:30 PM). Students never
+receive the mentor fields. Lesson Editor → **Session defaults** writes a room
+and times onto every lesson at once (`POST /api/lessons/bulk-logistics`).
+
 **Slides.** `/slides` is a public page that shows the EIB Night deck in the
 browser (pdf.js from cdnjs, one slide under the next, rendered as they scroll
 into view) with a download link. The PDF is `public/site/eib-night-2027.pdf`;

@@ -493,7 +493,7 @@ export default function MentorCRM({ user }) {
     saver.schedule(`lesson:${id}`, async () => {
       const merged = lessons.find((l) => l.id === id) || {};
       const body = {};
-      for (const k of ["room", "date", "startTime", "endTime", "mentorBrief"]) if (k in fields || k in merged) body[k] = k in fields ? fields[k] : merged[k];
+      for (const k of ["date", "mentorLocation", "mentorStartTime", "mentorEndTime", "mentorBrief"]) if (k in fields || k in merged) body[k] = k in fields ? fields[k] : merged[k];
       await api.patch(`/api/lessons/${id}`, body);
     });
   };
