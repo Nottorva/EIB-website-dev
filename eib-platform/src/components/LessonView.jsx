@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { BookOpen, Eye, Presentation, UserCheck, MapPin, Clock, ChevronDown, ChevronUp, MessageCircle, FileText, User, Lightbulb, ExternalLink, Pencil } from "lucide-react";
+import React, { useEffect, useState, useRef } from "react";
+import { BookOpen, Eye, Presentation, UserCheck, MapPin, Clock, ChevronDown, ChevronUp, MessageCircle, FileText, User, Lightbulb, ExternalLink, Pencil, CalendarDays } from "lucide-react";
 import { COLORS, Pill, ModalShell, HeaderButton, Notice, SaveIndicator, Loading, TypeChip, fieldStyle } from "./ui";
 import { api, useDebouncedSaver } from "@/lib/api";
 import { DeliverableInput, DeliverablePreview, ExampleBlock } from "./DeliverableInputs";
@@ -28,6 +28,13 @@ function StudentOverviewModal({ eyebrow, lesson, onClose }) {
       <div style={{ display: "flex", alignItems: "center", gap: 8, color: COLORS.sub, fontSize: 15, fontWeight: 600, marginBottom: 22, flexWrap: "wrap" }}>
         <MapPin size={17} color={COLORS.indigo} strokeWidth={2.25} />
         {lesson.room || "Room TBD"}
+        {lesson.date && (
+          <>
+            <span style={{ color: COLORS.faint, margin: "0 4px" }}>·</span>
+            <CalendarDays size={17} color={COLORS.indigo} strokeWidth={2.25} />
+            {lesson.date}
+          </>
+        )}
         <span style={{ color: COLORS.faint, margin: "0 4px" }}>·</span>
         <Clock size={17} color={COLORS.indigo} strokeWidth={2.25} />
         {lesson.startTime || "TBD"}
@@ -134,6 +141,12 @@ function Logistics({ lesson, editable, onChange }) {
           <MapPin size={17} color={COLORS.indigo} strokeWidth={2.25} />
           {lesson.room || "Room TBD"}
         </div>
+        {lesson.date && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, color: COLORS.sub, fontSize: 15, fontWeight: 600 }}>
+            <CalendarDays size={17} color={COLORS.indigo} strokeWidth={2.25} />
+            {lesson.date}
+          </div>
+        )}
         <div style={{ display: "flex", alignItems: "center", gap: 8, color: COLORS.sub, fontSize: 15, fontWeight: 600 }}>
           <Clock size={17} color={COLORS.indigo} strokeWidth={2.25} />
           {lesson.startTime || "TBD"}
@@ -156,10 +169,14 @@ function Logistics({ lesson, editable, onChange }) {
   const label = { fontSize: 11.5, fontWeight: 800, color: COLORS.faint, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 };
   return (
     <div style={{ marginTop: 20, paddingTop: 20, borderTop: `1px solid ${COLORS.border}` }}>
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr auto", gap: 12, alignItems: "end" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "2fr 1.2fr 1fr 1fr auto", gap: 12, alignItems: "end" }}>
         <div>
           <div style={label}>Room / location</div>
           <input value={lesson.room} onChange={(e) => onChange({ room: e.target.value })} placeholder="Room 214" style={small} />
+        </div>
+        <div>
+          <div style={label}>Date</div>
+          <input value={lesson.date || ""} onChange={(e) => onChange({ date: e.target.value })} placeholder="Nov 17, 2026" style={small} />
         </div>
         <div>
           <div style={label}>Start</div>
@@ -173,7 +190,7 @@ function Logistics({ lesson, editable, onChange }) {
           Done
         </button>
       </div>
-      <div style={{ fontSize: 12.5, color: COLORS.faint, marginTop: 8 }}>Saves as you type. Students see the new room and time immediately.</div>
+      <div style={{ fontSize: 12.5, color: COLORS.faint, marginTop: 8 }}>Saves as you type. Students and the Mentor CRM see the new room, date and time immediately.</div>
     </div>
   );
 }
@@ -255,10 +272,17 @@ export default function LessonView({ user }) {
     });
   };
 
-  // Leaders: room / start / end only. The route rejects anything else.
+  // Leaders: room / date / start / end only. The route rejects anything
+  // else. Fields changed within the debounce window are sent together.
+  const pendingLogistics = useRef({});
   const changeLogistics = (lessonId, fields) => {
     setData((prev) => ({ ...prev, lessons: prev.lessons.map((l) => (l.id === lessonId ? { ...l, ...fields } : l)) }));
-    saver.schedule(`logistics:${lessonId}`, () => api.patch(`/api/lessons/${lessonId}`, fields));
+    pendingLogistics.current[lessonId] = { ...(pendingLogistics.current[lessonId] || {}), ...fields };
+    saver.schedule(`logistics:${lessonId}`, () => {
+      const body = pendingLogistics.current[lessonId] || {};
+      delete pendingLogistics.current[lessonId];
+      return api.patch(`/api/lessons/${lessonId}`, body);
+    });
   };
 
   const mode = data?.mode || (user.role === "student" ? "student" : "leader");
