@@ -127,6 +127,7 @@ let tempLessonId = null;
   check("admin POST lesson -> 201", 201, made.status);
   tempLessonId = made.json?.id;
   check("leader PATCH room -> 200", 200, await code(leader, "PATCH", `/api/lessons/${tempLessonId}`, { room: "Room 9" }));
+  check("admin PATCH session date -> saved", "Nov 17, 2026", (await req(admin, "PATCH", `/api/lessons/${tempLessonId}`, { date: "Nov 17, 2026" })).json?.date);
   check("leader PATCH title -> 403", 403, await code(leader, "PATCH", `/api/lessons/${tempLessonId}`, { title: "x" }));
   check("leader PATCH mentorBrief -> 403", 403, await code(leader, "PATCH", `/api/lessons/${tempLessonId}`, { mentorBrief: "x" }));
   const brief = await req(admin, "PATCH", `/api/lessons/${tempLessonId}`, { mentorBrief: "Press on the problem." });

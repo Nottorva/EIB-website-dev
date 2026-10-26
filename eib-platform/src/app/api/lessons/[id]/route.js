@@ -18,7 +18,7 @@ export const PUT = guarded(["superAdmin"], async ({ req, params }) => {
 // the mentor brief is the super admin's alone.
 export const PATCH = guarded(["superAdmin", "studentLeader"], async ({ req, params, user }) => {
   const body = await readJson(req);
-  const allowedKeys = user.role === "superAdmin" ? ["room", "startTime", "endTime", "mentorBrief"] : ["room", "startTime", "endTime"];
+  const allowedKeys = user.role === "superAdmin" ? ["room", "date", "startTime", "endTime", "mentorBrief"] : ["room", "date", "startTime", "endTime"];
   const extra = Object.keys(body).filter((k) => !allowedKeys.includes(k));
   if (extra.length) throw new HttpError(403, `Only ${allowedKeys.join(", ")} can be changed here (got ${extra.join(", ")}).`);
   const saved = await updateLessonLogistics(params.id, body);

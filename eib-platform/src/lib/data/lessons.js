@@ -58,6 +58,7 @@ export function normalizeLesson(input, id) {
     teachingPlanLink: String(input.teachingPlanLink ?? ""),
     mentorEnabled: Boolean(input.mentorEnabled),
     room: String(input.room ?? ""),
+    date: String(input.date ?? ""),
     startTime: String(input.startTime ?? ""),
     endTime: String(input.endTime ?? ""),
     overview: String(input.overview ?? ""),
@@ -110,9 +111,10 @@ export async function saveLesson(id, input) {
 }
 
 // Student leaders may change where and when a lesson meets, nothing else.
-export async function updateLessonLogistics(id, { room, startTime, endTime, mentorBrief }) {
+export async function updateLessonLogistics(id, { room, date, startTime, endTime, mentorBrief }) {
   const patch = {};
   if (room !== undefined) patch.room = String(room);
+  if (date !== undefined) patch.date = String(date);
   if (startTime !== undefined) patch.startTime = String(startTime);
   if (endTime !== undefined) patch.endTime = String(endTime);
   if (mentorBrief !== undefined) patch.mentorBrief = String(mentorBrief);

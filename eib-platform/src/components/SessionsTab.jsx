@@ -162,7 +162,7 @@ export default function SessionsTab({ user, lessons, events, mentors, cohortYear
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.text }}>{l.title || "Untitled lesson"}</div>
-                  <Meta when={whenText(l)} where={whereText(l, "Room to be set")} />
+                  <Meta date={l.date} when={whenText(l)} where={whereText(l, "Room to be set")} />
                 </div>
                 {owner ? <Person mentor={owner} /> : <NoOne>No mentor yet</NoOne>}
               </div>
@@ -261,7 +261,7 @@ function SessionDetail({ lesson, mentors, cohortYear, statuses, canEdit, onBack,
         <div style={{ fontSize: 21, fontWeight: 900, color: COLORS.text, marginTop: 4 }}>{lesson.title || "Untitled lesson"}</div>
       </div>
 
-      <Details item={lesson} canEdit={canEdit} onPatch={onPatch} whereKey="room" noteKey="mentorBrief" />
+      <Details item={lesson} canEdit={canEdit} onPatch={onPatch} whereKey="room" noteKey="mentorBrief" dateField title="Session details" placeholders={{ date: "Nov 17, 2026", where: "Room 214" }} />
 
       <Section title={`Mentor · Cohort ${cohortYear}`}>
         {owner ? (
@@ -312,7 +312,7 @@ function EventDetail({ event, mentors, statuses, canEdit, onBack, onPatch, onSet
         </div>
       </div>
 
-      <Details item={event} canEdit={canEdit} onPatch={onPatch} whereKey="location" noteKey="note" dateField />
+      <Details item={event} canEdit={canEdit} onPatch={onPatch} whereKey="location" noteKey="note" dateField title="Event details" placeholders={{ date: "Oct 16, 2026", where: "Auditorium" }} />
 
       <Section title="People" hint="Mentors and community members on this event.">
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -328,16 +328,16 @@ function EventDetail({ event, mentors, statuses, canEdit, onBack, onPatch, onSet
 }
 
 /* ---------- Details card (shared) ---------- */
-function Details({ item, canEdit, onPatch, whereKey, noteKey, dateField }) {
+function Details({ item, canEdit, onPatch, whereKey, noteKey, dateField, title, placeholders = {} }) {
   const where = item[whereKey];
   const note = item[noteKey];
   return (
-    <Section title={dateField ? "Event details" : "Session details"} hint={canEdit ? "Only you can change these." : null}>
+    <Section title={title} hint={canEdit ? "Only you can change these." : null}>
       <div style={{ display: "grid", gridTemplateColumns: dateField ? "1fr 1fr 1fr" : "1fr 1fr", gap: 10, marginBottom: 10 }}>
         {dateField && (
           <Field icon={CalendarDays} label="Date">
             {canEdit ? (
-              <EditableInput value={item.date} onChange={(v) => onPatch({ date: v })} placeholder="Oct 16, 2026" style={{ fontSize: 14, fontWeight: 700, color: COLORS.text }} />
+              <EditableInput value={item.date} onChange={(v) => onPatch({ date: v })} placeholder={placeholders.date || "Oct 16, 2026"} style={{ fontSize: 14, fontWeight: 700, color: COLORS.text }} />
             ) : (
               <div style={{ fontSize: 14, fontWeight: 700, color: item.date ? COLORS.text : COLORS.faint }}>{item.date || "Date to be set"}</div>
             )}
@@ -356,9 +356,9 @@ function Details({ item, canEdit, onPatch, whereKey, noteKey, dateField }) {
         </Field>
         <Field icon={MapPin} label="Where">
           {canEdit ? (
-            <EditableInput value={where} onChange={(v) => onPatch({ [whereKey]: v })} placeholder={dateField ? "Auditorium" : "Room 214"} style={{ fontSize: 14, fontWeight: 700, color: COLORS.text }} />
+            <EditableInput value={where} onChange={(v) => onPatch({ [whereKey]: v })} placeholder={placeholders.where || "Room 214"} style={{ fontSize: 14, fontWeight: 700, color: COLORS.text }} />
           ) : (
-            <div style={{ fontSize: 14, fontWeight: 700, color: where ? COLORS.text : COLORS.faint }}>{where || (dateField ? "Place to be set" : "Room to be set")}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: where ? COLORS.text : COLORS.faint }}>{where || (whereKey === "location" ? "Place to be set" : "Room to be set")}</div>
           )}
         </Field>
       </div>
