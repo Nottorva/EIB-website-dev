@@ -10,10 +10,23 @@ import fs from "node:fs";
 import path from "node:path";
 
 const RESEND_URL = "https://api.resend.com/emails";
+const DEFAULT_FROM = "EIB <agreements@joineib.ca>";
 export const emailConfigured = () => Boolean(process.env.RESEND_API_KEY);
 
+// EMAIL_FROM as Resend wants it: "email@domain" or "Name <email@domain>".
+// Quotes or stray spaces picked up when the variable was pasted are
+// stripped; anything still malformed falls back to the default address.
+export function fromAddress(raw = process.env.EMAIL_FROM) {
+  const v = String(raw || "").trim().replace(/^["'`]+|["'`]+$/g, "").trim();
+  const plain = /^[^\s<>"']+@[^\s<>"']+\.[^\s<>"']+$/;
+  const named = /^[^<>"']+<[^\s<>"']+@[^\s<>"']+\.[^\s<>"']+>$/;
+  if (plain.test(v) || named.test(v)) return v;
+  if (v) console.warn(`[eib mail] EMAIL_FROM "${raw}" is not a valid sender; using ${DEFAULT_FROM}`);
+  return DEFAULT_FROM;
+}
+
 export async function sendEmail({ to, subject, text, html }) {
-  const from = process.env.EMAIL_FROM || "EIB <agreements@joineib.ca>";
+  const from = fromAddress();
   if (!process.env.RESEND_API_KEY) {
     if (process.env.NODE_ENV === "production") {
       const err = new Error("Email is not configured on this deployment (RESEND_API_KEY is missing).");
