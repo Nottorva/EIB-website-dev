@@ -526,7 +526,11 @@ function StudentRow({ student, account, onOpen, onStatusChange }) {
           {suspended ? (
             <span style={{ color: COLORS.red, fontWeight: 800 }}> · account suspended</span>
           ) : student.studentId ? (
-            account ? (account.agreement ? <span> · has account · <span style={{ color: COLORS.green, fontWeight: 800 }}>agreement signed</span></span> : <span> · has account · <span style={{ color: COLORS.amber, fontWeight: 800 }}>agreement pending</span></span>) : " · has account"
+            account ? (
+              account.agreement?.status === "signed" ? <span> · has account · <span style={{ color: COLORS.green, fontWeight: 800 }}>agreement signed</span></span>
+              : account.agreement ? <span> · has account · <span style={{ color: COLORS.amber, fontWeight: 800 }}>guardian confirmation pending</span></span>
+              : <span> · has account · <span style={{ color: COLORS.faint, fontWeight: 800 }}>agreement not started</span></span>
+            ) : " · has account"
           ) : isUnreleased(student) ? (
             <span style={{ color: COLORS.amber, fontWeight: 800 }}> · decision not released</span>
           ) : student.decisionReleased ? (
@@ -652,20 +656,47 @@ function AccountCard({ student, account, onSuspend }) {
 // details) or still pending.
 function AgreementStatus({ account }) {
   const a = account?.agreement;
+  const signed = a?.status === "signed";
+  const [msg, setMsg] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const resend = async () => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const r = await api.post("/api/agreement/resend", { userId: account.id });
+      setMsg({ ok: true, text: `Confirmation email sent to ${r.agreement.parentEmailMasked}.` });
+    } catch (e) {
+      setMsg({ ok: false, text: e.message });
+    } finally {
+      setBusy(false);
+    }
+  };
+  const tone = signed ? COLORS.green : a ? COLORS.amber : COLORS.faint;
+  const title = signed ? "Student Agreement signed" : a ? "Student Agreement: guardian confirmation pending" : "Student Agreement not started";
+  const fee = a?.feeAcknowledgement;
   return (
     <div style={{ width: "100%", borderTop: `1px solid ${COLORS.border}`, paddingTop: 12, marginTop: 2, display: "flex", alignItems: "flex-start", gap: 10 }}>
-      <Signature size={17} color={a ? COLORS.green : COLORS.amber} style={{ marginTop: 1, flexShrink: 0 }} />
-      <div style={{ fontSize: 13, color: COLORS.sub, lineHeight: 1.5 }}>
-        <span style={{ fontWeight: 800, color: a ? COLORS.green : COLORS.amber }}>{a ? "Student Agreement signed" : "Student Agreement not signed yet"}</span>
+      <Signature size={17} color={tone} style={{ marginTop: 1, flexShrink: 0 }} />
+      <div style={{ flex: 1, fontSize: 13, color: COLORS.sub, lineHeight: 1.5 }}>
+        <span style={{ fontWeight: 800, color: tone }}>{title}</span>
         {a ? (
           <>
-            {" "}· {fmtDate(a.acceptedAt)} · student initials <strong>{a.studentInitials}</strong>
+            {signed ? <> · confirmed {fmtDate(a.confirmedAt)}</> : <> · submitted {fmtDate(a.studentSignedAt || a.acceptedAt)}{a.confirmation?.lastSentAt || a.lastSentAt ? <> · email sent {fmtDate(a.confirmation?.lastSentAt || a.lastSentAt)}</> : <> · no email sent yet</>}</>}
+            {" "}· version {a.versionLabel || `v${a.version}`} · student initials <strong>{a.studentInitials}</strong>
             <br />
             {a.parentRelationship}: <strong>{a.parentName}</strong> ({a.parentInitials}) · {a.parentEmail}
-            {a.pdfName ? <span style={{ color: COLORS.faint }}> · {a.pdfName} v{a.version}</span> : null}
+            {fee ? <><br /><span style={{ color: COLORS.faint }}>Fee acknowledged at application on {fmtDate(fee.acknowledgedAt)} ("{fee.answer}")</span></> : null}
+            {!signed && (
+              <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <button type="button" onClick={resend} disabled={busy} style={{ border: `1px solid ${COLORS.indigoBorder}`, background: COLORS.indigoSoft, color: COLORS.indigo, fontWeight: 800, fontSize: 12.5, borderRadius: 999, padding: "6px 12px", cursor: busy ? "default" : "pointer", fontFamily: "inherit" }}>
+                  {busy ? "Sending…" : "Resend confirmation email"}
+                </button>
+                {msg && <span style={{ fontSize: 12.5, fontWeight: 700, color: msg.ok ? COLORS.green : COLORS.red }}>{msg.text}</span>}
+              </div>
+            )}
           </>
         ) : (
-          <> · their lessons stay closed until they sign</>
+          <> · their lessons stay closed until they sign and their guardian confirms</>
         )}
       </div>
     </div>

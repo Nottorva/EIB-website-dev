@@ -61,9 +61,19 @@ version is sent to `/onboarding` (the Lessons page redirects; the view API
 answers 403). There they read the PDF page by page (pdf.js), the signature
 section unlocks only once the last page has been on screen, and they submit
 their initials plus a parent or legal guardian's name, email, relationship
-and initials (`POST /api/agreement/accept`, stored on the user row as
-`agreement`). Replacing the PDF bumps the version so everyone signs again.
-Each student's account card in EIB Students shows the signature.
+and initials (`POST /api/agreement/accept`). Section 13 of the agreement is
+shown verbatim under the PDF (`src/lib/agreementText.js`). The record is
+stored on the user row as `agreement` with status `pending`, and the guardian
+is emailed a single-use confirmation link (random token, only its hash
+stored, 7-day expiry): `GET /api/agreement/confirm?token=…` marks it
+`signed` and lands on `/agreement/confirmed`. Expired links offer a fresh
+one; the student page has a resend button (one per 10 minutes, five a day);
+the super admin can resend from the account card. The record also links the
+fee acknowledgement from the application. Email goes through Resend
+(`RESEND_API_KEY`, `EMAIL_FROM`; `src/lib/mailer.js`); with no key set
+the sandbox appends messages to `data/outbox.jsonl` instead. Replacing the
+PDF bumps the version so everyone signs again. Records from before the email
+step count as pending.
 
 **Publishing a lesson.** Each lesson has `studentVisible`; the Lesson Editor's
 "Publish to students" button flips it. Until then the Lessons page leaves the

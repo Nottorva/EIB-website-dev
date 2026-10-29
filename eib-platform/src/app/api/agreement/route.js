@@ -2,7 +2,8 @@
 // student also gets whether they still have to sign); the super admin
 // edits the title, the intro text and whether signing is required.
 import { guarded, readJson } from "@/lib/auth";
-import { getStudentAgreement, saveStudentAgreement, agreementPending, RELATIONSHIPS } from "@/lib/data/agreement";
+import { getStudentAgreement, saveStudentAgreement, agreementPending, publicRecord, isSigned, isPending, RELATIONSHIPS } from "@/lib/data/agreement";
+import { emailConfigured } from "@/lib/mailer";
 
 export const GET = guarded(null, async ({ user }) => {
   const meta = await getStudentAgreement();
@@ -10,7 +11,9 @@ export const GET = guarded(null, async ({ user }) => {
     ...meta,
     relationships: RELATIONSHIPS,
     pending: agreementPending(user, meta),
-    signed: user.role === "student" && user.agreement && user.agreement.version === meta.version ? user.agreement : null,
+    // the student's own record for this version: status "signed" or "pending"
+    record: user.role === "student" && (isSigned(user.agreement, meta) || isPending(user.agreement, meta)) ? publicRecord(user.agreement) : null,
+    emailMode: emailConfigured() ? "live" : "outbox",
   });
 });
 

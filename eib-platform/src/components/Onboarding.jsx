@@ -6,7 +6,8 @@
 // the page; only a student can sign.
 
 import React, { useEffect, useState } from "react";
-import { FileText, Download, CircleCheck, Lock, ArrowRight, ShieldCheck } from "lucide-react";
+import { FileText, Download, CircleCheck, Lock, ArrowRight, ShieldCheck, Mail, Clock } from "lucide-react";
+import { SECTION_13, AGREEMENT_VERSION_LABEL } from "@/lib/agreementText";
 import { COLORS, fieldStyle, Notice, Loading } from "./ui";
 import { api } from "@/lib/api";
 import PdfReader from "./PdfReader";
@@ -22,6 +23,23 @@ export default function Onboarding({ user }) {
   const [form, setForm] = useState({ readConfirmed: false, studentInitials: "", parentName: "", parentEmail: "", parentRelationship: "", parentInitials: "", parentConfirmed: false });
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(null);
+  const [resendMsg, setResendMsg] = useState(null);
+  const [resending, setResending] = useState(false);
+  const [tick, setTick] = useState(0);
+  useEffect(() => { const t = setInterval(() => setTick((n) => n + 1), 30000); return () => clearInterval(t); }, []);
+  const resend = async () => {
+    setResending(true);
+    setResendMsg(null);
+    try {
+      const r = await api.post("/api/agreement/resend", {});
+      setMeta((m) => ({ ...m, record: r.agreement }));
+      setResendMsg({ ok: true, text: `Sent again to ${r.agreement.parentEmailMasked}.` });
+    } catch (e) {
+      setResendMsg({ ok: false, text: e.message });
+    } finally {
+      setResending(false);
+    }
+  };
 
   useEffect(() => {
     api.get("/api/agreement").then(setMeta).catch((e) => setError(e.message));
@@ -39,6 +57,7 @@ export default function Onboarding({ user }) {
     try {
       const r = await api.post("/api/agreement/accept", form);
       setDone(r.agreement);
+      if (r.warning) setResendMsg({ ok: false, text: r.warning });
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
       setError(err.message);
@@ -49,26 +68,48 @@ export default function Onboarding({ user }) {
 
   if (!meta) return <Shell>{error ? <Notice>{error}</Notice> : <Loading />}</Shell>;
 
-  const signed = done || meta.signed;
-  if (signed && !preview) {
+  const record = done || meta.record;
+  if (record && !preview) {
+    const signed = record.status === "signed";
+    const canResendAt = record.canResendAt ? new Date(record.canResendAt).getTime() : 0;
+    const waitMin = Math.max(0, Math.ceil((canResendAt - Date.now()) / 60000));
+    void tick;
     return (
       <Shell>
         <Card>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: COLORS.greenSoft, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <CircleCheck size={22} color={COLORS.green} strokeWidth={2.25} />
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: signed ? COLORS.greenSoft : COLORS.amberSoft, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {signed ? <CircleCheck size={22} color={COLORS.green} strokeWidth={2.25} /> : <Clock size={22} color={COLORS.amber} strokeWidth={2.25} />}
             </div>
             <div>
-              <div style={{ fontSize: 20, fontWeight: 900, color: COLORS.text }}>Agreement signed</div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: COLORS.text }}>{signed ? "Agreement signed" : "Waiting for your guardian to confirm"}</div>
               <div style={{ fontSize: 13.5, color: COLORS.sub }}>
-                Signed {fmt(signed.acceptedAt)} · your initials {signed.studentInitials} · {signed.parentRelationship.toLowerCase()} {signed.parentName} ({signed.parentInitials})
+                {signed
+                  ? `Confirmed ${fmt(record.confirmedAt)} · your initials ${record.studentInitials} · ${record.parentRelationship.toLowerCase()} ${record.parentName} (${record.parentInitials}) · version ${record.versionLabel || AGREEMENT_VERSION_LABEL}`
+                  : `You signed on ${fmt(record.studentSignedAt || record.acceptedAt)}. We emailed ${record.parentEmailMasked}${record.lastSentAt ? ` on ${fmt(record.lastSentAt)}` : ""} with a confirmation link. Your lessons open once they click it.`}
               </div>
             </div>
           </div>
+          {!signed && (
+            <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ fontSize: 13.5, color: COLORS.sub, lineHeight: 1.55 }}>
+                Ask your {record.parentRelationship.toLowerCase()} to check their inbox (and the spam folder) for an email from EIB. The link works for 7 days.
+              </div>
+              {resendMsg && <Notice tone={resendMsg.ok ? "info" : "error"} onClose={() => setResendMsg(null)}>{resendMsg.text}</Notice>}
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <button type="button" onClick={resend} disabled={resending || waitMin > 0} style={{ display: "inline-flex", alignItems: "center", gap: 8, border: "none", background: resending || waitMin > 0 ? "#d7dbe4" : COLORS.indigo, color: resending || waitMin > 0 ? COLORS.faint : "#fff", fontWeight: 800, fontSize: 14, borderRadius: 999, padding: "11px 18px", cursor: resending || waitMin > 0 ? "default" : "pointer", fontFamily: "inherit" }}>
+                  <Mail size={16} /> {resending ? "Sending…" : "Resend the confirmation email"}
+                </button>
+                {waitMin > 0 && <span style={{ fontSize: 12.5, color: COLORS.faint }}>Available again in {waitMin} min</span>}
+              </div>
+            </div>
+          )}
           <div style={{ display: "flex", gap: 10, marginTop: 20, flexWrap: "wrap" }}>
-            <a href="/lessons" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: COLORS.indigo, color: "#fff", fontWeight: 800, fontSize: 14, borderRadius: 999, padding: "11px 18px", textDecoration: "none" }}>
-              Open your lessons <ArrowRight size={16} />
-            </a>
+            {signed && (
+              <a href="/lessons" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: COLORS.indigo, color: "#fff", fontWeight: 800, fontSize: 14, borderRadius: 999, padding: "11px 18px", textDecoration: "none" }}>
+                Open your lessons <ArrowRight size={16} />
+              </a>
+            )}
             {meta.pdf && (
               <a href="/api/agreement/pdf?download=1" style={{ display: "inline-flex", alignItems: "center", gap: 8, border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.sub, fontWeight: 800, fontSize: 14, borderRadius: 999, padding: "11px 18px", textDecoration: "none" }}>
                 <Download size={16} /> Download the PDF
@@ -122,6 +163,25 @@ export default function Onboarding({ user }) {
         <PdfReader src="/api/agreement/pdf" onReachEnd={() => setReachedEnd(true)} onError={() => setViewerFailed(true)} />
       </section>
 
+      <section aria-labelledby="s13" style={{ margin: "0 0 16px" }}>
+        <Card>
+          <h2 id="s13" style={{ fontSize: 17, fontWeight: 900, color: COLORS.text, margin: "0 0 10px" }}>{SECTION_13.heading}</h2>
+          <p style={{ fontSize: 14.5, color: COLORS.text, lineHeight: 1.6, margin: "0 0 14px" }}>{SECTION_13.intro}</p>
+          {SECTION_13.parts.map((part) => (
+            <div key={part.title} style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 14.5, fontWeight: 800, color: COLORS.text, marginBottom: 4 }}>{part.title}</div>
+              {part.items ? (
+                <ul style={{ margin: 0, paddingLeft: 20, fontSize: 14.5, color: COLORS.text, lineHeight: 1.6 }}>
+                  {part.items.map((t) => <li key={t}>{t}</li>)}
+                </ul>
+              ) : (
+                <p style={{ fontSize: 14.5, color: COLORS.text, lineHeight: 1.6, margin: 0 }}>{part.text}</p>
+              )}
+            </div>
+          ))}
+        </Card>
+      </section>
+
       <Card>
         <form onSubmit={submit} aria-describedby="sign-hint" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
           <div id="sign-hint" style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, fontWeight: 700, color: canSign ? COLORS.green : COLORS.amber, background: canSign ? COLORS.greenSoft : COLORS.amberSoft, border: `1px solid ${canSign ? COLORS.greenBorder : COLORS.amberBorder}`, borderRadius: 12, padding: "10px 14px" }}>
@@ -133,7 +193,7 @@ export default function Onboarding({ user }) {
             <legend style={{ fontSize: 15, fontWeight: 900, color: COLORS.text, marginBottom: 4 }}>Student</legend>
             <label style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14.5, color: COLORS.text, cursor: "pointer" }}>
               <input type="checkbox" checked={form.readConfirmed} onChange={(e) => set("readConfirmed", e.target.checked)} required style={{ width: 18, height: 18, marginTop: 2 }} />
-              <span>I have read and understood the {meta.title}.</span>
+              <span>I have read and understood this agreement, the EIB syllabus and the EIB MVP Reimbursement Policy. Typing my initials below is my signature.</span>
             </label>
             <div style={{ maxWidth: 240 }}>
               <label htmlFor="student-initials" style={label}>Your initials</label>
@@ -170,7 +230,7 @@ export default function Onboarding({ user }) {
             </div>
             <label style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14.5, color: COLORS.text, cursor: "pointer" }}>
               <input type="checkbox" checked={form.parentConfirmed} onChange={(e) => set("parentConfirmed", e.target.checked)} required style={{ width: 18, height: 18, marginTop: 2 }} />
-              <span>I am the parent or legal guardian of {user.name}. I have read the {meta.title} and agree to it on their behalf. Typing my initials above is my signature.</span>
+              <span>I am the parent or legal guardian of {user.name} and I agree to this agreement on their behalf. Typing my initials above is my signature. I will click the confirmation link sent to the email address I provided; the signature is complete only after that.</span>
             </label>
           </fieldset>
 
@@ -184,7 +244,7 @@ export default function Onboarding({ user }) {
             <ShieldCheck size={17} /> {submitting ? "Saving…" : "I agree"}
           </button>
           <p style={{ fontSize: 12.5, color: COLORS.faint, lineHeight: 1.6, margin: 0 }}>
-            The parent or guardian's name and email are kept only as the record of this consent. See the <a href="/privacy" style={{ color: COLORS.indigo, fontWeight: 700 }}>Privacy Policy</a>.
+            After you press "I agree" we email your guardian a confirmation link; your lessons open once they click it. Their name and email are kept only as the record of this consent (version {AGREEMENT_VERSION_LABEL}). See the <a href="/privacy" style={{ color: COLORS.indigo, fontWeight: 700 }}>Privacy Policy</a>.
           </p>
         </form>
       </Card>
