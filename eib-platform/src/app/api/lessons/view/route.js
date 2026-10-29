@@ -8,7 +8,10 @@ import { listSubmissions, stripUnreleased } from "@/lib/data/submissions";
 import { getCohortYear } from "@/lib/data/settings";
 
 export const GET = guarded(null, async ({ user }) => {
-  const [lessons, mentors, cohortYear] = await Promise.all([listLessons(), listMentors(), getCohortYear()]);
+  const [allLessons, mentors, cohortYear] = await Promise.all([listLessons(), listMentors(), getCohortYear()]);
+  // Drafts reach the super admin only (shown as drafts); students and
+  // student leaders get the published lessons.
+  const lessons = user.role === "superAdmin" ? allLessons : allLessons.filter((l) => l.studentVisible);
 
   const withMentor = lessons.map((lesson) => {
     if (!lesson.mentorEnabled) return { ...lesson, mentor: null };

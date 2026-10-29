@@ -147,7 +147,16 @@ let tempLessonId = null;
   check("admin PATCH mentorBrief -> saved", "Press on the problem.", brief.json?.mentorBrief);
   check("student list has no mentorBrief", false, (await req(student, "GET", "/api/lessons")).json.some((l) => "mentorBrief" in l));
   check("student PATCH -> 403", 403, await code(student, "PATCH", `/api/lessons/${tempLessonId}`, { room: "x" }));
-  const put = await req(admin, "PUT", `/api/lessons/${tempLessonId}`, { ...made.json, title: "Smoke lesson", number: "99", mentorEnabled: true });
+  check("new lesson starts as a draft", false, Boolean(made.json?.studentVisible));
+  check("draft: hidden from the student list", false, (await req(student, "GET", "/api/lessons")).json.some((l) => l.id === tempLessonId));
+  check("draft: hidden from student + leader views, shown to admin", [false, false, true], [
+    (await req(student, "GET", "/api/lessons/view")).json.lessons.some((l) => l.id === tempLessonId),
+    (await req(leader, "GET", "/api/lessons/view")).json.lessons.some((l) => l.id === tempLessonId),
+    (await req(admin, "GET", "/api/lessons/view")).json.lessons.some((l) => l.id === tempLessonId),
+  ]);
+  check("draft: still listed for leaders (manager) and admin", [true, true], [(await req(leader, "GET", "/api/lessons")).json.some((l) => l.id === tempLessonId), (await req(admin, "GET", "/api/lessons")).json.some((l) => l.id === tempLessonId)]);
+  const put = await req(admin, "PUT", `/api/lessons/${tempLessonId}`, { ...made.json, title: "Smoke lesson", number: "99", mentorEnabled: true, studentVisible: true });
+  check("published: student and leader views include it", [true, true], [(await req(student, "GET", "/api/lessons/view")).json.lessons.some((l) => l.id === tempLessonId), (await req(leader, "GET", "/api/lessons/view")).json.lessons.some((l) => l.id === tempLessonId)]);
   check("admin PUT lesson -> 200 with new title", ["Smoke lesson", "99"], [put.json?.title, put.json?.number]);
   check("leader DELETE lesson -> 403", 403, await code(leader, "DELETE", `/api/lessons/${tempLessonId}`));
   check("PUT missing lesson -> 404", 404, await code(admin, "PUT", "/api/lessons/nope", {}));

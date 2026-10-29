@@ -5,7 +5,7 @@ import { listLessons, createLesson, forStudent } from "@/lib/data/lessons";
 // Students never receive the mentor-facing fields.
 export const GET = guarded(null, async ({ user }) => {
   const lessons = await listLessons();
-  return Response.json(user.role === "student" ? lessons.map(forStudent) : lessons);
+  return Response.json(user.role === "student" ? lessons.filter((l) => l.studentVisible).map(forStudent) : lessons);
 });
 
 // Only the Lesson Editor (super admin) writes.

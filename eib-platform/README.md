@@ -53,6 +53,13 @@ builds and whenever Google sign-in is on.
 | Amara Chen (student) | Lessons (student mode, own submissions only) |
 | Not on the allow-list | Nothing except the public application form |
 
+**Publishing a lesson.** Each lesson has `studentVisible`; the Lesson Editor's
+"Publish to students" button flips it. Until then the Lessons page leaves the
+lesson out for students and student leaders (the view and list routes filter
+it); the super admin still sees it there with a "Draft" chip. The CRM, the
+Student Manager and the website toggle ignore this flag. New lessons start as
+drafts, and lessons from before the flag existed count as drafts too.
+
 **Two sessions per lesson.** A lesson's `room` / `date` / `startTime` /
 `endTime` are what students see (the Lessons page; leaders edit them there).
 `mentorLocation` / `mentorStartTime` / `mentorEndTime` (same date) are what

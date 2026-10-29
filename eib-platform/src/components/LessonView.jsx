@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-import { BookOpen, Eye, Presentation, UserCheck, MapPin, Clock, ChevronDown, ChevronUp, MessageCircle, FileText, User, Lightbulb, ExternalLink, Pencil, CalendarDays } from "lucide-react";
+import { BookOpen, Eye, Presentation, UserCheck, MapPin, Clock, ChevronDown, ChevronUp, MessageCircle, FileText, User, Lightbulb, ExternalLink, Pencil, CalendarDays, EyeOff } from "lucide-react";
 import { COLORS, Pill, ModalShell, HeaderButton, Notice, SaveIndicator, Loading, TypeChip, fieldStyle } from "./ui";
 import { api, useDebouncedSaver } from "@/lib/api";
 import { MENTOR_DEFAULTS, mentorWhere, mentorWhen } from "@/lib/sessionDefaults";
@@ -244,6 +244,11 @@ function LessonCard({ lesson, mode, submissions, onChangePayload, onChangeLogist
           <div style={{ fontSize: 14, fontWeight: 800, color: COLORS.indigo, marginBottom: 4 }}>{lesson.chapterLabel}</div>
           <div style={{ fontSize: 27, fontWeight: 800, color: COLORS.text }}>{lesson.title}</div>
         </div>
+        {superAdmin && !lesson.studentVisible && (
+          <div title="Students and student leaders cannot see this lesson yet. Publish it from the Lesson Editor." style={{ display: "flex", alignItems: "center", gap: 6, alignSelf: "flex-start", fontSize: 12.5, fontWeight: 800, color: COLORS.sub, background: "#f1f3f7", border: `1px solid ${COLORS.border}`, borderRadius: 999, padding: "5px 11px", whiteSpace: "nowrap" }}>
+            <EyeOff size={13} /> Draft · hidden from students
+          </div>
+        )}
       </div>
 
       <Logistics lesson={lesson} editable={mode === "leader"} onChange={(fields) => onChangeLogistics(lesson.id, fields)}  showMentor={superAdmin && Boolean(lesson.mentorEnabled)} />

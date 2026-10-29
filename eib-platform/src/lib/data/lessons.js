@@ -57,6 +57,10 @@ export function normalizeLesson(input, id) {
     overviewLink: String(input.overviewLink ?? ""),
     teachingPlanLink: String(input.teachingPlanLink ?? ""),
     mentorEnabled: Boolean(input.mentorEnabled),
+    // Published to the Lessons page. Until the super admin publishes, students
+    // and student leaders do not receive the lesson there. Nothing else
+    // (CRM, Student Manager, the public website) looks at this.
+    studentVisible: Boolean(input.studentVisible),
     // Student-facing session: what /lessons shows and leaders edit there.
     room: String(input.room ?? ""),
     date: String(input.date ?? ""),

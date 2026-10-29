@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { BookOpen, Eye, Presentation, UserCheck, FileText, Trash2, Plus, Pencil, ExternalLink, Globe, CalendarCog } from "lucide-react";
+import { BookOpen, Eye, Presentation, UserCheck, FileText, Trash2, Plus, Pencil, ExternalLink, Globe, CalendarCog, Send, CircleCheck } from "lucide-react";
 import { MENTOR_DEFAULTS, STUDENT_DEFAULTS } from "@/lib/sessionDefaults";
 import {
   COLORS,
@@ -575,6 +575,7 @@ function LessonCard({ lesson, onPatch, onDelete }) {
         <Pill icon={FileText} label={lesson.teachingPlanLink ? "Teaching Plan · linked" : "Teaching Plan"} onClick={() => setActiveModal("teachingPlan")} />
         <Pill icon={Globe} label={lesson.published ? "Website · shown" : "Website · hidden"} tone={lesson.published ? "default" : "outline"} onClick={() => setActiveModal("website")} />
         <MentorToggle enabled={lesson.mentorEnabled} onToggle={(enabled) => onPatch({ mentorEnabled: enabled })} />
+        <PublishButton published={Boolean(lesson.studentVisible)} onToggle={(on) => onPatch({ studentVisible: on })} />
       </div>
 
       <div style={{ marginTop: 28 }}>
@@ -636,6 +637,35 @@ function LessonCard({ lesson, onPatch, onDelete }) {
 }
 
 /* ---------- Main page ---------- */
+/* ---------- Publish: whether students and student leaders see the lesson ---------- */
+function PublishButton({ published, onToggle }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onToggle(!published)}
+      title={published ? "Students and student leaders can see this lesson on the Lessons page. Click to hide it again." : "Hidden from the Lessons page until you publish it. Nothing else is affected."}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        marginLeft: "auto",
+        padding: "9px 16px",
+        borderRadius: 11,
+        fontSize: 14.5,
+        fontWeight: 800,
+        cursor: "pointer",
+        fontFamily: "inherit",
+        border: published ? `1px solid ${COLORS.greenBorder}` : "none",
+        background: published ? COLORS.greenSoft : COLORS.indigo,
+        color: published ? COLORS.green : "#fff",
+      }}
+    >
+      {published ? <CircleCheck size={16} strokeWidth={2.5} /> : <Send size={16} strokeWidth={2.25} />}
+      {published ? "Published to students" : "Publish to students"}
+    </button>
+  );
+}
+
 /* ---------- Session defaults: room and times on every lesson at once ---------- */
 function SessionDefaultsModal({ onClose, onApply }) {
   const [student, setStudent] = useState({ ...STUDENT_DEFAULTS });
