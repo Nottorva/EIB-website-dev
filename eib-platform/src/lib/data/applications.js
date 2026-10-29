@@ -10,7 +10,7 @@
 // the next release. Accounts are never revoked here (open item in the spec);
 // the super admin can suspend one from the Student Manager instead.
 
-import { findAll, findOne, findById, findOneBy, insert, updateOne, newId, removeOne } from "./store";
+import { findAll, findById, findOneBy, insert, updateOne, newId, removeOne } from "./store";
 import { upsertStudent, setSuspended, deleteUser } from "./users";
 import { deleteSubmissionsFor } from "./submissions";
 import { deleteDraftByEmail } from "./drafts";

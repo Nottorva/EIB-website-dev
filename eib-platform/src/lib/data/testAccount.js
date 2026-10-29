@@ -5,7 +5,7 @@
 // (submissions, the signed agreement, any application or draft under that
 // email) and leaves the account ready to go through again. Only one exists.
 
-import { findAll, findOneBy, insert, updateOne, removeOne, newId } from "./store";
+import { findOneBy, insert, updateOne, removeOne, newId } from "./store";
 import { getUserByEmail } from "./users";
 import { deleteSubmissionsFor } from "./submissions";
 import { findApplicationByEmail } from "./applications";
@@ -57,8 +57,4 @@ export async function removeTestStudent() {
   if (!wiped) return null;
   await removeOne("users", wiped.user.id);
   return wiped.removed;
-}
-
-export async function listTestIds() {
-  return (await findAll("users", (u) => u.isTest === true)).map((u) => u.id);
 }

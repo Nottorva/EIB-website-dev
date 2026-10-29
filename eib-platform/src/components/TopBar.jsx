@@ -1,13 +1,12 @@
 "use client";
 
-import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BookOpen, Pencil, Users, ClipboardList, GraduationCap, FileText, Globe } from "lucide-react";
 import { COLORS } from "./ui";
 import { GoogleSignInButton, GoogleSignOutButton } from "./GoogleButtons";
 
-const ROLE_LABEL = { superAdmin: "Super admin", studentLeader: "Student leader", advancement: "Advancement team", student: "Student" };
+import { ROLE_LABEL } from "@/lib/roles";
 
 const NAV = [
   { href: "/editor", label: "Lesson Editor", icon: Pencil, roles: ["superAdmin"] },

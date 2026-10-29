@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-import { BookOpen, Eye, Presentation, UserCheck, MapPin, Clock, ChevronDown, ChevronUp, MessageCircle, FileText, User, Lightbulb, ExternalLink, Pencil, CalendarDays, EyeOff } from "lucide-react";
+import { Eye, Presentation, UserCheck, MapPin, Clock, ChevronDown, ChevronUp, MessageCircle, FileText, User, Lightbulb, ExternalLink, Pencil, CalendarDays, EyeOff } from "lucide-react";
 import { COLORS, Pill, ModalShell, HeaderButton, Notice, SaveIndicator, Loading, TypeChip, fieldStyle } from "./ui";
 import { api, useDebouncedSaver } from "@/lib/api";
 import { MENTOR_DEFAULTS, mentorWhere, mentorWhen } from "@/lib/sessionDefaults";

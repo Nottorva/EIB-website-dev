@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-import { FileText, Users, ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Mail, Calendar, Link2, UserPlus, Lock, ExternalLink, Send, Pencil, Copy, Check, CalendarClock, Megaphone, ShieldOff, ShieldCheck, FileClock, Clock, ChartColumn, Table2, Signature, Upload, Download, FlaskConical, Eraser, X, CircleCheck, Circle } from "lucide-react";
+import { FileText, Users, ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Mail, Calendar, Link2, UserPlus, Lock, ExternalLink, Send, Pencil, Copy, Check, CalendarClock, Megaphone, ShieldOff, ShieldCheck, Clock, ChartColumn, Table2, Signature, Upload, Download, FlaskConical, Eraser, X, CircleCheck, Circle } from "lucide-react";
 import { buildDays, TimeChart, DaysTable, Stat } from "./ApplicationsChart";
 import {
   COLORS,
@@ -26,6 +26,7 @@ import {
   nextId,
 } from "./ui";
 import { api, useDebouncedSaver } from "@/lib/api";
+import { fmtSmart, fmtDate as fmtDateOnly, fmtDateTime, fmtLongDate, fmtShortDateTime } from "@/lib/format";
 import { PayloadView } from "./DeliverableInputs";
 
 const STATUSES = [
@@ -40,12 +41,7 @@ const FINAL = ["approved", "waitlist", "denied"];
 // A final decision the applicant has not been told about yet.
 const isUnreleased = (a) => FINAL.includes(a.status) && !a.decisionReleased;
 // Older applications stored a date only; newer ones a full timestamp.
-const fmtDate = (v) => {
-  if (!v) return "—";
-  const d = new Date(v);
-  if (Number.isNaN(d.getTime())) return String(v);
-  return /T/.test(String(v)) ? d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : d.toLocaleDateString(undefined, { dateStyle: "medium", timeZone: "UTC" });
-};
+const fmtDate = (v) => fmtSmart(v, "—");
 
 /* ================= Grading card ================= */
 function GradeCard({ deliverable, submission, canGrade, onChange, onRelease }) {
@@ -56,7 +52,7 @@ function GradeCard({ deliverable, submission, canGrade, onChange, onRelease }) {
   const hasFeedback = feedback.trim() !== "";
   const max = deliverable.points ?? 10;
   const canRelease = canGrade && (hasGrade || hasFeedback);
-  const releasedDate = submission?.releasedAt ? new Date(submission.releasedAt).toLocaleDateString() : null;
+  const releasedDate = submission?.releasedAt ? fmtDateOnly(submission.releasedAt) : null;
 
   const smallLabel = { fontSize: 11.5, fontWeight: 800, color: COLORS.faint, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 };
 
@@ -291,7 +287,7 @@ const toLocalInput = (iso) => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 const fromLocalInput = (v) => (v ? new Date(v).toISOString() : null);
-const fmtWhen = (iso) => (iso ? new Date(iso).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "not set");
+const fmtWhen = (iso) => fmtDateTime(iso, "not set");
 
 const WINDOW_STATE = {
   upcoming: { label: "Not open yet", color: COLORS.amber, soft: COLORS.amberSoft, border: COLORS.amberBorder },
@@ -619,11 +615,12 @@ function DeliverablesPanel({ student, lessons, saver }) {
 function AccountCard({ student, account, onSuspend }) {
   const suspended = Boolean(account?.suspended);
   const [busy, setBusy] = useState(false);
+  const [confirmDanger, confirmUI] = useDangerConfirm();
   const toggle = async () => {
-    const question = suspended
-      ? `Reinstate ${student.name}'s account? They will be able to sign in again straight away.`
-      : `Suspend ${student.name}'s account? They will be signed out of EIB and cannot sign back in until you reinstate them. Their work is kept.`;
-    if (!window.confirm(question)) return;
+    const ok = suspended
+      ? await confirmDanger({ title: `Reinstate ${student.name}'s account?`, body: "They will be able to sign in again straight away.", label: "Reinstate", note: "Reversible" })
+      : await confirmDanger({ title: `Suspend ${student.name}'s account?`, body: "They are signed out of EIB and cannot sign back in until you reinstate them. Their work is kept.", label: "Suspend", note: "Reversible: you can reinstate later" });
+    if (!ok) return;
     setBusy(true);
     try {
       await onSuspend(!suspended);
@@ -633,6 +630,7 @@ function AccountCard({ student, account, onSuspend }) {
   };
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: suspended ? COLORS.redSoft : COLORS.card, border: `1px solid ${suspended ? COLORS.redBorder : COLORS.border}`, borderRadius: 16, padding: "14px 18px", marginBottom: 16, flexWrap: "wrap" }}>
+      {confirmUI}
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         {suspended ? <ShieldOff size={18} color={COLORS.red} /> : <ShieldCheck size={18} color={COLORS.green} />}
         <div>
@@ -1514,7 +1512,7 @@ function AnalyticsTab({ user }) {
   const perDay = submitted / daysOpen;
   const msLeft = closesAt ? new Date(closesAt) - Date.now() : null;
   const daysLeft = msLeft == null ? null : Math.max(0, Math.ceil(msLeft / 86400000));
-  const fmtDate = (iso) => (iso ? new Date(iso).toLocaleDateString("en-CA", { month: "long", day: "numeric", timeZone: "America/Toronto" }) : null);
+  const fmtDate = (iso) => fmtLongDate(iso, null);
   const closing = state === "closed" ? "Applications closed" : state === "upcoming" ? `Opens ${fmtDate(opensAt)}` : closesAt ? `Closes ${fmtDate(closesAt)}` : "No close date set";
 
   return (
@@ -1562,7 +1560,7 @@ function UnfinishedList({ user, drafts, questions, onChange }) {
     const filled = answerable.filter((q) => String((d.answers || []).find((a) => a.questionId === q.id)?.answer || "").trim() !== "").length;
     return { filled, total: answerable.length };
   };
-  const when = (iso) => (iso ? new Date(iso).toLocaleString("en-CA", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "");
+  const when = (iso) => fmtShortDateTime(iso);
 
   // Super admin: submit the draft for them. Two clicks on the same button.
   const [armedId, setArmedId] = useState(null);

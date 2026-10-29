@@ -8,28 +8,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { COLORS } from "./ui";
 
-const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
-const WORKER = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-
-let loader = null;
-function loadPdfJs() {
-  if (typeof window === "undefined") return Promise.reject(new Error("no window"));
-  if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
-  if (!loader) {
-    loader = new Promise((resolve, reject) => {
-      const s = document.createElement("script");
-      s.src = PDFJS;
-      s.async = true;
-      s.onload = () => {
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc = WORKER;
-        resolve(window.pdfjsLib);
-      };
-      s.onerror = () => reject(new Error("The PDF viewer could not load."));
-      document.head.appendChild(s);
-    });
-  }
-  return loader;
-}
+import { loadPdfJs } from "@/lib/pdfjs";
 
 export default function PdfReader({ src, onReachEnd, onError }) {
   const [doc, setDoc] = useState(null);

@@ -6,15 +6,13 @@
 // per-frame value is written to the DOM directly.
 
 import React, { useEffect, useRef } from "react";
+import { clamp, smooth } from "./motion";
 
 const BAND = 0.25; // share of the screen, top and bottom, over which a row fades
 const TRUNK = 0.95; // screen height the trunk front runs along
 const EDGE = 30; // soft edge of the word reveal, as a share of block width
 
-const clamp = (n, a, b) => (n < a ? a : n > b ? b : n);
-const smooth = (t) => t * t * (3 - 2 * t);
 const pad2 = (n) => String(n).padStart(2, "0");
-
 
 export default function Curriculum({ stages }) {
   const graphRef = useRef(null);

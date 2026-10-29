@@ -8,9 +8,10 @@ import { COLORS, fieldStyle, Notice, Loading } from "./ui";
 
 const countWords = (text) => String(text || "").trim().split(/\s+/).filter(Boolean).length;
 import { api } from "@/lib/api";
+import { fmtLongDateTime, fmtSmartLong } from "@/lib/format";
 import { GoogleSignInButton } from "./GoogleButtons";
 
-const fmt = (iso) => (iso ? new Date(iso).toLocaleString(undefined, { dateStyle: "long", timeStyle: "short" }) : null);
+const fmt = (iso) => fmtLongDateTime(iso, null);
 // A notice in the form: big and bold, impossible to miss, with a tick-box the
 // applicant has to check (when the notice is marked required) before the
 // browser will let the form submit. The server checks it again.
@@ -56,12 +57,7 @@ function PreviewStrip({ state, opensAt, closesAt }) {
 }
 
 // Older applications stored a date only; show those without a time.
-const fmtSubmitted = (v) => {
-  if (!v) return null;
-  const d = new Date(v);
-  if (Number.isNaN(d.getTime())) return String(v);
-  return /T/.test(String(v)) ? d.toLocaleString(undefined, { dateStyle: "long", timeStyle: "short" }) : d.toLocaleDateString(undefined, { dateStyle: "long", timeZone: "UTC" });
-};
+const fmtSubmitted = (v) => fmtSmartLong(v, null);
 
 // The schedule and the fee are stated inside the form itself (the notices
 // applicants tick), so the intro does not repeat them.

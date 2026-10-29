@@ -2,7 +2,7 @@
 // places: createLeader (Acc Manager tab, super admin only) and
 // upsertStudent (called when an application is approved).
 
-import { findAll, findOne, findById, insert, updateOne, removeOne, newId, findOneBy } from "./store";
+import { findAll, findById, insert, updateOne, removeOne, newId, findOneBy } from "./store";
 
 // "advancement": the advancement team. They get the Mentor CRM and nothing
 // else. Only the super admin creates or removes them.
@@ -12,11 +12,6 @@ export const STAFF_ROLES = ["studentLeader", "advancement"];
 
 export async function listUsers(filter = {}) {
   return findAll("users", (u) => (filter.role ? u.role === filter.role : true));
-}
-
-// Student accounts without the test account.
-export async function listRealStudents() {
-  return findAll("users", (u) => u.role === "student" && !u.isTest);
 }
 
 export async function getUser(id) {

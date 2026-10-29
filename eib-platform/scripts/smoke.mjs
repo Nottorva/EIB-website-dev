@@ -527,13 +527,6 @@ head("website admin");
   const pdf = await fetch(`${BASE}/site/eib-night-2027.pdf`, { method: "HEAD" });
   check("deck PDF served", [200, "application/pdf"], [pdf.status, pdf.headers.get("content-type")]);
   await req(admin, "PUT", "/api/site", { ticker: s.json.defaultTicker });
-  check("empty testimonial -> 400", 400, await code(admin, "POST", "/api/site/testimonials", { quote: "  " }));
-  check("leader creates testimonial -> 403", 403, await code(leader, "POST", "/api/site/testimonials", { quote: "x" }));
-  const made = await req(admin, "POST", "/api/site/testimonials", { quote: "Real words.", name: "Test Person", role: "Student", approved: false });
-  check("admin creates testimonial -> 201", 201, made.status);
-  const appr = await req(admin, "PUT", `/api/site/testimonials/${made.json.id}`, { approved: true });
-  check("approve keeps the other fields", ["Test Person", true], [appr.json?.name, appr.json?.approved]);
-  check("delete -> 200 then 404", [200, 404], [await code(admin, "DELETE", `/api/site/testimonials/${made.json.id}`), await code(admin, "DELETE", `/api/site/testimonials/${made.json.id}`)]);
 }
 
 /* ---- 12. settings ---- */

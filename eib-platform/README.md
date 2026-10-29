@@ -241,7 +241,7 @@ React state (see `src/components/site/`). What comes from the database:
 | Ticker strip | First item is generated from the application window (open until / opens on / closed); the rest are edited on the **Website** page (super admin). |
 | Sign in / Apply now | Google sign-in and `/apply`. A signed-in user sees their name and "Open the platform" instead. |
 | Curriculum | `CURRICULUM` in `siteContent.js`: the sixteen sessions in five stages (Identify, Plan, Build, Convince, Launch) with the two breaks and the April 23 showcase, drawn as static rows (no dropdowns). Static since 2026-09-20; the Lesson Editor's **Website** fields (shown/stage/week/description) are kept in the data but nothing on the site reads them. |
-| Student quotes | `CARD_QUOTES` in `siteContent.js`, rotating under the card copy. The photo-and-testimonial carousel was removed 2026-09-20; the `testimonials` collection and its Website-page editor remain but nothing on the site reads them. Never invent quotes. |
+| Student quotes | `CARD_QUOTES` in `siteContent.js`, rotating under the card copy. The photo-and-testimonial carousel was removed 2026-09-20 and its editor, routes and data module were removed 2026-10-29. Never invent quotes. |
 | Reel captions, card copy, footer | Static copy in `src/lib/siteContent.js`. |
 | Photographs | `public/site/stage-*.jpg` are real cohort photos (the auditorium shot doubles as the hero and the Showcase panel, cropped differently). Each panel in `siteContent.js` names its crop (`position`, `mobilePosition`, `size`) and a `shade` for extra darkening under the caption; the caption also carries a feathered blur of the photo behind it. Carousel photos `v-*.jpg` are still placeholders. |
 

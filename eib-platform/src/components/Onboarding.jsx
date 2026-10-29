@@ -10,9 +10,10 @@ import { FileText, Download, CircleCheck, Lock, ArrowRight, ShieldCheck, Mail, C
 import { SECTION_13, AGREEMENT_VERSION_LABEL } from "@/lib/agreementText";
 import { COLORS, fieldStyle, Notice, Loading } from "./ui";
 import { api } from "@/lib/api";
+import { fmtLongDateYear } from "@/lib/format";
 import PdfReader from "./PdfReader";
 
-const fmt = (iso) => (iso ? new Date(iso).toLocaleDateString("en-CA", { month: "long", day: "numeric", year: "numeric", timeZone: "America/Toronto" }) : "");
+const fmt = (iso) => fmtLongDateYear(iso);
 
 export default function Onboarding({ user }) {
   const [meta, setMeta] = useState(null);
@@ -21,7 +22,7 @@ export default function Onboarding({ user }) {
   const [viewerFailed, setViewerFailed] = useState(false);
   const [openedPdf, setOpenedPdf] = useState(false);
   const [form, setForm] = useState({ readConfirmed: false, studentSignature: "", parentSignature: "", parentEmail: "", parentRelationship: "", parentConfirmed: false });
-  const today = new Date().toLocaleDateString("en-CA", { month: "long", day: "numeric", year: "numeric", timeZone: "America/Toronto" });
+  const today = fmtLongDateYear(new Date());
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(null);
   const [resendMsg, setResendMsg] = useState(null);

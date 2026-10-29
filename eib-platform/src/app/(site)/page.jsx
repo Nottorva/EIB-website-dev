@@ -4,6 +4,7 @@
 import Link from "next/link";
 import { getCurrentUser, getSessionIdentity, authMode } from "@/lib/auth";
 import { getSiteTicker, getApplicationWindow, windowState, getCohortYear } from "@/lib/data/settings";
+import { fmtLongDate } from "@/lib/format";
 import { REEL, DIFFERENCE, CARD_QUOTES, CURRICULUM, COST, FOOTER, groupLessons } from "@/lib/siteContent";
 import SiteChrome from "@/components/site/SiteChrome";
 import Reel from "@/components/site/Reel";
@@ -20,9 +21,8 @@ export const metadata = {
 const cohortLabel = (year) => `${year}–${String(year + 1).slice(-2)}`;
 
 function applicationLine(win, year) {
-  const fmt = (iso) => new Date(iso).toLocaleDateString("en-CA", { month: "long", day: "numeric", timeZone: "America/Toronto" });
   const state = windowState(win);
-  if (state === "upcoming") return `Applications open ${fmt(win.opensAt)}`;
+  if (state === "upcoming") return `Applications open ${fmtLongDate(win.opensAt)}`;
   if (state === "closed") return "Applications for this cohort have closed";
   return `Applications open for the ${cohortLabel(year)} cohort`;
 }

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Pencil, Users, ClipboardList, GraduationCap, FileText, Globe } from "lucide-react";
 import { getAccessState, authMode } from "@/lib/auth";
+import { ROLE_LABEL } from "@/lib/roles";
 
 const COLORS = {
   text: "#0f1222",
@@ -61,7 +62,6 @@ const TOOLS = [
   },
 ];
 
-const ROLE_LABEL = { superAdmin: "Super admin", studentLeader: "Student leader", advancement: "Advancement team", student: "Student" };
 
 export default async function Home() {
   const { user, identity } = await getAccessState();

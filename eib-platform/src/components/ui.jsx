@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
 import {
-  ChevronLeft,
-  ChevronRight,
+
   X,
   Search,
   Type as TypeIcon,
@@ -611,11 +610,12 @@ export function useDangerConfirm() {
     },
     []
   );
-  const ui = req ? <DangerConfirm title={req.title} body={req.body} label={req.label} onDone={done} /> : null;
+  const ui = req ? <DangerConfirm title={req.title} body={req.body} label={req.label} note={req.note} onDone={done} /> : null;
   return [confirm, ui];
 }
 
-function DangerConfirm({ title, body, label = "Delete", onDone }) {
+// `note` replaces the "cannot be undone" line for actions that can be reversed.
+function DangerConfirm({ title, body, label = "Delete", note, onDone }) {
   const [armed, setArmed] = useState(false);
   useEffect(() => {
     const onKey = (e) => e.key === "Escape" && onDone(false);
@@ -630,7 +630,7 @@ function DangerConfirm({ title, body, label = "Delete", onDone }) {
       style={{ position: "fixed", inset: 0, background: "rgba(15,18,34,0.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, zIndex: 120 }}
     >
       <div role="alertdialog" aria-modal="true" style={{ background: "#fff", borderRadius: 20, width: "100%", maxWidth: 460, padding: "26px 28px", boxShadow: "0 20px 60px rgba(15,23,42,0.25)", boxSizing: "border-box" }}>
-        <div style={{ fontSize: 12.5, fontWeight: 800, color: COLORS.red, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>This cannot be undone</div>
+        <div style={{ fontSize: 12.5, fontWeight: 800, color: COLORS.red, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>{note || "This cannot be undone"}</div>
         <div style={{ fontSize: 21, fontWeight: 900, color: COLORS.text, lineHeight: 1.25 }}>{title}</div>
         {body && <div style={{ fontSize: 14.5, color: COLORS.sub, lineHeight: 1.55, marginTop: 10 }}>{body}</div>}
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 22, flexWrap: "wrap" }}>
@@ -714,58 +714,6 @@ export function ModalShell({ eyebrow, title, onClose, children, headerRight, max
   );
 }
 
-/* ---------- Slide viewer (placeholder deck) ---------- */
-export function SlideViewer({ slides }) {
-  const [index, setIndex] = useState(0);
-  const slide = slides[index];
-  const navBtnStyle = (disabled) => ({
-    width: 42,
-    height: 42,
-    borderRadius: 11,
-    border: `1px solid ${COLORS.border}`,
-    background: "#fff",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    cursor: disabled ? "default" : "pointer",
-    opacity: disabled ? 0.35 : 1,
-    color: COLORS.text,
-  });
-  return (
-    <>
-      <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 18, overflow: "hidden" }}>
-        <div style={{ height: 6, background: COLORS.indigo }} />
-        <div style={{ padding: "44px 40px", minHeight: 300 }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: COLORS.indigo, letterSpacing: 0.5, marginBottom: 18 }}>SLIDE {index + 1}</div>
-          <div style={{ fontSize: 38, fontWeight: 800, color: COLORS.text, marginBottom: 16 }}>{slide.title}</div>
-          <div style={{ fontSize: 19, color: COLORS.sub }}>{slide.subtitle}</div>
-          <div style={{ marginTop: 60 }}>
-            <div style={{ width: 60, height: 3, background: COLORS.indigoSoft, borderRadius: 2, marginBottom: 14 }} />
-            <div style={{ fontSize: 13.5, color: COLORS.faint, fontWeight: 600 }}>EIB · Nemosyne</div>
-          </div>
-        </div>
-      </div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 20, marginTop: 22 }}>
-        <button type="button" onClick={() => setIndex((i) => Math.max(0, i - 1))} disabled={index === 0} style={navBtnStyle(index === 0)}>
-          <ChevronLeft size={20} />
-        </button>
-        <span style={{ fontSize: 16, fontWeight: 800, color: COLORS.text }}>
-          {index + 1} / {slides.length}
-        </span>
-        <button
-          type="button"
-          onClick={() => setIndex((i) => Math.min(slides.length - 1, i + 1))}
-          disabled={index === slides.length - 1}
-          style={navBtnStyle(index === slides.length - 1)}
-        >
-          <ChevronRight size={20} />
-        </button>
-      </div>
-    </>
-  );
-}
-
-/* ---------- Deliverable type chip ---------- */
 export function TypeChip({ type, points, uppercase = false }) {
   const info = deliverableType(type);
   const Icon = info.icon;

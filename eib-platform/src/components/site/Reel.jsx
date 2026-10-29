@@ -6,6 +6,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { LEXICON } from "@/lib/siteContent";
+import { clamp, smooth } from "./motion";
 
 // Tuning. These were the prototype's Tune-panel values; the panel is gone.
 const P = {
@@ -27,9 +28,6 @@ const P = {
 const SMOOTH_MS = 70;
 // Word field: text this small does not need a full 2x backing store.
 const MAX_DPR = 1.5;
-
-const clamp = (n, a, b) => (n < a ? a : n > b ? b : n);
-const smooth = (t) => t * t * (3 - 2 * t);
 
 function mulberry(a) {
   return function () {
