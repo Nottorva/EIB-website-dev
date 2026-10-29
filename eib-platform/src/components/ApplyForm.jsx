@@ -75,6 +75,9 @@ function Shell({ children, title = "Apply to EIB", sub = "Tell us about yourself
           {sub && <div style={{ fontSize: 15, color: COLORS.sub, marginTop: 8, lineHeight: 1.6 }}>{sub}</div>}
         </div>
         {children}
+        <p style={{ fontSize: 12.5, color: COLORS.faint, lineHeight: 1.6, marginTop: 28 }}>
+          EIB handles your information as described in the <a href="/privacy" style={{ color: COLORS.indigo, fontWeight: 700 }}>Privacy Policy</a>. Using this site means you accept the <a href="/terms" style={{ color: COLORS.indigo, fontWeight: 700 }}>Terms</a>.
+        </p>
       </div>
     </div>
   );
@@ -240,8 +243,8 @@ function DevSignInCard({ domain, onSignedIn }) {
       </div>
       {error && <Notice onClose={() => setError(null)}>{error}</Notice>}
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name (as on your school account)" required style={fieldStyle} />
-        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={`you@${domain}`} required style={fieldStyle} />
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name (as on your school account)" aria-label="Full name, as on your school account" autoComplete="name" required style={fieldStyle} />
+        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={`you@${domain}`} aria-label="School email address" autoComplete="email" required style={fieldStyle} />
         <button
           type="submit"
           disabled={busy}
@@ -473,22 +476,22 @@ export default function ApplyForm() {
           <NoticeCard key={q.id} q={q} ticked={answers[q.id] === (q.ack || "I understand")} onTick={(on) => set(q.id, on ? q.ack || "I understand" : "")} />
         ) : (
           <div key={q.id} id={`q-${q.id}`} style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 18 }}>
-            <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.text, marginBottom: q.help ? 4 : 10, lineHeight: 1.45 }}>
+            <div id={`l-${q.id}`} style={{ fontSize: 15, fontWeight: 800, color: COLORS.text, marginBottom: q.help ? 4 : 10, lineHeight: 1.45 }}>
               {q.label}
-              {q.required ? <span style={{ color: COLORS.red, marginLeft: 4 }}>*</span> : <span style={{ color: COLORS.faint, fontWeight: 600, marginLeft: 6, fontSize: 12.5 }}>optional</span>}
+              {q.required ? <span style={{ color: COLORS.red, marginLeft: 4 }}><span aria-hidden="true">*</span><span className="sr-only"> (required)</span></span> : <span style={{ color: COLORS.faint, fontWeight: 600, marginLeft: 6, fontSize: 12.5 }}>optional</span>}
             </div>
-            {q.help && <div style={{ fontSize: 13.5, color: COLORS.sub, marginBottom: 10, lineHeight: 1.5 }}>{q.help}</div>}
+            {q.help && <div id={`h-${q.id}`} style={{ fontSize: 13.5, color: COLORS.sub, marginBottom: 10, lineHeight: 1.5 }}>{q.help}</div>}
 
-            {q.type === "short" && <input value={answers[q.id] || ""} onChange={(e) => set(q.id, e.target.value)} required={q.required} style={fieldStyle} />}
+            {q.type === "short" && <input id={`f-${q.id}`} aria-labelledby={`l-${q.id}`} aria-describedby={q.help ? `h-${q.id}` : undefined} value={answers[q.id] || ""} onChange={(e) => set(q.id, e.target.value)} required={q.required} style={fieldStyle} />}
 
             {q.type === "long" && (
               <div>
-                <textarea value={answers[q.id] || ""} onChange={(e) => set(q.id, e.target.value)} required={q.required} rows={q.maxWords ? 6 : 4} style={{ ...fieldStyle, resize: "vertical", fontSize: 14.5 }} />
+                <textarea id={`f-${q.id}`} aria-labelledby={`l-${q.id}`} aria-describedby={[q.help ? `h-${q.id}` : null, q.maxWords ? `w-${q.id}` : null].filter(Boolean).join(" ") || undefined} value={answers[q.id] || ""} onChange={(e) => set(q.id, e.target.value)} required={q.required} rows={q.maxWords ? 6 : 4} style={{ ...fieldStyle, resize: "vertical", fontSize: 14.5 }} />
                 {q.maxWords > 0 && (() => {
                   const n = countWords(answers[q.id]);
                   const over = n > q.maxWords;
                   return (
-                    <div style={{ textAlign: "right", fontSize: 12.5, fontWeight: 700, color: over ? COLORS.red : COLORS.faint, marginTop: 6 }}>
+                    <div id={`w-${q.id}`} aria-live="polite" style={{ textAlign: "right", fontSize: 12.5, fontWeight: 700, color: over ? COLORS.red : COLORS.faint, marginTop: 6 }}>
                       {n} / {q.maxWords} words{over ? " · over the limit" : ""}
                     </div>
                   );
@@ -497,7 +500,7 @@ export default function ApplyForm() {
             )}
 
             {q.type === "choice" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div role="radiogroup" aria-labelledby={`l-${q.id}`} aria-describedby={q.help ? `h-${q.id}` : undefined} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {q.options.map((opt) => {
                   const active = answers[q.id] === opt;
                   return (
@@ -517,7 +520,7 @@ export default function ApplyForm() {
               <div>
                 <div style={{ position: "relative" }}>
                   <Link2 size={15} color={COLORS.faint} style={{ position: "absolute", left: 14, top: 15 }} />
-                  <input type="url" value={answers[q.id] || ""} onChange={(e) => set(q.id, e.target.value)} required={q.required} placeholder="https://" style={{ ...fieldStyle, paddingLeft: 38 }} />
+                  <input id={`f-${q.id}`} aria-labelledby={`l-${q.id}`} aria-describedby={q.help ? `h-${q.id}` : undefined} type="url" value={answers[q.id] || ""} onChange={(e) => set(q.id, e.target.value)} required={q.required} placeholder="https://" style={{ ...fieldStyle, paddingLeft: 38 }} />
                 </div>
                 <div style={{ fontSize: 12, color: COLORS.faint, marginTop: 8 }}>Paste a link (Google Drive, Docs, a website). Make sure it is shared so anyone with the link can view.</div>
               </div>

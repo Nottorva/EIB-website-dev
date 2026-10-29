@@ -43,6 +43,8 @@ export default function SlidesPage() {
           <Link href="/">Back to the site</Link>
           <span aria-hidden="true"> · </span>
           <a href={DECK.file} download="EIB Night 2027.pdf">Download the PDF</a>
+          <span aria-hidden="true"> · </span>
+          <Link href="/privacy">Privacy</Link>
         </p>
       </main>
     </div>

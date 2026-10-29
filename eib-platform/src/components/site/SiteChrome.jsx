@@ -47,9 +47,11 @@ export default function SiteChrome({ ticker, user, identity, authMode }) {
   }, []);
 
   const name = user?.name || identity?.name || null;
+  const initials = name ? name.split(/\s+/).map((p) => p[0]).join("").slice(0, 3).toUpperCase() : "";
 
   return (
     <header className="chrome" ref={ref}>
+      <a className="skiplink" href="#after">Skip to content</a>
       <div className="ticker">
         <div className="tickwin">
           {/* the track holds the items twice so the loop is seamless */}
@@ -80,7 +82,7 @@ export default function SiteChrome({ ticker, user, identity, authMode }) {
         </Link>
         {user ? (
           <Link className="apply" href="/platform">
-            Open the platform
+            Open<span className="apply-x"> the platform</span>
           </Link>
         ) : (
           <Link className="apply" href="/apply">
@@ -88,8 +90,9 @@ export default function SiteChrome({ ticker, user, identity, authMode }) {
           </Link>
         )}
         {name ? (
-          <Link className="signin" href={user ? "/platform" : "/apply"} title={name}>
-            {name}
+          <Link className="signin" href={user ? "/platform" : "/apply"} title={name} aria-label={`${name}: ${user ? "open the platform" : "your application"}`}>
+            <span className="signin-full">{name}</span>
+            <span className="signin-short" aria-hidden="true">{initials}</span>
           </Link>
         ) : authMode === "google" ? (
           <button className="signin" type="button" onClick={() => signIn("google", { callbackUrl: "/platform" })}>

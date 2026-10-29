@@ -25,7 +25,7 @@ export const COLORS = {
   border: "#eef1f6",
   text: "#0f1222",
   sub: "#64748b",
-  faint: "#94a3b8",
+  faint: "#6b7280", // 4.8:1 on white, 4.5:1 on the page background
   indigo: "#4f46e5",
   indigoSoft: "#eef0ff",
   indigoBorder: "#dcdcff",

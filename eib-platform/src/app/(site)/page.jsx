@@ -91,6 +91,15 @@ export default async function SitePage() {
               <li>
                 <Link href="/platform">Platform sign-in</Link>
               </li>
+              <li>
+                <Link href="/privacy">Privacy</Link>
+              </li>
+              <li>
+                <Link href="/terms">Terms</Link>
+              </li>
+              <li>
+                <Link href="/cookies">Cookies</Link>
+              </li>
             </ul>
           </div>
           <dl className="footmeta">

@@ -450,6 +450,12 @@ head("website admin");
   const slides = await req(stranger, "GET", "/slides");
   check("slides page is public and names the deck", [200, true], [slides.status, slides.text.includes("EIB Night 2027")]);
   check("home bar links to the slides", true, (await req(stranger, "GET", "/")).text.includes('href="/slides"'));
+  for (const [p, title] of [["/privacy", "Privacy Policy"], ["/terms", "Terms and Conditions"], ["/cookies", "Cookie Policy"]]) {
+    const r = await req(stranger, "GET", p);
+    check(`${p} is public and titled`, [200, true], [r.status, r.text.includes(title)]);
+  }
+  check("home footer links to the legal pages", true, ((t) => t.includes('href="/privacy"') && t.includes('href="/terms"') && t.includes('href="/cookies"'))((await req(stranger, "GET", "/")).text));
+  check("home has a skip link", true, (await req(stranger, "GET", "/")).text.includes('class="skiplink"'));
   const pdf = await fetch(`${BASE}/site/eib-night-2027.pdf`, { method: "HEAD" });
   check("deck PDF served", [200, "application/pdf"], [pdf.status, pdf.headers.get("content-type")]);
   await req(admin, "PUT", "/api/site", { ticker: s.json.defaultTicker });

@@ -81,6 +81,18 @@ to `lib/sessionDefaults.js` (TFS Sr. School, 4:30 to 5:30 PM). Students never
 receive the mentor fields. Lesson Editor → **Session defaults** writes a room
 and times onto every lesson at once (`POST /api/lessons/bulk-logistics`).
 
+**Legal pages.** `/privacy`, `/terms` and `/cookies` render the text in
+`src/lib/legalContent.js` (operator, contact and the "last updated" date are
+constants at the top). The site sets only the sign-in cookies, runs no
+analytics and embeds nothing, so there is no consent banner; the cookie
+policy says so. The home footer, the apply page and onboarding link to them.
+
+**Accessibility.** Keyboard focus is visible everywhere (`globals.css`), the
+public site has a skip link past the reel, the quote carousel pauses on hover
+and focus, stops for reduced motion and has a Pause button, every application
+field is labelled and described for assistive tech, decorative photos and
+canvases are `aria-hidden`, and the text colours meet WCAG AA contrast.
+
 **Slides.** `/slides` is a public page that shows the EIB Night deck in the
 browser (pdf.js from cdnjs, one slide under the next, rendered as they scroll
 into view) with a download link. The PDF is `public/site/eib-night-2027.pdf`;

@@ -183,6 +183,9 @@ export default function Onboarding({ user }) {
           >
             <ShieldCheck size={17} /> {submitting ? "Saving…" : "I agree"}
           </button>
+          <p style={{ fontSize: 12.5, color: COLORS.faint, lineHeight: 1.6, margin: 0 }}>
+            The parent or guardian's name and email are kept only as the record of this consent. See the <a href="/privacy" style={{ color: COLORS.indigo, fontWeight: 700 }}>Privacy Policy</a>.
+          </p>
         </form>
       </Card>
     </Shell>

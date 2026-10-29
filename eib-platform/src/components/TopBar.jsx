@@ -76,7 +76,7 @@ export default function TopBar({ user, authMode, identity }) {
           <span style={{ fontSize: 18, fontWeight: 800, color: COLORS.text }}>EIB</span>
         </Link>
 
-        <nav style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+        <nav aria-label="Tools" style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
           {visibleNav.map((n) => {
             const active = pathname === n.href || pathname.startsWith(n.href + "/");
             const Icon = n.icon;
