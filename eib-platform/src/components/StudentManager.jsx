@@ -1241,6 +1241,8 @@ function AgreementMark({ agreement }) {
 function TestAccountBox() {
   const [account, setAccount] = useState(undefined); // undefined = loading, null = none
   const [email, setEmail] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState(null);
   const [confirmDanger, confirmUI] = useDangerConfirm();
@@ -1255,10 +1257,21 @@ function TestAccountBox() {
     try {
       await fn();
     } catch (e) {
-      setMsg({ ok: false, text: e.message });
+      setMsg({ ok: false, text: e.status === 401 ? "Your sign-in has expired. Reload the page and try again." : e.message });
     } finally {
       setBusy(false);
     }
+  };
+  const changeEmail = async () => {
+    const target = newEmail.trim().toLowerCase();
+    if (!target || target === account.email) { setEditing(false); return; }
+    if (!(await confirmDanger({ title: `Move the test account to ${target}?`, body: `Everything ${account.email} did is wiped first (submissions, agreement, application or draft), then the account continues under the new email.`, label: "Change the email" }))) return;
+    run(async () => {
+      const r = await api.patch("/api/test-account", { email: target });
+      setAccount(r.account);
+      setEditing(false);
+      setMsg({ ok: true, text: `Test account is now ${r.account.email}, wiped and ready.` });
+    });
   };
   const create = () => run(async () => {
     const r = await api.post("/api/test-account", { email: email.trim() });
@@ -1296,13 +1309,33 @@ function TestAccountBox() {
           <span style={{ fontSize: 12, color: COLORS.faint }}>…</span>
         ) : account ? (
           <>
-            <span style={{ fontSize: 12.5, fontWeight: 700, color: COLORS.text }} title={`Created ${fmtDate(account.createdAt)}${account.wipedAt ? ` · wiped ${fmtDate(account.wipedAt)}` : ""}`}>{account.email}</span>
-            <button type="button" onClick={wipe} disabled={busy} title="Delete everything this account did and start again" style={{ ...chip, background: COLORS.amberSoft, color: COLORS.amber }}>
+            {editing ? (
+              <>
+                <input
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && !busy) changeEmail(); if (e.key === "Escape") setEditing(false); }}
+                  aria-label="New email for the test student account"
+                  autoFocus
+                  style={{ border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "5px 9px", fontSize: 12.5, width: 190, outline: "none", fontFamily: "inherit" }}
+                />
+                <button type="button" onClick={changeEmail} disabled={busy || !newEmail.trim()} style={{ ...chip, background: newEmail.trim() ? COLORS.indigo : COLORS.border, color: newEmail.trim() ? "#fff" : COLORS.faint }}>Save</button>
+                <button type="button" onClick={() => setEditing(false)} disabled={busy} style={{ ...chip, background: "transparent", color: COLORS.faint, padding: "5px 4px" }}>Cancel</button>
+              </>
+            ) : (
+              <>
+                <span style={{ fontSize: 12.5, fontWeight: 700, color: COLORS.text }} title={`Created ${fmtDate(account.createdAt)}${account.wipedAt ? ` · wiped ${fmtDate(account.wipedAt)}` : ""}`}>{account.email}</span>
+                <button type="button" onClick={() => { setNewEmail(account.email); setEditing(true); }} disabled={busy} title="Change the email (wipes the account first)" style={{ ...chip, background: "transparent", color: COLORS.indigo, padding: "5px 4px" }}>
+                  <Pencil size={13} />
+                </button>
+              </>
+            )}
+            {!editing && <button type="button" onClick={wipe} disabled={busy} title="Delete everything this account did and start again" style={{ ...chip, background: COLORS.amberSoft, color: COLORS.amber }}>
               <Eraser size={12} /> Wipe
-            </button>
-            <button type="button" onClick={remove} disabled={busy} title="Remove the test account" style={{ ...chip, background: "transparent", color: COLORS.faint, padding: "5px 4px" }}>
+            </button>}
+            {!editing && <button type="button" onClick={remove} disabled={busy} title="Remove the test account" style={{ ...chip, background: "transparent", color: COLORS.faint, padding: "5px 4px" }}>
               <X size={13} />
-            </button>
+            </button>}
           </>
         ) : (
           <>

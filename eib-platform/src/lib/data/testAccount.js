@@ -38,6 +38,19 @@ export async function wipeTestStudent() {
   return { user: fresh, removed };
 }
 
+// Wipe, then move the account to a different email.
+export async function retargetTestStudent(email) {
+  const key = String(email || "").trim().toLowerCase();
+  if (!/^\S+@\S+\.\S+$/.test(key)) return { error: "Enter a valid email address.", status: 400 };
+  const current = await getTestStudent();
+  if (!current) return { error: "There is no test account.", status: 404 };
+  const taken = await getUserByEmail(key);
+  if (taken && taken.id !== current.id) return { error: `${key} already has an account.`, status: 409 };
+  const wiped = await wipeTestStudent();
+  const user = await updateOne("users", current.id, { email: key });
+  return { user, removed: wiped.removed };
+}
+
 // Wipe, then delete the account too.
 export async function removeTestStudent() {
   const wiped = await wipeTestStudent();

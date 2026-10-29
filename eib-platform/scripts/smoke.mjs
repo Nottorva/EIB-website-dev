@@ -498,6 +498,10 @@ head("test account");
   check("wipe -> account kept, work gone", [200, "tester@tfs.ca", del ? 1 : 0], [wiped.status, wiped.json?.account?.email, wiped.json?.removed?.submissions]);
   check("after wipe: no submissions for the tester", 0, (await req(tester, "GET", "/api/lessons/view")).json.submissions.length);
   check("after wipe: the welcome page shows again", "/welcome", new URL((await fetch(`${BASE}/lessons`, { headers: { Cookie: tester }, redirect: "manual" })).headers.get("location") || "/", BASE).pathname);
+  check("change email to a taken one -> 409", 409, await code(admin, "PATCH", "/api/test-account", { email: "amara.chen@tfs.ca" }));
+  const moved = await req(admin, "PATCH", "/api/test-account", { email: "Tester2@gmail.com" });
+  check("change email -> moved and lowercased", [200, "tester2@gmail.com"], [moved.status, moved.json?.account?.email]);
+  check("old email no longer signs in, new one does", [401, 200], [await code(tester, "GET", "/api/lessons/view"), await code(await login("tester2@gmail.com"), "GET", "/api/lessons/view")]);
   check("remove -> gone", [200, null], [await code(admin, "DELETE", "/api/test-account"), (await req(admin, "GET", "/api/test-account")).json?.account]);
   check("removed account can no longer sign in -> 401", 401, await code(tester, "GET", "/api/lessons/view"));
 }
