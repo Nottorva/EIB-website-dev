@@ -53,6 +53,13 @@ builds and whenever Google sign-in is on.
 | Amara Chen (student) | Lessons (student mode, own submissions only) |
 | Not on the allow-list | Nothing except the public application form |
 
+**Test account.** Student Manager, top right: "Test account:" takes an email
+and creates one student named Test with no application behind it (so the
+class count and the pipeline are untouched). Only one can exist. Wipe
+deletes everything it did (submissions, agreement, any application or draft
+under that email) and keeps the account; the × removes it. API:
+`/api/test-account` (GET / POST / PATCH = wipe / DELETE), super admin only.
+
 **Student Agreement (onboarding).** Student Manager → Forms → Student
 agreement: upload the PDF (`POST /api/agreement/pdf`, stored in settings,
 4 MB max), tick "Required before lessons", edit the title and intro. While a

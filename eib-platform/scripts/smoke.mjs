@@ -466,6 +466,32 @@ head("student agreement");
   await req(admin, "PUT", "/api/agreement", { required: true });
 }
 
+/* ---- the test student account ---- */
+head("test account");
+{
+  check("leader cannot create a test account -> 403", 403, await code(leader, "POST", "/api/test-account", { email: "tester@tfs.ca" }));
+  check("none to begin with", null, (await req(admin, "GET", "/api/test-account")).json?.account);
+  check("bad email -> 400", 400, await code(admin, "POST", "/api/test-account", { email: "nope" }));
+  check("existing email -> 409", 409, await code(admin, "POST", "/api/test-account", { email: "amara.chen@tfs.ca" }));
+  const made = await req(admin, "POST", "/api/test-account", { email: "Tester@tfs.ca" });
+  check("admin creates it -> 201, named Test, lowercased", [201, "Test", "tester@tfs.ca"], [made.status, made.json?.account?.name, made.json?.account?.email]);
+  check("only one -> 409", 409, await code(admin, "POST", "/api/test-account", { email: "other@tfs.ca" }));
+  const tester = await login("tester@tfs.ca");
+  check("test account is a student: lessons view 200, manager 403", [200, 403], [await code(tester, "GET", "/api/lessons/view"), await code(tester, "GET", "/api/applications")]);
+  const first = (await req(tester, "GET", "/api/lessons/view")).json.lessons[0];
+  const del = first?.deliverables?.[0];
+  if (del) {
+    const sub = await req(tester, "PUT", "/api/submissions", { lessonId: first.id, deliverableId: del.id, payload: { text: "test work" } });
+    check("test account submits work", true, sub.status === 200 || sub.status === 201);
+  }
+  check("applications count unchanged by the test account", false, (await req(admin, "GET", "/api/applications")).json.some((a) => a.email === "tester@tfs.ca"));
+  const wiped = await req(admin, "PATCH", "/api/test-account");
+  check("wipe -> account kept, work gone", [200, "tester@tfs.ca", del ? 1 : 0], [wiped.status, wiped.json?.account?.email, wiped.json?.removed?.submissions]);
+  check("after wipe: no submissions for the tester", 0, (await req(tester, "GET", "/api/lessons/view")).json.submissions.length);
+  check("remove -> gone", [200, null], [await code(admin, "DELETE", "/api/test-account"), (await req(admin, "GET", "/api/test-account")).json?.account]);
+  check("removed account can no longer sign in -> 401", 401, await code(tester, "GET", "/api/lessons/view"));
+}
+
 head("website admin");
 {
   check("stranger /api/site -> 401", 401, await code(stranger, "GET", "/api/site"));

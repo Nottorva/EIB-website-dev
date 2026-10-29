@@ -14,6 +14,11 @@ export async function listUsers(filter = {}) {
   return findAll("users", (u) => (filter.role ? u.role === filter.role : true));
 }
 
+// Student accounts without the test account.
+export async function listRealStudents() {
+  return findAll("users", (u) => u.role === "student" && !u.isTest);
+}
+
 export async function getUser(id) {
   return findById("users", id);
 }

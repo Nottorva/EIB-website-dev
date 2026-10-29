@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-import { FileText, Users, ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Mail, Calendar, Link2, UserPlus, Lock, ExternalLink, Send, Pencil, Copy, Check, CalendarClock, Megaphone, ShieldOff, ShieldCheck, FileClock, Clock, ChartColumn, Table2, Signature, Upload, Download } from "lucide-react";
+import { FileText, Users, ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Mail, Calendar, Link2, UserPlus, Lock, ExternalLink, Send, Pencil, Copy, Check, CalendarClock, Megaphone, ShieldOff, ShieldCheck, FileClock, Clock, ChartColumn, Table2, Signature, Upload, Download, FlaskConical, Eraser, X } from "lucide-react";
 import { buildDays, TimeChart, DaysTable, Stat } from "./ApplicationsChart";
 import {
   COLORS,
@@ -1218,6 +1218,97 @@ function AccManagerTab({ saver }) {
 }
 
 /* ================= App ================= */
+/* ================= Test account (super admin) ================= */
+// One student account named "Test" with no application behind it, so the
+// super admin can walk through onboarding, lessons and submissions without
+// touching the class count. Wipe clears everything it did; Remove deletes it.
+function TestAccountBox() {
+  const [account, setAccount] = useState(undefined); // undefined = loading, null = none
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const [confirmDanger, confirmUI] = useDangerConfirm();
+
+  useEffect(() => {
+    api.get("/api/test-account").then((r) => setAccount(r.account)).catch(() => setAccount(null));
+  }, []);
+
+  const run = async (fn) => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      await fn();
+    } catch (e) {
+      setMsg({ ok: false, text: e.message });
+    } finally {
+      setBusy(false);
+    }
+  };
+  const create = () => run(async () => {
+    const r = await api.post("/api/test-account", { email: email.trim() });
+    setAccount(r.account);
+    setEmail("");
+    setMsg({ ok: true, text: `Test account ready. Sign in with ${r.account.email} to go through as a student.` });
+  });
+  const wipe = async () => {
+    if (!(await confirmDanger({ title: "Wipe the test account?", body: `Everything ${account.email} did is deleted: submissions, the signed agreement, any application or draft under that email. The account stays, ready to go through again.`, label: "Wipe it" }))) return;
+    run(async () => {
+      const r = await api.patch("/api/test-account");
+      setAccount(r.account);
+      const n = r.removed;
+      setMsg({ ok: true, text: `Wiped: ${n.submissions} submission${n.submissions === 1 ? "" : "s"}, ${n.agreement ? "the agreement, " : ""}${n.application ? "an application, " : ""}${n.draft ? "a draft, " : ""}account kept.` });
+    });
+  };
+  const remove = async () => {
+    if (!(await confirmDanger({ title: "Remove the test account?", body: "Wipes everything it did and deletes the account. You can create a new one afterwards.", label: "Remove it" }))) return;
+    run(async () => {
+      await api.del("/api/test-account");
+      setAccount(null);
+      setMsg({ ok: true, text: "Test account removed." });
+    });
+  };
+
+  const chip = { display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 800, borderRadius: 999, padding: "5px 10px", cursor: busy ? "default" : "pointer", border: "none", fontFamily: "inherit", opacity: busy ? 0.6 : 1 };
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+      {confirmUI}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", border: `1px dashed ${COLORS.border}`, borderRadius: 12, padding: "6px 10px" }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 800, color: COLORS.sub, whiteSpace: "nowrap" }}>
+          <FlaskConical size={13} color={COLORS.indigo} /> Test account:
+        </span>
+        {account === undefined ? (
+          <span style={{ fontSize: 12, color: COLORS.faint }}>…</span>
+        ) : account ? (
+          <>
+            <span style={{ fontSize: 12.5, fontWeight: 700, color: COLORS.text }} title={`Created ${fmtDate(account.createdAt)}${account.wipedAt ? ` · wiped ${fmtDate(account.wipedAt)}` : ""}`}>{account.email}</span>
+            <button type="button" onClick={wipe} disabled={busy} title="Delete everything this account did and start again" style={{ ...chip, background: COLORS.amberSoft, color: COLORS.amber }}>
+              <Eraser size={12} /> Wipe
+            </button>
+            <button type="button" onClick={remove} disabled={busy} title="Remove the test account" style={{ ...chip, background: "transparent", color: COLORS.faint, padding: "5px 4px" }}>
+              <X size={13} />
+            </button>
+          </>
+        ) : (
+          <>
+            <input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && email.trim() && !busy) create(); }}
+              placeholder="you@tfs.ca"
+              aria-label="Email for the test student account"
+              style={{ border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "5px 9px", fontSize: 12.5, width: 170, outline: "none", fontFamily: "inherit" }}
+            />
+            <button type="button" onClick={create} disabled={!email.trim() || busy} style={{ ...chip, background: email.trim() ? COLORS.indigo : COLORS.border, color: email.trim() ? "#fff" : COLORS.faint }}>
+              <Plus size={12} /> Create
+            </button>
+          </>
+        )}
+      </div>
+      {msg && <div style={{ fontSize: 12, fontWeight: 700, color: msg.ok ? COLORS.green : COLORS.red, maxWidth: 420, textAlign: "right" }}>{msg.text}</div>}
+    </div>
+  );
+}
+
 /* ================= Student agreement (super admin) ================= */
 // Upload the PDF students must sign, decide whether signing is required,
 // and edit the title and intro. Replacing the PDF starts a new version, so
@@ -1569,6 +1660,7 @@ export default function StudentManager({ user }) {
           <>
             <SaveIndicator status={saver.status} />
             <SegmentedTabs value={tab} onChange={setTab} options={tabs} style={{ background: "#fff", borderRadius: 12 }} />
+            {isSuperAdmin && <TestAccountBox />}
           </>
         }
       />
