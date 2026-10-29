@@ -524,8 +524,8 @@ function LessonCard({ lesson, onPatch, onDelete }) {
         }}
       >
         <Pill icon={Eye} label="Student Overview" onClick={() => setActiveModal("studentOverview")} />
-        <Pill icon={Presentation} label={lesson.slidesFile ? "Slides · uploaded" : lesson.slidesLink ? "Slides · linked" : "Slides"} onClick={() => setActiveModal("slides")} />
-        <Pill icon={FileText} label={lesson.teachingPlanFile ? "Teaching Plan · uploaded" : lesson.teachingPlanLink ? "Teaching Plan · linked" : "Teaching Plan"} onClick={() => setActiveModal("teachingPlan")} />
+        <Pill icon={Presentation} label="Slides" onClick={() => setActiveModal("slides")} />
+        <Pill icon={FileText} label="Teaching Plan" onClick={() => setActiveModal("teachingPlan")} />
         <MentorToggle enabled={lesson.mentorEnabled} onToggle={(enabled) => onPatch({ mentorEnabled: enabled })} />
         <PublishButton published={Boolean(lesson.studentVisible)} onToggle={(on) => onPatch({ studentVisible: on })} />
       </div>
