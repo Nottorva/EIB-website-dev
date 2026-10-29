@@ -159,6 +159,22 @@ let tempLessonId = null;
   check("published: student and leader views include it", [true, true], [(await req(student, "GET", "/api/lessons/view")).json.lessons.some((l) => l.id === tempLessonId), (await req(leader, "GET", "/api/lessons/view")).json.lessons.some((l) => l.id === tempLessonId)]);
   check("admin PUT lesson -> 200 with new title", ["Smoke lesson", "99"], [put.json?.title, put.json?.number]);
   check("leader DELETE lesson -> 403", 403, await code(leader, "DELETE", `/api/lessons/${tempLessonId}`));
+  // slides + teaching plan are uploaded files
+  {
+    const uploadFile = async (cookie, kind, name, bytes, type) => { const fd = new FormData(); fd.append("file", new Blob([bytes], { type }), name); const r = await fetch(`${BASE}/api/lessons/${tempLessonId}/file/${kind}`, { method: "POST", headers: { Cookie: cookie }, body: fd }); return { status: r.status, json: await r.json().catch(() => null) }; };
+    check("leader uploads slides -> 403", 403, (await uploadFile(leader, "slides", "deck.pdf", "%PDF-1.4 x", "application/pdf")).status);
+    const up = await uploadFile(admin, "slides", "deck.pdf", "%PDF-1.4 slides", "application/pdf");
+    check("admin uploads slides -> 201, link set to the file URL", [201, "deck.pdf", `/api/lessons/${tempLessonId}/file/slides`], [up.status, up.json?.slidesFile?.name, up.json?.slidesLink]);
+    const plan = await uploadFile(admin, "teachingPlan", "plan.docx", "PK plan", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+    check("admin uploads teaching plan -> 201", 201, plan.status);
+    const got = await fetch(`${BASE}/api/lessons/${tempLessonId}/file/slides`, { headers: { Cookie: student } });
+    check("student opens slides -> 200 pdf", [200, "application/pdf"], [got.status, got.headers.get("content-type")]);
+    check("student opens teaching plan -> 403, leader -> 200", [403, 200], [(await fetch(`${BASE}/api/lessons/${tempLessonId}/file/teachingPlan`, { headers: { Cookie: student } })).status, (await fetch(`${BASE}/api/lessons/${tempLessonId}/file/teachingPlan`, { headers: { Cookie: leader } })).status]);
+    check("student lesson list carries slides meta but no teaching plan meta", [true, false], (({ json }) => { const l = json.find((x) => x.id === tempLessonId); return [Boolean(l?.slidesFile), "teachingPlanFile" in (l || {})]; })(await req(student, "GET", "/api/lessons")));
+    check("wrong kind -> 404", 404, (await fetch(`${BASE}/api/lessons/${tempLessonId}/file/homework`, { headers: { Cookie: admin } })).status);
+    const rm = await req(admin, "DELETE", `/api/lessons/${tempLessonId}/file/slides`);
+    check("remove slides -> link cleared, file 404", [200, "", 404], [rm.status, rm.json?.slidesLink, (await fetch(`${BASE}/api/lessons/${tempLessonId}/file/slides`, { headers: { Cookie: admin } })).status]);
+  }
   check("PUT missing lesson -> 404", 404, await code(admin, "PUT", "/api/lessons/nope", {}));
 }
 

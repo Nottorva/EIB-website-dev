@@ -2,6 +2,7 @@
 // Editor (super admin). Everyone else reads.
 
 import { findAll, findById, insert, replaceOne, updateOne, removeOne, newId } from "./store";
+import { deleteLessonFiles } from "./lessonFiles";
 
 export const DELIVERABLE_TYPE_IDS = ["text", "link", "table", "checklist"];
 // Older documents used a "file" type (uploads); links replaced it.
@@ -53,9 +54,14 @@ export function normalizeLesson(input, id) {
     number: String(input.number ?? ""),
     chapterLabel: String(input.chapterLabel ?? ""),
     title: String(input.title ?? ""),
+    // Slides and the teaching plan are uploaded files (see lessonFiles.js);
+    // the *Link fields then hold the file's URL. overviewLink is no longer
+    // edited anywhere and is kept only so older records round-trip.
     slidesLink: String(input.slidesLink ?? ""),
+    slidesFile: input.slidesFile && typeof input.slidesFile === "object" ? input.slidesFile : null,
     overviewLink: String(input.overviewLink ?? ""),
     teachingPlanLink: String(input.teachingPlanLink ?? ""),
+    teachingPlanFile: input.teachingPlanFile && typeof input.teachingPlanFile === "object" ? input.teachingPlanFile : null,
     mentorEnabled: Boolean(input.mentorEnabled),
     // Published to the Lessons page. Until the super admin publishes, students
     // and student leaders do not receive the lesson there. Nothing else
@@ -85,22 +91,6 @@ export function normalizeLesson(input, id) {
   };
 }
 
-// The shape the public site receives: no links, no deliverables, no room.
-export function toPublicLesson(l) {
-  return {
-    id: l.id,
-    number: String(l.number ?? ""),
-    title: String(l.title ?? ""),
-    stage: String(l.stage ?? ""),
-    week: String(l.week ?? ""),
-    blurb: String(l.blurb || l.overview || ""),
-  };
-}
-
-export async function listPublishedLessons() {
-  return (await listLessons()).filter((l) => l.published).map(toPublicLesson);
-}
-
 export async function createLesson(input) {
   const existing = await listLessons();
   const nextNumber = existing.length + 1;
@@ -126,7 +116,7 @@ export const MENTOR_SESSION_KEYS = ["mentorLocation", "mentorStartTime", "mentor
 
 // Students never receive the mentor-facing fields.
 export function forStudent(lesson) {
-  const { mentorBrief, mentorLocation, mentorStartTime, mentorEndTime, ...rest } = lesson;
+  const { mentorBrief, mentorLocation, mentorStartTime, mentorEndTime, teachingPlanFile, ...rest } = lesson;
   return rest;
 }
 
@@ -156,5 +146,6 @@ export async function bulkSessionDefaults({ student = {}, mentor = {} }) {
 }
 
 export async function deleteLesson(id) {
+  await deleteLessonFiles(id);
   return removeOne("lessons", id);
 }

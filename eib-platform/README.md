@@ -193,9 +193,11 @@ Things worth trying, in order:
    time" on any lesson card. Changes save as you type and show for students.
    The API only accepts room/start/end from this route; anything else is
    rejected.
-8. **Links.** In the Lesson Editor, Student Overview, Slides and Teaching Plan
-   each take a link. Students get the first two; the teaching plan link is
-   never sent to a student account.
+8. **Files.** In the Lesson Editor, Slides and Teaching Plan each take an
+   uploaded file (PDF works best; 4 MB max, the most a Vercel request can
+   carry; `lessonFiles` collection, served by `/api/lessons/[id]/file/[kind]`).
+   Students can open the slides; the teaching plan is for staff only. The
+   Student Overview modal holds the room, times and the short overview text.
 9. **Examples are filled in, not typed.** In the Add/Edit Deliverable modal
    the Example box is the real student widget: tick the checkboxes, fill the
    table, paste a link. Hit Save and that filled-in version is the example

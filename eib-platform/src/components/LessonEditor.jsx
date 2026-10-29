@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { BookOpen, Eye, Presentation, UserCheck, FileText, Trash2, Plus, Pencil, ExternalLink, Globe, CalendarCog, Send, CircleCheck } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { BookOpen, Eye, Presentation, UserCheck, FileText, Trash2, Plus, Pencil, ExternalLink, Upload, CalendarCog, Send, CircleCheck } from "lucide-react";
 import { MENTOR_DEFAULTS, STUDENT_DEFAULTS } from "@/lib/sessionDefaults";
+import { fmtDate } from "@/lib/format";
 import {
   COLORS,
   DELIVERABLE_TYPES,
@@ -24,72 +25,104 @@ import {
 import { api, useDebouncedSaver } from "@/lib/api";
 import { DeliverablePreview, DeliverableInput, ExampleBlock } from "./DeliverableInputs";
 
-/* ---------- Link field (shared by the three resource modals) ---------- */
-function LinkField({ label, link, onChange, placeholder, hint }) {
+/* ---------- File field (slides, teaching plan): upload, open, replace, remove ---------- */
+const ACCEPT = { slides: ".pdf,.ppt,.pptx,.key,.odp", teachingPlan: ".pdf,.doc,.docx,.odt" };
+function FileField({ label, lesson, kind, onPatch, hint }) {
+  const file = kind === "slides" ? lesson.slidesFile : lesson.teachingPlanFile;
+  const url = `/api/lessons/${lesson.id}/file/${kind}`;
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const inputRef = useRef(null);
+  const kb = (n) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.round(n / 1024)} KB`);
+  const upload = async (f) => {
+    if (!f) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", f);
+      const res = await fetch(url, { method: "POST", body: fd });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || `Upload failed (${res.status})`);
+      onPatch(kind === "slides" ? { slidesFile: data.slidesFile, slidesLink: data.slidesLink } : { teachingPlanFile: data.teachingPlanFile, teachingPlanLink: data.teachingPlanLink });
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  };
+  const remove = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const data = await api.del(url);
+      onPatch(kind === "slides" ? { slidesFile: null, slidesLink: data.slidesLink || "" } : { teachingPlanFile: null, teachingPlanLink: data.teachingPlanLink || "" });
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const chip = { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 800, borderRadius: 999, padding: "8px 14px", cursor: busy ? "default" : "pointer", border: "none", fontFamily: "inherit", opacity: busy ? 0.6 : 1, textDecoration: "none" };
   return (
     <div>
       <FieldLabel>{label}</FieldLabel>
-      <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-        <input value={link} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} style={fieldStyle} />
-        {link && (
-          <a
-            href={link}
-            target="_blank"
-            rel="noreferrer"
-            style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 14, color: "#fff", background: COLORS.indigo, fontWeight: 700, textDecoration: "none", borderRadius: 12, padding: "12px 16px", whiteSpace: "nowrap" }}
-          >
-            Open <ExternalLink size={14} />
-          </a>
-        )}
+      {error && <Notice onClose={() => setError(null)}>{error}</Notice>}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, background: file ? COLORS.greenSoft : "#f7f8fb", border: `1px solid ${file ? COLORS.greenBorder : COLORS.border}`, borderRadius: 12, padding: "12px 14px", flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minWidth: 200, fontSize: 14, color: COLORS.text }}>
+          {file ? (
+            <>
+              <strong>{file.name}</strong> · {kb(file.size)} · uploaded {fmtDate(file.uploadedAt)}
+            </>
+          ) : (
+            <span style={{ color: COLORS.sub }}>No file yet. PDF works best; up to 4 MB.</span>
+          )}
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {file && (
+            <a href={url} target="_blank" rel="noreferrer" style={{ ...chip, border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.sub }}>
+              Open <ExternalLink size={13} />
+            </a>
+          )}
+          <label style={{ ...chip, background: COLORS.indigo, color: "#fff" }}>
+            <Upload size={13} /> {busy ? "Uploading…" : file ? "Replace" : "Upload"}
+            <input ref={inputRef} type="file" accept={ACCEPT[kind]} onChange={(e) => upload(e.target.files?.[0])} disabled={busy} style={{ display: "none" }} />
+          </label>
+          {file && (
+            <button type="button" onClick={remove} disabled={busy} style={{ ...chip, background: "transparent", color: COLORS.faint, padding: "8px 6px" }}>
+              <Trash2 size={13} /> Remove
+            </button>
+          )}
+        </div>
       </div>
       {hint && <div style={{ fontSize: 13, color: COLORS.faint, marginTop: 8, lineHeight: 1.5 }}>{hint}</div>}
     </div>
   );
 }
 
-/* ---------- Slides modal (link) ---------- */
+/* ---------- Slides modal (file) ---------- */
 function SlidesModal({ eyebrow, lesson, onPatch, onClose }) {
   return (
     <ModalShell eyebrow={`${eyebrow} · Slides`} title={lesson.title} onClose={onClose} maxWidth={620}>
-      <LinkField
-        label="Slides link"
-        link={lesson.slidesLink}
-        onChange={(v) => onPatch({ slidesLink: v })}
-        placeholder="https://docs.google.com/presentation/..."
-        hint='Students and leaders open this from the "Slides" button on the lesson card.'
-      />
+      <FileField label="Slides" lesson={lesson} kind="slides" onPatch={onPatch} hint='Students and leaders open this from the "Slides" button on the lesson card. A PDF opens in the browser; a PowerPoint downloads.' />
     </ModalShell>
   );
 }
 
-/* ---------- Teaching plan modal (link, leaders only) ---------- */
+/* ---------- Teaching plan modal (file, leaders only) ---------- */
 function TeachingPlanModal({ eyebrow, lesson, onPatch, onClose }) {
   return (
     <ModalShell eyebrow={`${eyebrow} · Teaching Plan`} title={lesson.title} onClose={onClose} maxWidth={620}>
-      <LinkField
-        label="Teaching plan link"
-        link={lesson.teachingPlanLink}
-        onChange={(v) => onPatch({ teachingPlanLink: v })}
-        placeholder="https://docs.google.com/document/..."
-        hint="Only student leaders see this button. Students never receive this link."
-      />
+      <FileField label="Teaching plan" lesson={lesson} kind="teachingPlan" onPatch={onPatch} hint="Only student leaders see this button. Students never receive the teaching plan." />
     </ModalShell>
   );
 }
 
-/* ---------- Student overview modal (link + room/time/overview text) ---------- */
+/* ---------- Student overview modal (room/time/overview text) ---------- */
 function StudentOverviewModal({ eyebrow, lesson, onPatch, onClose }) {
   return (
     <ModalShell eyebrow={`${eyebrow} · Student Overview`} title={lesson.title} onClose={onClose} maxWidth={680}>
-      <div style={{ marginBottom: 22 }}>
-        <LinkField
-          label="Student overview link"
-          link={lesson.overviewLink}
-          onChange={(v) => onPatch({ overviewLink: v })}
-          placeholder="https://docs.google.com/document/..."
-          hint='Opens from the "Student Overview" button. The fields below show on the lesson card itself.'
-        />
-      </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 16 }}>
         <div>
           <FieldLabel>Room</FieldLabel>
@@ -115,86 +148,6 @@ function StudentOverviewModal({ eyebrow, lesson, onPatch, onClose }) {
         />
       </div>
       <div style={{ fontSize: 13, color: COLORS.faint, marginTop: 14, lineHeight: 1.5 }}>Student leaders can also change room and time from their Lessons view.</div>
-    </ModalShell>
-  );
-}
-
-/* ---------- Website modal (what the public site shows for this lesson) ---------- */
-function OnOff({ value, onChange, onLabel = "Shown", offLabel = "Hidden" }) {
-  const btn = (active, label, on) => (
-    <button
-      type="button"
-      onClick={() => onChange(on)}
-      style={{
-        padding: "8px 14px",
-        borderRadius: 9,
-        fontSize: 14,
-        fontWeight: 700,
-        cursor: "pointer",
-        border: "none",
-        background: active ? (on ? COLORS.green : COLORS.indigo) : "transparent",
-        color: active ? "#fff" : COLORS.sub,
-      }}
-    >
-      {label}
-    </button>
-  );
-  return (
-    <div style={{ display: "flex", gap: 4, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: 4, flexShrink: 0 }}>
-      {btn(!value, offLabel, false)}
-      {btn(value, onLabel, true)}
-    </div>
-  );
-}
-
-function WebsiteModal({ eyebrow, lesson, onPatch, onClose }) {
-  return (
-    <ModalShell eyebrow={`${eyebrow} · Website`} title={lesson.title} onClose={onClose} maxWidth={680}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 14,
-          marginBottom: 20,
-          padding: "14px 16px",
-          border: `1px solid ${lesson.published ? COLORS.greenBorder || COLORS.border : COLORS.border}`,
-          background: lesson.published ? COLORS.greenSoft || "#fff" : "#fff",
-          borderRadius: 14,
-        }}
-      >
-        <div>
-          <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.text }}>Show this lesson on the public website</div>
-          <div style={{ fontSize: 13, color: COLORS.faint, marginTop: 4, lineHeight: 1.5 }}>
-            Only the title, week, stage and description below go public. Links, deliverables and the room never do.
-          </div>
-        </div>
-        <OnOff value={Boolean(lesson.published)} onChange={(v) => onPatch({ published: v })} />
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12, marginBottom: 16 }}>
-        <div>
-          <FieldLabel>Stage</FieldLabel>
-          <input value={lesson.stage || ""} onChange={(e) => onPatch({ stage: e.target.value })} placeholder="Foundations" style={fieldStyle} />
-        </div>
-        <div>
-          <FieldLabel>Week</FieldLabel>
-          <input value={lesson.week || ""} onChange={(e) => onPatch({ week: e.target.value })} placeholder="1" style={fieldStyle} />
-        </div>
-      </div>
-      <div>
-        <FieldLabel>Public description</FieldLabel>
-        <textarea
-          value={lesson.blurb || ""}
-          onChange={(e) => onPatch({ blurb: e.target.value })}
-          rows={3}
-          placeholder="One or two sentences for visitors. Leave empty to reuse the student overview."
-          style={{ ...fieldStyle, resize: "vertical", fontSize: 14.5 }}
-        />
-      </div>
-      <div style={{ fontSize: 13, color: COLORS.faint, marginTop: 14, lineHeight: 1.5 }}>
-        Lessons appear on the site in number order. Consecutive lessons with the same stage name sit under one stage tag, with the
-        week range worked out from their weeks.
-      </div>
     </ModalShell>
   );
 }
@@ -570,10 +523,9 @@ function LessonCard({ lesson, onPatch, onDelete }) {
           borderBottom: `1px solid ${COLORS.border}`,
         }}
       >
-        <Pill icon={Eye} label={lesson.overviewLink ? "Student Overview · linked" : "Student Overview"} onClick={() => setActiveModal("studentOverview")} />
-        <Pill icon={Presentation} label={lesson.slidesLink ? "Slides · linked" : "Slides"} onClick={() => setActiveModal("slides")} />
-        <Pill icon={FileText} label={lesson.teachingPlanLink ? "Teaching Plan · linked" : "Teaching Plan"} onClick={() => setActiveModal("teachingPlan")} />
-        <Pill icon={Globe} label={lesson.published ? "Website · shown" : "Website · hidden"} tone={lesson.published ? "default" : "outline"} onClick={() => setActiveModal("website")} />
+        <Pill icon={Eye} label="Student Overview" onClick={() => setActiveModal("studentOverview")} />
+        <Pill icon={Presentation} label={lesson.slidesFile ? "Slides · uploaded" : lesson.slidesLink ? "Slides · linked" : "Slides"} onClick={() => setActiveModal("slides")} />
+        <Pill icon={FileText} label={lesson.teachingPlanFile ? "Teaching Plan · uploaded" : lesson.teachingPlanLink ? "Teaching Plan · linked" : "Teaching Plan"} onClick={() => setActiveModal("teachingPlan")} />
         <MentorToggle enabled={lesson.mentorEnabled} onToggle={(enabled) => onPatch({ mentorEnabled: enabled })} />
         <PublishButton published={Boolean(lesson.studentVisible)} onToggle={(on) => onPatch({ studentVisible: on })} />
       </div>
@@ -618,7 +570,6 @@ function LessonCard({ lesson, onPatch, onDelete }) {
       {activeModal === "studentOverview" && <StudentOverviewModal eyebrow={eyebrow} lesson={lesson} onPatch={onPatch} onClose={() => setActiveModal(null)} />}
       {activeModal === "slides" && <SlidesModal eyebrow={eyebrow} lesson={lesson} onPatch={onPatch} onClose={() => setActiveModal(null)} />}
       {activeModal === "teachingPlan" && <TeachingPlanModal eyebrow={eyebrow} lesson={lesson} onPatch={onPatch} onClose={() => setActiveModal(null)} />}
-      {activeModal === "website" && <WebsiteModal eyebrow={eyebrow} lesson={lesson} onPatch={onPatch} onClose={() => setActiveModal(null)} />}
       {activeModal === "addDeliverable" && <DeliverableEditorModal eyebrow={eyebrow} initial={null} onSave={saveDeliverable} onClose={() => setActiveModal(null)} />}
       {activeModal === "editDeliverable" && editingDeliverable && (
         <DeliverableEditorModal
