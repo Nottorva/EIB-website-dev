@@ -682,7 +682,7 @@ function AgreementStatus({ account }) {
         {a ? (
           <>
             {signed ? <> · confirmed {fmtDate(a.confirmedAt)}</> : <> · submitted {fmtDate(a.studentSignedAt || a.acceptedAt)}{a.confirmation?.lastSentAt || a.lastSentAt ? <> · email sent {fmtDate(a.confirmation?.lastSentAt || a.lastSentAt)}</> : <> · no email sent yet</>}</>}
-            {" "}· version {a.versionLabel || `v${a.version}`} · student initials <strong>{a.studentInitials}</strong>
+            {" "}· version {a.versionLabel || `v${a.version}`} · student signature <strong>{a.studentInitials}</strong>
             <br />
             {a.parentRelationship}: <strong>{a.parentName}</strong> ({a.parentInitials}) · {a.parentEmail}
             {fee ? <><br /><span style={{ color: COLORS.faint }}>Fee acknowledged at application on {fmtDate(fee.acknowledgedAt)} ("{fee.answer}")</span></> : null}

@@ -106,7 +106,8 @@ export function publicRecord(rec) {
 /* ---------- signing ---------- */
 
 const clean = (v, max) => String(v ?? "").trim().slice(0, max);
-const INITIALS = /^[A-Za-z][A-Za-z.\-' ]{0,9}$/;
+// A typed signature: a full name or initials, letters only, 2 to 60 characters.
+const SIGNATURE = /^[A-Za-z][A-Za-z.\-' ]{1,59}$/;
 
 // The fee acknowledgement given at application, so both can be pulled
 // together with the consent record. Null when there is none to link.
@@ -126,17 +127,18 @@ export async function recordAgreement(user, input, { origin }) {
   if (!meta.pdf) return { error: "There is no agreement to sign yet." };
   const read = Boolean(input.readConfirmed);
   const parentConfirmed = Boolean(input.parentConfirmed);
-  const studentInitials = clean(input.studentInitials, 10);
-  const parentName = clean(input.parentName, 120);
+  const studentInitials = clean(input.studentSignature ?? input.studentInitials, 60);
+  const parentSignature = clean(input.parentSignature ?? input.parentInitials, 60);
+  const parentName = clean(input.parentName, 120) || parentSignature;
   const parentEmail = clean(input.parentEmail, 160).toLowerCase();
   const parentRelationship = clean(input.parentRelationship, 40);
-  const parentInitials = clean(input.parentInitials, 10);
+  const parentInitials = parentSignature;
   if (!read) return { error: "Please confirm you have read and understood the agreement." };
-  if (!INITIALS.test(studentInitials)) return { error: "Please type your initials (letters only)." };
-  if (parentName.length < 2) return { error: "Please enter your parent or legal guardian's full name." };
+  if (!SIGNATURE.test(studentInitials)) return { error: "Please type your signature: your full name or initials, letters only." };
+  if (parentName.length < 2) return { error: "Your parent or legal guardian needs to type their signature." };
   if (!/^\S+@\S+\.\S+$/.test(parentEmail)) return { error: "Please enter a valid email address for your parent or legal guardian." };
   if (!RELATIONSHIPS.includes(parentRelationship)) return { error: "Please choose the relationship to you." };
-  if (!INITIALS.test(parentInitials)) return { error: "Your parent or legal guardian needs to type their initials." };
+  if (!SIGNATURE.test(parentInitials)) return { error: "Your parent or legal guardian needs to type their signature: their full name or initials, letters only." };
   if (!parentConfirmed) return { error: "Your parent or legal guardian must confirm they agree on your behalf." };
   const now = new Date().toISOString();
   const record = {
@@ -210,7 +212,7 @@ export async function issueConfirmation(userId, { origin, byAdmin = false } = {}
       text: [
         `Hello ${rec.parentName},`,
         "",
-        `${user.name} has signed the ${meta.title} (version ${AGREEMENT_VERSION_LABEL}) on the EIB platform and named you as their ${rec.parentRelationship.toLowerCase()}. You typed your initials (${rec.parentInitials}) to agree on their behalf.`,
+        `${user.name} has signed the ${meta.title} (version ${AGREEMENT_VERSION_LABEL}) on the EIB platform and named you as their ${rec.parentRelationship.toLowerCase()}. You signed as "${rec.parentInitials}" to agree on their behalf.`,
         "",
         "To complete the signature, please confirm by opening this link:",
         link,
@@ -222,7 +224,7 @@ export async function issueConfirmation(userId, { origin, byAdmin = false } = {}
         "EIB · Entrepreneurship, Innovation & Business",
       ].join("\n"),
       html: `<p>Hello ${esc(rec.parentName)},</p>
-<p>${esc(user.name)} has signed the ${esc(meta.title)} (version ${AGREEMENT_VERSION_LABEL}) on the EIB platform and named you as their ${esc(rec.parentRelationship.toLowerCase())}. You typed your initials (${esc(rec.parentInitials)}) to agree on their behalf.</p>
+<p>${esc(user.name)} has signed the ${esc(meta.title)} (version ${AGREEMENT_VERSION_LABEL}) on the EIB platform and named you as their ${esc(rec.parentRelationship.toLowerCase())}. You signed as "${esc(rec.parentInitials)}" to agree on their behalf.</p>
 <p>To complete the signature, please confirm by clicking this button:</p>
 <p><a href="${link}" style="display:inline-block;background:#4f46e5;color:#fff;font-weight:700;padding:12px 20px;border-radius:999px;text-decoration:none">Confirm the agreement</a></p>
 <p style="color:#64748b;font-size:13px">Or open this link: ${link}<br>The link works once and expires in 7 days. If it has expired, the page will offer to send a new one.</p>

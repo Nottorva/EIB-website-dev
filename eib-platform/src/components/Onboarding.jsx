@@ -20,7 +20,8 @@ export default function Onboarding({ user }) {
   const [reachedEnd, setReachedEnd] = useState(false);
   const [viewerFailed, setViewerFailed] = useState(false);
   const [openedPdf, setOpenedPdf] = useState(false);
-  const [form, setForm] = useState({ readConfirmed: false, studentInitials: "", parentName: "", parentEmail: "", parentRelationship: "", parentInitials: "", parentConfirmed: false });
+  const [form, setForm] = useState({ readConfirmed: false, studentSignature: "", parentSignature: "", parentEmail: "", parentRelationship: "", parentConfirmed: false });
+  const today = new Date().toLocaleDateString("en-CA", { month: "long", day: "numeric", year: "numeric", timeZone: "America/Toronto" });
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(null);
   const [resendMsg, setResendMsg] = useState(null);
@@ -85,7 +86,7 @@ export default function Onboarding({ user }) {
               <div style={{ fontSize: 20, fontWeight: 900, color: COLORS.text }}>{signed ? "Agreement signed" : "Waiting for your guardian to confirm"}</div>
               <div style={{ fontSize: 13.5, color: COLORS.sub }}>
                 {signed
-                  ? `Confirmed ${fmt(record.confirmedAt)} · your initials ${record.studentInitials} · ${record.parentRelationship.toLowerCase()} ${record.parentName} (${record.parentInitials}) · version ${record.versionLabel || AGREEMENT_VERSION_LABEL}`
+                  ? `Confirmed ${fmt(record.confirmedAt)} · you signed as ${record.studentInitials} · ${record.parentRelationship.toLowerCase()} ${record.parentName} (${record.parentInitials}) · version ${record.versionLabel || AGREEMENT_VERSION_LABEL}`
                   : `You signed on ${fmt(record.studentSignedAt || record.acceptedAt)}. We emailed ${record.parentEmailMasked}${record.lastSentAt ? ` on ${fmt(record.lastSentAt)}` : ""} with a confirmation link. Your lessons open once they click it.`}
               </div>
             </div>
@@ -190,31 +191,47 @@ export default function Onboarding({ user }) {
           </div>
 
           <fieldset disabled={!canSign || preview} style={{ border: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 18, opacity: canSign ? 1 : 0.55 }}>
-            <legend style={{ fontSize: 15, fontWeight: 900, color: COLORS.text, marginBottom: 4 }}>Student</legend>
+            <legend className="sr-only">Signatures</legend>
+            <div>
+              <label htmlFor="student-name" style={label}>Student name</label>
+              <input id="student-name" value={user.name} readOnly aria-readonly="true" style={{ ...box, background: "#f7f8fb", color: COLORS.sub }} />
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(160px, 1fr)", gap: 14 }}>
+              <div>
+                <label htmlFor="student-signature" style={label}>Student signature</label>
+                <input id="student-signature" value={form.studentSignature} onChange={(e) => set("studentSignature", e.target.value)} placeholder="Type your full name" maxLength={60} autoComplete="off" required style={{ ...box, fontStyle: form.studentSignature ? "italic" : "normal" }} />
+                <div style={{ fontSize: 12, color: COLORS.faint, marginTop: 6 }}>Typing your name here is your signature.</div>
+              </div>
+              <div>
+                <label htmlFor="student-date" style={label}>Date</label>
+                <input id="student-date" value={today} readOnly aria-readonly="true" style={{ ...box, background: "#f7f8fb", color: COLORS.sub }} />
+              </div>
+            </div>
             <label style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14.5, color: COLORS.text, cursor: "pointer" }}>
               <input type="checkbox" checked={form.readConfirmed} onChange={(e) => set("readConfirmed", e.target.checked)} required style={{ width: 18, height: 18, marginTop: 2 }} />
-              <span>I have read and understood this agreement, the EIB syllabus and the EIB MVP Reimbursement Policy. Typing my initials below is my signature.</span>
+              <span>I have read and understood this agreement, the EIB syllabus and the EIB MVP Reimbursement Policy.</span>
             </label>
-            <div style={{ maxWidth: 240 }}>
-              <label htmlFor="student-initials" style={label}>Your initials</label>
-              <input id="student-initials" value={form.studentInitials} onChange={(e) => set("studentInitials", e.target.value.toUpperCase())} placeholder="e.g. JM" maxLength={10} autoComplete="off" required style={box} />
-              <div style={{ fontSize: 12, color: COLORS.faint, marginTop: 6 }}>Typing your initials here is your signature.</div>
-            </div>
 
             <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 18 }}>
-              <div style={{ fontSize: 15, fontWeight: 900, color: COLORS.text }}>Parent or legal guardian</div>
-              <div style={{ fontSize: 13.5, color: COLORS.sub, marginTop: 4, lineHeight: 1.55 }}>
-                This part must be completed by your parent or legal guardian, not by you. Hand them the device, or have them beside you while you type what they say.
+              <div style={{ fontSize: 13.5, color: COLORS.sub, lineHeight: 1.55 }}>
+                The next line must be completed by your parent or legal guardian, personally: on their own device, or with you typing exactly what they say. We will email them a link to confirm.
+              </div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(160px, 1fr)", gap: 14 }}>
+              <div>
+                <label htmlFor="parent-signature" style={label}>Parent or guardian signature</label>
+                <input id="parent-signature" value={form.parentSignature} onChange={(e) => set("parentSignature", e.target.value)} placeholder="Type your full name" maxLength={60} autoComplete="off" required style={{ ...box, fontStyle: form.parentSignature ? "italic" : "normal" }} />
+              </div>
+              <div>
+                <label htmlFor="parent-date" style={label}>Date</label>
+                <input id="parent-date" value={today} readOnly aria-readonly="true" style={{ ...box, background: "#f7f8fb", color: COLORS.sub }} />
               </div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
               <div>
-                <label htmlFor="parent-name" style={label}>Full name</label>
-                <input id="parent-name" value={form.parentName} onChange={(e) => set("parentName", e.target.value)} autoComplete="off" required style={box} />
-              </div>
-              <div>
-                <label htmlFor="parent-email" style={label}>Email</label>
+                <label htmlFor="parent-email" style={label}>Parent or guardian email</label>
                 <input id="parent-email" type="email" value={form.parentEmail} onChange={(e) => set("parentEmail", e.target.value)} autoComplete="off" required style={box} />
+                <div style={{ fontSize: 12, color: COLORS.faint, marginTop: 6 }}>The confirmation link goes here.</div>
               </div>
               <div>
                 <label htmlFor="parent-rel" style={label}>Relationship to the student</label>
@@ -223,14 +240,10 @@ export default function Onboarding({ user }) {
                   {(meta.relationships || []).map((r) => <option key={r} value={r}>{r}</option>)}
                 </select>
               </div>
-              <div>
-                <label htmlFor="parent-initials" style={label}>Their initials</label>
-                <input id="parent-initials" value={form.parentInitials} onChange={(e) => set("parentInitials", e.target.value.toUpperCase())} placeholder="e.g. AM" maxLength={10} autoComplete="off" required style={box} />
-              </div>
             </div>
             <label style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14.5, color: COLORS.text, cursor: "pointer" }}>
               <input type="checkbox" checked={form.parentConfirmed} onChange={(e) => set("parentConfirmed", e.target.checked)} required style={{ width: 18, height: 18, marginTop: 2 }} />
-              <span>I am the parent or legal guardian of {user.name} and I agree to this agreement on their behalf. Typing my initials above is my signature. I will click the confirmation link sent to the email address I provided; the signature is complete only after that.</span>
+              <span>I am the parent or legal guardian of {user.name} and I agree to this agreement on their behalf. Typing my name above is my signature. I will click the confirmation link sent to the email address I provided; the signature is complete only after that.</span>
             </label>
           </fieldset>
 
