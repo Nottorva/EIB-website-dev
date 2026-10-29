@@ -60,6 +60,13 @@ deletes everything it did (submissions, agreement, any application or draft
 under that email) and keeps the account; the × removes it. API:
 `/api/test-account` (GET / POST / PATCH = wipe / DELETE), super admin only.
 
+**First sign-in.** An accepted student's first visit lands on `/welcome`
+("Congratulations", one button). Pressing it sets `welcomedAt` on their row
+and sends them to the agreement, or to lessons if none is required. Students
+from before this existed have no `welcomedAt`, so they see it once too.
+In EIB Students a mark beside each name shows the agreement: green check
+signed, amber clock pending, hollow circle not started.
+
 **Student Agreement (onboarding).** Student Manager → Forms → Student
 agreement: upload the PDF (`POST /api/agreement/pdf`, stored in settings,
 4 MB max), tick "Required before lessons", edit the title and intro. While a

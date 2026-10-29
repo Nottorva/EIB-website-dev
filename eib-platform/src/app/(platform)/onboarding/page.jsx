@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { gatePage } from "@/lib/gate";
 import Onboarding from "@/components/Onboarding";
 
@@ -5,5 +6,6 @@ import Onboarding from "@/components/Onboarding";
 // super admin can open it to see what students see.
 export default async function OnboardingPage() {
   const user = await gatePage(["student", "superAdmin"], { path: "/onboarding" });
+  if (user.role === "student" && !user.welcomedAt) redirect("/welcome");
   return <Onboarding user={user} />;
 }

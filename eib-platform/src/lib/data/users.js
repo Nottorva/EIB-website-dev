@@ -63,6 +63,11 @@ export async function upsertStudent({ name, email }) {
   return insert("users", { id: newId("user"), name: name.trim(), email: email.trim(), role: "student" });
 }
 
+// The welcome page has been seen (and its button pressed) once.
+export async function markWelcomed(id) {
+  return updateOne("users", id, { welcomedAt: new Date().toISOString() });
+}
+
 export async function deleteUser(id) {
   return removeOne("users", id);
 }

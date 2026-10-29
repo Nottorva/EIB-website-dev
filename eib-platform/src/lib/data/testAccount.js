@@ -34,7 +34,7 @@ export async function wipeTestStudent() {
   const app = await findApplicationByEmail(user.email);
   if (app) { await removeOne("applications", app.id); removed.application = 1; }
   if (await deleteDraftByEmail(user.email)) removed.draft = 1;
-  const fresh = await updateOne("users", user.id, { name: TEST_NAME, agreement: null, suspended: false, suspendedAt: null, wipedAt: new Date().toISOString() });
+  const fresh = await updateOne("users", user.id, { name: TEST_NAME, agreement: null, welcomedAt: null, suspended: false, suspendedAt: null, wipedAt: new Date().toISOString() });
   return { user: fresh, removed };
 }
 

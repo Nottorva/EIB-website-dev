@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-import { FileText, Users, ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Mail, Calendar, Link2, UserPlus, Lock, ExternalLink, Send, Pencil, Copy, Check, CalendarClock, Megaphone, ShieldOff, ShieldCheck, FileClock, Clock, ChartColumn, Table2, Signature, Upload, Download, FlaskConical, Eraser, X } from "lucide-react";
+import { FileText, Users, ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Mail, Calendar, Link2, UserPlus, Lock, ExternalLink, Send, Pencil, Copy, Check, CalendarClock, Megaphone, ShieldOff, ShieldCheck, FileClock, Clock, ChartColumn, Table2, Signature, Upload, Download, FlaskConical, Eraser, X, CircleCheck, Circle } from "lucide-react";
 import { buildDays, TimeChart, DaysTable, Stat } from "./ApplicationsChart";
 import {
   COLORS,
@@ -520,7 +520,10 @@ function StudentRow({ student, account, onOpen, onStatusChange }) {
     <div onClick={onOpen} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", background: COLORS.card, border: `1px solid ${suspended ? COLORS.redBorder : COLORS.border}`, borderRadius: 14, padding: "12px 16px", cursor: "pointer" }}>
         <Avatar name={student.name} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.text }}>{student.name}</div>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 15, fontWeight: 800, color: COLORS.text }}>
+          {student.name}
+          {student.studentId && account && <AgreementMark agreement={account.agreement} />}
+        </div>
         <div style={{ fontSize: 12.5, color: COLORS.faint, marginTop: 2 }}>
           Submitted {fmtDate(student.submittedAt)}
           {suspended ? (
@@ -1218,6 +1221,19 @@ function AccManagerTab({ saver }) {
 }
 
 /* ================= App ================= */
+// Beside a student's name: green check once the agreement is signed, amber
+// clock while the guardian's confirmation is pending, hollow circle before.
+function AgreementMark({ agreement }) {
+  const signed = agreement?.status === "signed";
+  const pending = agreement && !signed;
+  const title = signed ? "Student Agreement signed" : pending ? "Student Agreement: guardian confirmation pending" : "Student Agreement not signed";
+  return (
+    <span title={title} aria-label={title} role="img" style={{ display: "inline-flex", alignItems: "center", flexShrink: 0 }}>
+      {signed ? <CircleCheck size={16} color={COLORS.green} strokeWidth={2.5} /> : pending ? <Clock size={15} color={COLORS.amber} strokeWidth={2.5} /> : <Circle size={15} color={COLORS.faint} strokeWidth={2} />}
+    </span>
+  );
+}
+
 /* ================= Test account (super admin) ================= */
 // One student account named "Test" with no application behind it, so the
 // super admin can walk through onboarding, lessons and submissions without

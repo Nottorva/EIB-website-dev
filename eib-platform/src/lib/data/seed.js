@@ -8,7 +8,7 @@ const USERS = [
   { id: "user_josef", email: "josefm2173@gmail.com", name: "Josef Marshall", role: "superAdmin" },
   { id: "user_jack", email: "jack.harlow@tfs.ca", name: "Jack Harlow", role: "studentLeader" },
   // Students only exist here because their application was approved.
-  { id: "user_amara", email: "amara.chen@tfs.ca", name: "Amara Chen", role: "student" },
+  { id: "user_amara", email: "amara.chen@tfs.ca", name: "Amara Chen", role: "student", welcomedAt: "2026-10-20T12:00:00.000Z" },
 ];
 
 import { APPLICATION_FORM_2026 } from "./applicationForm2026";

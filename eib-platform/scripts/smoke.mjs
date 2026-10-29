@@ -353,7 +353,9 @@ head("decisions and release");
   check("account active, applicant sees approved", ["active", "approved"], [await acct(), (await req(applicant, "GET", "/api/apply/status")).json?.application?.decision]);
   check("application carries studentId", true, Boolean((await req(leader, "GET", `/api/applications/${appId}`)).json?.studentId));
   const newStudent = await login("smoke.applicant@tfs.ca");
-  check("new student can open lessons", 200, await code(newStudent, "GET", "/lessons"));
+  check("new student: first visit goes to the welcome page", "/welcome", new URL((await fetch(`${BASE}/lessons`, { headers: { Cookie: newStudent }, redirect: "manual" })).headers.get("location") || "/", BASE).pathname);
+  await req(newStudent, "POST", "/api/welcome", {});
+  check("new student can open lessons after the welcome", 200, await code(newStudent, "GET", "/lessons"));
   await setStatus("waitlist");
   check("moved to waitlist -> account suspended, decision unreleased", ["suspended", false], [await acct(), (await req(leader, "GET", `/api/applications/${appId}`)).json?.decisionReleased]);
   check("suspended student lessons -> 307", 307, await code(newStudent, "GET", "/lessons"));
@@ -478,6 +480,13 @@ head("test account");
   check("only one -> 409", 409, await code(admin, "POST", "/api/test-account", { email: "other@tfs.ca" }));
   const tester = await login("tester@tfs.ca");
   check("test account is a student: lessons view 200, manager 403", [200, 403], [await code(tester, "GET", "/api/lessons/view"), await code(tester, "GET", "/api/applications")]);
+  // first sign-in: the welcome page comes before lessons and onboarding
+  check("new student: /lessons -> /welcome, /onboarding -> /welcome", ["/welcome", "/welcome"], [new URL((await fetch(`${BASE}/lessons`, { headers: { Cookie: tester }, redirect: "manual" })).headers.get("location") || "/", BASE).pathname, new URL((await fetch(`${BASE}/onboarding`, { headers: { Cookie: tester }, redirect: "manual" })).headers.get("location") || "/", BASE).pathname]);
+  check("welcome page renders", true, (await req(tester, "GET", "/welcome")).text.includes("Congratulations"));
+  const welcomed = await req(tester, "POST", "/api/welcome", {});
+  check("pressing the button -> next is lessons (no agreement PDF now)", [200, "/lessons"], [welcomed.status, welcomed.json?.next]);
+  check("after that: /lessons 200, /welcome -> /lessons", [200, "/lessons"], [await code(tester, "GET", "/lessons"), new URL((await fetch(`${BASE}/welcome`, { headers: { Cookie: tester }, redirect: "manual" })).headers.get("location") || "/", BASE).pathname]);
+  check("leader cannot press welcome -> 403", 403, await code(leader, "POST", "/api/welcome", {}));
   const first = (await req(tester, "GET", "/api/lessons/view")).json.lessons[0];
   const del = first?.deliverables?.[0];
   if (del) {
@@ -488,6 +497,7 @@ head("test account");
   const wiped = await req(admin, "PATCH", "/api/test-account");
   check("wipe -> account kept, work gone", [200, "tester@tfs.ca", del ? 1 : 0], [wiped.status, wiped.json?.account?.email, wiped.json?.removed?.submissions]);
   check("after wipe: no submissions for the tester", 0, (await req(tester, "GET", "/api/lessons/view")).json.submissions.length);
+  check("after wipe: the welcome page shows again", "/welcome", new URL((await fetch(`${BASE}/lessons`, { headers: { Cookie: tester }, redirect: "manual" })).headers.get("location") || "/", BASE).pathname);
   check("remove -> gone", [200, null], [await code(admin, "DELETE", "/api/test-account"), (await req(admin, "GET", "/api/test-account")).json?.account]);
   check("removed account can no longer sign in -> 401", 401, await code(tester, "GET", "/api/lessons/view"));
 }
