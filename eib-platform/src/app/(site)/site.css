@@ -99,10 +99,10 @@
 .signin:hover { background: rgba(255, 255, 255, 0.12); border-color: rgba(255, 255, 255, 0.4); }
 .signin-short { display: none; }
 /* keyboard users: a way past the reel, visible only when focused */
-.skiplink { position: absolute; left: 12px; top: -60px; z-index: 200; background: var(--chalk); color: var(--ink-text);
+.site .skiplink { position: absolute; left: 12px; top: -60px; z-index: 200; background: var(--chalk); color: var(--ink-text);
   font-family: var(--monof); font-size: 0.72rem; letter-spacing: 0.1em; text-transform: uppercase; text-decoration: none;
   padding: 10px 14px; border-radius: 999px; transition: top 0.15s; }
-.skiplink:focus { top: 12px; outline: 2px solid var(--accent); outline-offset: 2px; }
+.site .skiplink:focus { top: 12px; outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* over the light sections */
 .chrome.on-light .ticker { background: rgba(255, 255, 255, 0.66);
