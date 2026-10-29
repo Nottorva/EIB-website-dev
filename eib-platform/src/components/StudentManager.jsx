@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { FileText, Users, ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Mail, Calendar, Link2, UserPlus, Lock, ExternalLink, Send, Pencil, Copy, Check, CalendarClock, Megaphone, ShieldOff, ShieldCheck, FileClock, Clock, ChartColumn, Table2 } from "lucide-react";
+import React, { useEffect, useState, useRef } from "react";
+import { FileText, Users, ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Mail, Calendar, Link2, UserPlus, Lock, ExternalLink, Send, Pencil, Copy, Check, CalendarClock, Megaphone, ShieldOff, ShieldCheck, FileClock, Clock, ChartColumn, Table2, Signature, Upload, Download } from "lucide-react";
 import { buildDays, TimeChart, DaysTable, Stat } from "./ApplicationsChart";
 import {
   COLORS,
@@ -526,7 +526,7 @@ function StudentRow({ student, account, onOpen, onStatusChange }) {
           {suspended ? (
             <span style={{ color: COLORS.red, fontWeight: 800 }}> · account suspended</span>
           ) : student.studentId ? (
-            " · has account"
+            account ? (account.agreement ? <span> · has account · <span style={{ color: COLORS.green, fontWeight: 800 }}>agreement signed</span></span> : <span> · has account · <span style={{ color: COLORS.amber, fontWeight: 800 }}>agreement pending</span></span>) : " · has account"
           ) : isUnreleased(student) ? (
             <span style={{ color: COLORS.amber, fontWeight: 800 }}> · decision not released</span>
           ) : student.decisionReleased ? (
@@ -643,6 +643,31 @@ function AccountCard({ student, account, onSuspend }) {
       >
         {suspended ? "Reinstate account" : "Suspend account"}
       </button>
+      <AgreementStatus account={account} />
+    </div>
+  );
+}
+
+// The Student Agreement line on an account card: signed (with the parent's
+// details) or still pending.
+function AgreementStatus({ account }) {
+  const a = account?.agreement;
+  return (
+    <div style={{ width: "100%", borderTop: `1px solid ${COLORS.border}`, paddingTop: 12, marginTop: 2, display: "flex", alignItems: "flex-start", gap: 10 }}>
+      <Signature size={17} color={a ? COLORS.green : COLORS.amber} style={{ marginTop: 1, flexShrink: 0 }} />
+      <div style={{ fontSize: 13, color: COLORS.sub, lineHeight: 1.5 }}>
+        <span style={{ fontWeight: 800, color: a ? COLORS.green : COLORS.amber }}>{a ? "Student Agreement signed" : "Student Agreement not signed yet"}</span>
+        {a ? (
+          <>
+            {" "}· {fmtDate(a.acceptedAt)} · student initials <strong>{a.studentInitials}</strong>
+            <br />
+            {a.parentRelationship}: <strong>{a.parentName}</strong> ({a.parentInitials}) · {a.parentEmail}
+            {a.pdfName ? <span style={{ color: COLORS.faint }}> · {a.pdfName} v{a.version}</span> : null}
+          </>
+        ) : (
+          <> · their lessons stay closed until they sign</>
+        )}
+      </div>
     </div>
   );
 }
@@ -1162,6 +1187,138 @@ function AccManagerTab({ saver }) {
 }
 
 /* ================= App ================= */
+/* ================= Student agreement (super admin) ================= */
+// Upload the PDF students must sign, decide whether signing is required,
+// and edit the title and intro. Replacing the PDF starts a new version, so
+// everyone signs again.
+function AgreementCard() {
+  const [meta, setMeta] = useState(null);
+  const [error, setError] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [info, setInfo] = useState(null);
+  const [confirmDanger, confirmUI] = useDangerConfirm();
+  const [draft, setDraft] = useState({ title: "", intro: "" });
+  const fileRef = useRef(null);
+
+  useEffect(() => {
+    api.get("/api/agreement").then((m) => { setMeta(m); setDraft({ title: m.title, intro: m.intro }); }).catch((e) => setError(e.message));
+  }, []);
+
+  const save = async (patch) => {
+    try {
+      const m = await api.put("/api/agreement", patch);
+      setMeta((prev) => ({ ...prev, ...m }));
+      setError(null);
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+  const upload = async (file) => {
+    if (!file) return;
+    if (meta.pdf && !(await confirmDanger({ title: "Replace the agreement PDF?", body: "This starts a new version. Every student will have to read and sign the new one before their lessons open again.", label: "Replace the PDF" }))) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/agreement/pdf", { method: "POST", body: fd });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(data?.error || `Upload failed (${res.status})`);
+      setMeta((prev) => ({ ...prev, ...data }));
+      setInfo(`Uploaded ${data.pdf.name}. This is version ${data.version}; students sign it before their lessons open.`);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+  const remove = async () => {
+    if (!(await confirmDanger({ title: "Remove the agreement PDF?", body: "Students will not be asked to sign anything until a new PDF is uploaded. Signatures already given are kept on the accounts.", label: "Remove the PDF" }))) return;
+    try {
+      const m = await api.del("/api/agreement/pdf");
+      setMeta((prev) => ({ ...prev, ...m }));
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+
+  const label = { fontSize: 11.5, fontWeight: 800, color: COLORS.faint, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 };
+  const box = { ...fieldStyle, padding: "9px 12px", fontSize: 14, borderRadius: 10 };
+  const kb = (n) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.round(n / 1024)} KB`);
+
+  return (
+    <div style={{ maxWidth: 720, margin: "0 auto 22px" }}>
+      {confirmUI}
+      <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <Signature size={18} color={COLORS.indigo} />
+            <div>
+              <div style={{ fontSize: 15, fontWeight: 900, color: COLORS.text }}>Student agreement</div>
+              <div style={{ fontSize: 12.5, color: COLORS.faint }}>Students read it to the end and sign (with a parent or legal guardian) before their lessons open.</div>
+            </div>
+          </div>
+          {meta && (
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 800, color: COLORS.text, cursor: "pointer" }}>
+              <input type="checkbox" checked={Boolean(meta.required)} onChange={(e) => save({ required: e.target.checked })} style={{ width: 16, height: 16 }} />
+              Required before lessons
+            </label>
+          )}
+        </div>
+        {error && <div style={{ marginTop: 12 }}><Notice onClose={() => setError(null)}>{error}</Notice></div>}
+        {info && <div style={{ marginTop: 12 }}><Notice tone="info" onClose={() => setInfo(null)}>{info}</Notice></div>}
+        {!meta ? (
+          <Loading />
+        ) : (
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 16, background: meta.pdf ? COLORS.greenSoft : COLORS.amberSoft, border: `1px solid ${meta.pdf ? COLORS.greenBorder : COLORS.amberBorder}`, borderRadius: 12, padding: "12px 14px", flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: 200, fontSize: 13.5, color: COLORS.text }}>
+                {meta.pdf ? (
+                  <>
+                    <strong>{meta.pdf.name}</strong> · {kb(meta.pdf.size)} · version {meta.version} · uploaded {fmtDate(meta.pdf.uploadedAt)}
+                  </>
+                ) : (
+                  <>No PDF yet. Upload the agreement to switch onboarding on.</>
+                )}
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {meta.pdf && (
+                  <a href="/api/agreement/pdf?download=1" style={{ display: "inline-flex", alignItems: "center", gap: 6, border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.sub, fontWeight: 800, fontSize: 12.5, borderRadius: 999, padding: "6px 12px", textDecoration: "none" }}>
+                    <Download size={13} /> Download
+                  </a>
+                )}
+                <label style={{ display: "inline-flex", alignItems: "center", gap: 6, background: COLORS.indigo, color: "#fff", fontWeight: 800, fontSize: 12.5, borderRadius: 999, padding: "6px 12px", cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1 }}>
+                  <Upload size={13} /> {busy ? "Uploading…" : meta.pdf ? "Replace PDF" : "Upload PDF"}
+                  <input ref={fileRef} type="file" accept="application/pdf" onChange={(e) => upload(e.target.files?.[0])} disabled={busy} style={{ display: "none" }} />
+                </label>
+                {meta.pdf && (
+                  <button type="button" onClick={remove} style={{ display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.faint, fontWeight: 700, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>
+                    <Trash2 size={13} /> Remove
+                  </button>
+                )}
+              </div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 12, marginTop: 14 }}>
+              <div>
+                <div style={label}>Title</div>
+                <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} onBlur={() => draft.title !== meta.title && save({ title: draft.title })} style={box} />
+              </div>
+              <div>
+                <div style={label}>Intro shown above the PDF</div>
+                <textarea value={draft.intro} onChange={(e) => setDraft({ ...draft, intro: e.target.value })} onBlur={() => draft.intro !== meta.intro && save({ intro: draft.intro })} rows={3} style={{ ...box, resize: "vertical" }} />
+              </div>
+            </div>
+            <div style={{ fontSize: 12, color: COLORS.faint, marginTop: 10 }}>
+              Preview what students see at <a href="/onboarding" style={{ color: COLORS.indigo, fontWeight: 700 }}>/onboarding</a>. Signatures show on each student's account card in EIB Students.
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ================= Analytics ================= */
 // Applications over time (auto-extending day axis), headline numbers, and
 // the unfinished applications underneath.
@@ -1386,7 +1543,12 @@ export default function StudentManager({ user }) {
       />
       <div style={{ maxWidth: 720, margin: "0 auto" }}>{saver.error && <Notice onClose={saver.clearError}>{saver.error}</Notice>}</div>
 
-      {tab === "forms" ? <FormsTab saver={saver} user={user} /> : tab === "students" ? <StudentsTab key={listKey} saver={saver} user={user} /> : tab === "analytics" ? <AnalyticsTab key={listKey} user={user} /> : <AccManagerTab saver={saver} />}
+      {tab === "forms" ? (
+        <>
+          {isSuperAdmin && <AgreementCard />}
+          <FormsTab saver={saver} user={user} />
+        </>
+      ) : tab === "students" ? <StudentsTab key={listKey} saver={saver} user={user} /> : tab === "analytics" ? <AnalyticsTab key={listKey} user={user} /> : <AccManagerTab saver={saver} />}
     </div>
   );
 }

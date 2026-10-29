@@ -53,6 +53,18 @@ builds and whenever Google sign-in is on.
 | Amara Chen (student) | Lessons (student mode, own submissions only) |
 | Not on the allow-list | Nothing except the public application form |
 
+**Student Agreement (onboarding).** Student Manager → Forms → Student
+agreement: upload the PDF (`POST /api/agreement/pdf`, stored in settings,
+4 MB max), tick "Required before lessons", edit the title and intro. While a
+PDF exists and signing is required, a student who has not signed the current
+version is sent to `/onboarding` (the Lessons page redirects; the view API
+answers 403). There they read the PDF page by page (pdf.js), the signature
+section unlocks only once the last page has been on screen, and they submit
+their initials plus a parent or legal guardian's name, email, relationship
+and initials (`POST /api/agreement/accept`, stored on the user row as
+`agreement`). Replacing the PDF bumps the version so everyone signs again.
+Each student's account card in EIB Students shows the signature.
+
 **Publishing a lesson.** Each lesson has `studentVisible`; the Lesson Editor's
 "Publish to students" button flips it. Until then the Lessons page leaves the
 lesson out for students and student leaders (the view and list routes filter

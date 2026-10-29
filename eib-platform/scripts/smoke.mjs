@@ -393,6 +393,51 @@ head("application form");
 }
 
 /* ---- 11. website admin ---- */
+/* ---- student agreement: upload, gate, sign ---- */
+head("student agreement");
+{
+  const tinyPdf = () => {
+    const objs = ["<< /Type /Catalog /Pages 2 0 R >>", "<< /Type /Pages /Kids [3 0 R] /Count 1 >>", "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>"];
+    const stream = "BT /F1 24 Tf 72 700 Td (EIB Student Agreement) Tj ET";
+    objs.push(`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`);
+    let out = "%PDF-1.4\n"; const offsets = [];
+    objs.forEach((o, i) => { offsets.push(out.length); out += `${i + 1} 0 obj\n${o}\nendobj\n`; });
+    const xref = out.length;
+    out += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n` + offsets.map((o) => String(o).padStart(10, "0") + " 00000 n \n").join("");
+    out += `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+    return Buffer.from(out, "latin1");
+  };
+  const upload = async (cookie) => {
+    const fd = new FormData();
+    fd.append("file", new Blob([tinyPdf()], { type: "application/pdf" }), "agreement.pdf");
+    const r = await fetch(`${BASE}/api/agreement/pdf`, { method: "POST", headers: { Cookie: cookie }, body: fd });
+    return { status: r.status, json: await r.json().catch(() => null) };
+  };
+  check("leader cannot upload the agreement -> 403", 403, (await upload(leader)).status);
+  check("student view open while no PDF", 200, await code(student, "GET", "/api/lessons/view"));
+  const up = await upload(admin);
+  check("admin uploads the PDF -> 201, version 1", [201, 1, "agreement.pdf"], [up.status, up.json?.version, up.json?.pdf?.name]);
+  check("student now blocked from lessons view -> 403", 403, await code(student, "GET", "/api/lessons/view"));
+  check("student GET /api/agreement: pending", true, (await req(student, "GET", "/api/agreement")).json?.pending);
+  const pdfRes = await fetch(`${BASE}/api/agreement/pdf`, { headers: { Cookie: student } });
+  check("student can fetch the PDF", [200, "application/pdf"], [pdfRes.status, pdfRes.headers.get("content-type")]);
+  check("stranger cannot fetch the PDF -> 401", 401, (await fetch(`${BASE}/api/agreement/pdf`, { headers: { Cookie: stranger } })).status);
+  const good = { readConfirmed: true, studentInitials: "AC", parentName: "Mei Chen", parentEmail: "mei.chen@example.com", parentRelationship: "Mother", parentInitials: "MC", parentConfirmed: true };
+  check("sign without parent confirm -> 400", 400, await code(student, "POST", "/api/agreement/accept", { ...good, parentConfirmed: false }));
+  check("sign with bad initials -> 400", 400, await code(student, "POST", "/api/agreement/accept", { ...good, studentInitials: "123" }));
+  check("leader cannot sign -> 403", 403, await code(leader, "POST", "/api/agreement/accept", good));
+  const signed = await req(student, "POST", "/api/agreement/accept", good);
+  check("student signs -> 200, record kept", [200, "Mei Chen", 1], [signed.status, signed.json?.agreement?.parentName, signed.json?.agreement?.version]);
+  check("student view open again", 200, await code(student, "GET", "/api/lessons/view"));
+  check("admin sees the signature on the account", "Mother", (await req(admin, "GET", "/api/users?role=student")).json.find((u) => u.email === "amara.chen@tfs.ca")?.agreement?.parentRelationship);
+  const up2 = await upload(admin);
+  check("replacing the PDF -> version 2 and the student must sign again", [2, 403], [up2.json?.version, await code(student, "GET", "/api/lessons/view")]);
+  check("switching required off reopens lessons", [200, 200], [await code(admin, "PUT", "/api/agreement", { required: false }), await code(student, "GET", "/api/lessons/view")]);
+  check("leader cannot change the settings -> 403", 403, await code(leader, "PUT", "/api/agreement", { required: true }));
+  check("admin removes the PDF", 200, await code(admin, "DELETE", "/api/agreement/pdf"));
+  await req(admin, "PUT", "/api/agreement", { required: true });
+}
+
 head("website admin");
 {
   check("stranger /api/site -> 401", 401, await code(stranger, "GET", "/api/site"));

@@ -294,7 +294,11 @@ export default function LessonView({ user }) {
         for (const s of d.submissions) map[`${s.lessonId}:${s.deliverableId}`] = s;
         setSubmissions(map);
       })
-      .catch((e) => setError(e.message));
+      .catch((e) => {
+        // the server says the agreement is not signed: go and sign it
+        if (e.status === 403 && /Student Agreement/.test(e.message)) { window.location.href = "/onboarding"; return; }
+        setError(e.message);
+      });
   }, []);
 
   const changePayload = (lessonId, deliverableId, payload) => {
