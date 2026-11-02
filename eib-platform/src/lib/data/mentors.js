@@ -1,10 +1,12 @@
 // `mentors` collection. Two rules live here:
-//   1. One mentor per lesson per cohort year (assignLesson enforces it).
+//   1. At most MAX_MENTORS_PER_LESSON mentors per lesson per cohort year
+//      (assignLesson enforces it).
 //   2. `contacts[]` never leaves the server on a student-facing route.
 //      Use toPublicMentor() for anything the lesson view receives.
 
 import { findAll, findById, insert, updateOne, removeOne, newId } from "./store";
 import { removeMentorFromEvents } from "./events";
+import { MAX_MENTORS_PER_LESSON } from "../sessionDefaults";
 
 export const MENTOR_STATUSES = ["contacted", "responsive", "unresponsive", "unsure", "confirmed"];
 // Internal-only labels for what a mentor has done with EIB. `years` is free
@@ -64,19 +66,17 @@ export async function deleteMentor(id) {
   return removeOne("mentors", id);
 }
 
-export async function findMentorForLesson(lessonNumber, cohortYear, excludeId) {
+export async function mentorsForLesson(lessonNumber, cohortYear, excludeId) {
   const all = await listMentors();
-  return (
-    all.find(
-      (m) =>
-        m.id !== excludeId &&
-        m.assignedLessons.some((a) => a.lessonNumber === String(lessonNumber) && a.cohortYear === Number(cohortYear))
-    ) || null
+  return all.filter(
+    (m) =>
+      m.id !== excludeId &&
+      m.assignedLessons.some((a) => a.lessonNumber === String(lessonNumber) && a.cohortYear === Number(cohortYear))
   );
 }
 
-// Assign or unassign a lesson for a cohort year. Throws 409 if another mentor
-// already holds that lesson for that year.
+// Assign or unassign a lesson for a cohort year. Throws 409 if the lesson
+// already has its full set of mentors for that year.
 export async function assignLesson(mentorId, { lessonNumber, cohortYear, assign }) {
   const mentor = await getMentor(mentorId);
   if (!mentor) return null;
@@ -84,9 +84,9 @@ export async function assignLesson(mentorId, { lessonNumber, cohortYear, assign 
   const year = Number(cohortYear);
 
   if (assign) {
-    const owner = await findMentorForLesson(num, year, mentorId);
-    if (owner) {
-      const err = new Error(`Lesson ${num} for cohort ${year} is already assigned to ${owner.name}.`);
+    const others = await mentorsForLesson(num, year, mentorId);
+    if (others.length >= MAX_MENTORS_PER_LESSON) {
+      const err = new Error(`Lesson ${num} for cohort ${year} already has ${MAX_MENTORS_PER_LESSON} mentors (${others.map((m) => m.name).join(" and ")}). Unassign one first.`);
       err.status = 409;
       throw err;
     }

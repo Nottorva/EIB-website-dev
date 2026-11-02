@@ -16,11 +16,12 @@ export const GET = guarded(null, async ({ user }) => {
   const lessons = user.role === "superAdmin" ? allLessons : allLessons.filter((l) => l.studentVisible);
 
   const withMentor = lessons.map((lesson) => {
-    if (!lesson.mentorEnabled) return { ...lesson, mentor: null };
-    const owner = mentors.find((m) =>
+    if (!lesson.mentorEnabled) return { ...lesson, mentor: null, mentors: [] };
+    const owners = mentors.filter((m) =>
       m.assignedLessons.some((a) => a.lessonNumber === lesson.number && a.cohortYear === cohortYear)
     );
-    return { ...lesson, mentor: toPublicMentor(owner) };
+    // `mentor` is the first one (older callers); `mentors` has them all.
+    return { ...lesson, mentor: toPublicMentor(owners[0]), mentors: owners.map(toPublicMentor) };
   }).map((lesson) => (user.role === "student" ? { ...forStudent(lesson), teachingPlanLink: "" } : lesson));
 
   const mode = user.role === "student" ? "student" : "leader";

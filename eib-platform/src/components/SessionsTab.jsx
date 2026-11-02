@@ -11,10 +11,12 @@
 import React, { useRef, useState } from "react";
 import { ArrowLeft, Plus, Search, Clock, MapPin, ExternalLink, UserCheck, X, BookOpen, CalendarDays, GripVertical, Trash2 } from "lucide-react";
 import { COLORS, Avatar, EmptyState, EditableInput, EditableTextarea, SegmentedTabs } from "./ui";
-import { MENTOR_DEFAULTS, mentorWhere, mentorWhen } from "@/lib/sessionDefaults";
+import { MENTOR_DEFAULTS, MAX_MENTORS_PER_LESSON, mentorWhere, mentorWhen } from "@/lib/sessionDefaults";
 
-export function ownerOfLesson(mentors, lessonNumber, cohortYear) {
-  return mentors.find((m) => (m.assignedLessons || []).some((a) => a.lessonNumber === lessonNumber && a.cohortYear === cohortYear)) || null;
+// The mentors on a lesson this cohort year, in CRM order (at most
+// MAX_MENTORS_PER_LESSON; the server enforces the cap).
+export function ownersOfLesson(mentors, lessonNumber, cohortYear) {
+  return mentors.filter((m) => (m.assignedLessons || []).some((a) => a.lessonNumber === lessonNumber && a.cohortYear === cohortYear));
 }
 
 // Lessons in curriculum order with each event slotted after the lesson it
@@ -150,7 +152,7 @@ export default function SessionsTab({ user, lessons, events, mentors, cohortYear
           const indicator = over === index && dragId != null ? { boxShadow: `0 -3px 0 0 ${COLORS.indigo}` } : {};
           if (it.kind === "lesson") {
             const l = it.lesson;
-            const owner = ownerOfLesson(mentors, l.number, cohortYear);
+            const owners = ownersOfLesson(mentors, l.number, cohortYear);
             return (
               <div
                 key={it.id}
@@ -165,7 +167,7 @@ export default function SessionsTab({ user, lessons, events, mentors, cohortYear
                   <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.text }}>{l.title || "Untitled lesson"}</div>
                   <Meta date={l.date} when={mentorWhen(l)} where={mentorWhere(l)} />
                 </div>
-                {owner ? <Person mentor={owner} /> : <NoOne>No mentor yet</NoOne>}
+                {owners.length === 1 ? <Person mentor={owners[0]} /> : owners.length ? <People people={owners} /> : <NoOne>No mentor yet</NoOne>}
               </div>
             );
           }
@@ -243,7 +245,8 @@ function NoOne({ children }) {
 /* ---------- One session ---------- */
 function SessionDetail({ lesson, mentors, cohortYear, statuses, canEdit, onBack, onPatch, onAssign, onUnassign, onNewMentor, onOpenMentor }) {
   const [choosing, setChoosing] = useState(false);
-  const owner = ownerOfLesson(mentors, lesson.number, cohortYear);
+  const owners = ownersOfLesson(mentors, lesson.number, cohortYear);
+  const full = owners.length >= MAX_MENTORS_PER_LESSON;
 
   const pick = async (mentorId) => {
     await onAssign(mentorId);
@@ -277,13 +280,14 @@ function SessionDetail({ lesson, mentors, cohortYear, statuses, canEdit, onBack,
         fallbacks={{ where: MENTOR_DEFAULTS.mentorLocation, start: MENTOR_DEFAULTS.mentorStartTime, end: MENTOR_DEFAULTS.mentorEndTime }}
       />
 
-      <Section title={`Mentor · Cohort ${cohortYear}`}>
-        {owner ? (
-          <PersonCard mentor={owner} statuses={statuses} onOpen={() => onOpenMentor(owner.id)} onRemove={() => onUnassign(owner.id)} removeLabel="Unassign" extra={<SmallButton onClick={() => setChoosing((c) => !c)}>Change mentor</SmallButton>} />
-        ) : (
-          !choosing && <BigButton onClick={() => setChoosing(true)} icon={UserCheck}>Assign mentor</BigButton>
-        )}
-        {choosing && <MentorChooser mentors={mentors} cohortYear={cohortYear} excludeIds={owner ? [owner.id] : []} action={`Assign to L${lesson.number}`} onPick={pick} onNew={addNew} onClose={() => setChoosing(false)} />}
+      <Section title={`Mentors · Cohort ${cohortYear}`} hint={`Up to ${MAX_MENTORS_PER_LESSON} mentors per session.`}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {owners.map((m) => (
+            <PersonCard key={m.id} mentor={m} statuses={statuses} onOpen={() => onOpenMentor(m.id)} onRemove={() => onUnassign(m.id)} removeLabel="Unassign" />
+          ))}
+          {!choosing && !full && <BigButton onClick={() => setChoosing(true)} icon={UserCheck}>{owners.length ? "Assign a second mentor" : "Assign mentor"}</BigButton>}
+        </div>
+        {choosing && <MentorChooser mentors={mentors} cohortYear={cohortYear} excludeIds={owners.map((m) => m.id)} action={`Assign to L${lesson.number}`} onPick={pick} onNew={addNew} onClose={() => setChoosing(false)} />}
       </Section>
     </div>
   );

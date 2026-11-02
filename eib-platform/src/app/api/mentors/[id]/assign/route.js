@@ -1,5 +1,5 @@
 // POST { lessonNumber, cohortYear, assign: true|false }
-// Enforces one mentor per lesson per cohort year (409 on conflict).
+// Enforces the per-lesson mentor cap per cohort year (409 when full).
 import { guarded, readJson, HttpError } from "@/lib/auth";
 import { assignLesson } from "@/lib/data/mentors";
 import { getCohortYear } from "@/lib/data/settings";

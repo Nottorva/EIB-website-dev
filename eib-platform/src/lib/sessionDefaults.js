@@ -3,6 +3,9 @@
 // mentor side (Mentor CRM, advancement team) sees these mentor fields, and
 // these defaults fill any that are blank. Safe to import on client and server.
 
+// How many mentors one session can carry in a cohort year.
+export const MAX_MENTORS_PER_LESSON = 2;
+
 export const MENTOR_DEFAULTS = {
   mentorLocation: "TFS Sr. School",
   mentorStartTime: "4:30 PM",

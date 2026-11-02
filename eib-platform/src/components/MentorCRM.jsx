@@ -2,7 +2,8 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { ArrowLeft, Plus, Trash2, Mail, Phone, MessageCircle, Star, X, Eye, BookOpen, UserCheck, Lock, UserPlus, Users, CalendarDays } from "lucide-react";
-import SessionsTab, { ownerOfLesson } from "./SessionsTab";
+import SessionsTab, { ownersOfLesson } from "./SessionsTab";
+import { MAX_MENTORS_PER_LESSON } from "@/lib/sessionDefaults";
 import { CalendarDays as EventIcon } from "lucide-react";
 import {
   COLORS,
@@ -463,16 +464,20 @@ export default function MentorCRM({ user }) {
     });
   };
 
-  // Server enforces one mentor per lesson per cohort year (409 on conflict),
-  // so a change of mentor unassigns the current one first.
+  // A session takes up to MAX_MENTORS_PER_LESSON mentors per cohort year;
+  // the server returns 409 past that, and we say so before asking.
   const setAssignment = (mentorId, lessonNumber, assign) =>
     api.post(`/api/mentors/${mentorId}/assign`, { lessonNumber, cohortYear, assign }).then(replaceMentor);
   const assignMentor = (lessonNumber, mentorId) =>
     saver.immediate(async () => {
       try {
-        const current = ownerOfLesson(mentors, lessonNumber, cohortYear);
-        if (current && current.id !== mentorId) await setAssignment(current.id, lessonNumber, false);
-        if (!current || current.id !== mentorId) await setAssignment(mentorId, lessonNumber, true);
+        const owners = ownersOfLesson(mentors, lessonNumber, cohortYear);
+        if (owners.some((m) => m.id === mentorId)) return;
+        if (owners.length >= MAX_MENTORS_PER_LESSON) {
+          setError(`Lesson ${lessonNumber} already has ${MAX_MENTORS_PER_LESSON} mentors. Unassign one first.`);
+          return;
+        }
+        await setAssignment(mentorId, lessonNumber, true);
         setError(null);
       } catch (e) {
         setError(e.message);

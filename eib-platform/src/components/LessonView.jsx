@@ -49,31 +49,38 @@ function StudentOverviewModal({ eyebrow, lesson, onClose }) {
   );
 }
 
-/* Receives ONLY the public mentor shape from /api/lessons/view. */
-function MentorInfoModal({ eyebrow, mentor, onClose }) {
-  const assigned = Boolean(mentor && mentor.name);
+/* Receives ONLY the public mentor shape from /api/lessons/view. A session
+   can have up to two mentors; each gets its own block. */
+const mentorNames = (lesson) => (lesson.mentors || []).map((m) => m.name).filter(Boolean);
+
+function MentorInfoModal({ eyebrow, mentors, onClose }) {
+  const list = (mentors || []).filter((m) => m && m.name);
+  const title = list.length === 0 ? "No Mentor Assigned" : list.length === 1 ? list[0].name : "Mentors";
   return (
-    <ModalShell eyebrow={`${eyebrow} · Mentor`} title={assigned ? mentor.name : "No Mentor Assigned"} onClose={onClose} maxWidth={560}>
-      {!assigned ? (
+    <ModalShell eyebrow={`${eyebrow} · ${list.length > 1 ? "Mentors" : "Mentor"}`} title={title} onClose={onClose} maxWidth={560}>
+      {list.length === 0 ? (
         <div style={{ fontSize: 15, color: COLORS.sub }}>This lesson doesn't have a mentor assigned yet.</div>
       ) : (
-        <>
-          {mentor.role && <div style={{ fontSize: 15.5, color: COLORS.sub, fontWeight: 600, marginBottom: 22 }}>{mentor.role}</div>}
-          <div style={{ display: "flex", alignItems: "center", gap: 10, background: COLORS.amberSoft, border: `1px solid ${COLORS.amberBorder}`, borderRadius: 12, padding: "14px 16px", marginBottom: 22 }}>
-            <MessageCircle size={17} color={COLORS.amber} strokeWidth={2.25} />
-            <div>
-              <div style={{ fontSize: 12, fontWeight: 800, color: COLORS.amber, letterSpacing: 0.4 }}>Preferred contact</div>
-              <div style={{ fontSize: 15, color: COLORS.text, fontWeight: 700 }}>{mentor.contactMethod || "Not specified"}</div>
+        list.map((mentor, i) => (
+          <div key={mentor.id || i} style={i ? { borderTop: `1px solid ${COLORS.border}`, marginTop: 24, paddingTop: 24 } : undefined}>
+            {list.length > 1 && <div style={{ fontSize: 18, fontWeight: 900, color: COLORS.text, marginBottom: 4 }}>{mentor.name}</div>}
+            {mentor.role && <div style={{ fontSize: 15.5, color: COLORS.sub, fontWeight: 600, marginBottom: 22 }}>{mentor.role}</div>}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, background: COLORS.amberSoft, border: `1px solid ${COLORS.amberBorder}`, borderRadius: 12, padding: "14px 16px", marginBottom: 22 }}>
+              <MessageCircle size={17} color={COLORS.amber} strokeWidth={2.25} />
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: COLORS.amber, letterSpacing: 0.4 }}>Preferred contact</div>
+                <div style={{ fontSize: 15, color: COLORS.text, fontWeight: 700 }}>{mentor.contactMethod || "Not specified"}</div>
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 800, color: COLORS.text, letterSpacing: 0.5, marginBottom: 10 }}>
+              <User size={16} color={COLORS.indigo} strokeWidth={2.25} />
+              Bio
+            </div>
+            <div style={{ background: "#f7f8fb", border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "16px 18px", fontSize: 15, color: COLORS.text, lineHeight: 1.6 }}>
+              {mentor.bio || "No bio added yet."}
             </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 800, color: COLORS.text, letterSpacing: 0.5, marginBottom: 10 }}>
-            <User size={16} color={COLORS.indigo} strokeWidth={2.25} />
-            Bio
-          </div>
-          <div style={{ background: "#f7f8fb", border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "16px 18px", fontSize: 15, color: COLORS.text, lineHeight: 1.6 }}>
-            {mentor.bio || "No bio added yet."}
-          </div>
-        </>
+        ))
       )}
     </ModalShell>
   );
@@ -257,7 +264,7 @@ function LessonCard({ lesson, mode, submissions, onChangePayload, onChangeLogist
         <Pill icon={Eye} label="Student Overview" onClick={() => setActiveModal("overview")} />
         <Pill icon={lesson.slidesLink ? ExternalLink : Presentation} label="Slides" onClick={() => openLink(lesson.slidesLink, "noSlides")} />
         {mode === "leader" && <Pill icon={lesson.teachingPlanLink ? ExternalLink : FileText} label="Teaching Plan" onClick={() => openLink(lesson.teachingPlanLink, "noPlan")} />}
-        {lesson.mentorEnabled && <Pill icon={UserCheck} label={`Mentor: ${lesson.mentor?.name || "Unassigned"}`} tone="amber" onClick={() => setActiveModal("mentor")} />}
+        {lesson.mentorEnabled && <Pill icon={UserCheck} label={mentorNames(lesson).length > 1 ? `Mentors: ${mentorNames(lesson).join(" & ")}` : `Mentor: ${mentorNames(lesson)[0] || "Unassigned"}`} tone="amber" onClick={() => setActiveModal("mentor")} />}
       </div>
 
       <div style={{ marginTop: 28 }}>
@@ -273,7 +280,7 @@ function LessonCard({ lesson, mode, submissions, onChangePayload, onChangeLogist
       {activeModal === "overview" && <StudentOverviewModal eyebrow={eyebrow} lesson={lesson} onClose={() => setActiveModal(null)} />}
       {activeModal === "noSlides" && <MissingLinkModal eyebrow={eyebrow} lesson={lesson} what="Slides" onClose={() => setActiveModal(null)} />}
       {activeModal === "noPlan" && <MissingLinkModal eyebrow={eyebrow} lesson={lesson} what="Teaching Plan" onClose={() => setActiveModal(null)} />}
-      {activeModal === "mentor" && <MentorInfoModal eyebrow={eyebrow} mentor={lesson.mentor} onClose={() => setActiveModal(null)} />}
+      {activeModal === "mentor" && <MentorInfoModal eyebrow={eyebrow} mentors={lesson.mentors} onClose={() => setActiveModal(null)} />}
     </div>
   );
 }

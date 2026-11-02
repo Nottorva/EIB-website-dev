@@ -223,7 +223,16 @@ let mentorId = null;
   await req(leader, "PATCH", `/api/mentors/${mentorId}`, { status: "confirmed" });
   const yt = await req(leader, "PATCH", `/api/mentors/${mentorId}`, { years: "'26 | '27", tags: ["panelist", "bogus", "speaker"] });
   check("years saved, tags kept to the known set in order", ["'26 | '27", "speaker,panelist"], [yt.json?.years, (yt.json?.tags || []).join(",")]);
-  check("assign lesson 1 (already Trent's) -> 409", 409, await code(leader, "POST", `/api/mentors/${mentorId}/assign`, { lessonNumber: "1", assign: true }));
+  // up to two mentors per session: Trent + the smoke mentor fit, a third is refused
+  check("assign lesson 1 as its second mentor -> 200", 200, await code(leader, "POST", `/api/mentors/${mentorId}/assign`, { lessonNumber: "1", assign: true }));
+  const third = await req(leader, "POST", "/api/mentors", { name: "Third Wheel" });
+  const tooMany = await req(leader, "POST", `/api/mentors/${third.json?.id}/assign`, { lessonNumber: "1", assign: true });
+  check("a third mentor on lesson 1 -> 409 naming both", [409, true], [tooMany.status, /Trent.*Smoke Mentor|Smoke Mentor.*Trent/.test(tooMany.json?.error || "")]);
+  const l1 = (await req(student, "GET", "/api/lessons/view")).json?.lessons.find((l) => l.id === "lesson_1");
+  check("view: lesson 1 lists both mentors, first one still in `mentor`", ["Trent", "Smoke Mentor", "Trent"], [(l1?.mentors?.[0]?.name || "").split(" ")[0], l1?.mentors?.[1]?.name, (l1?.mentor?.name || "").split(" ")[0]]);
+  check("view: no contacts on either", true, (l1?.mentors || []).every((m) => !("contacts" in m)));
+  check("unassign the second mentor from lesson 1 -> 200", 200, await code(leader, "POST", `/api/mentors/${mentorId}/assign`, { lessonNumber: "1", assign: false }));
+  await req(admin, "DELETE", `/api/mentors/${third.json?.id}`);
   const a = await req(leader, "POST", `/api/mentors/${mentorId}/assign`, { lessonNumber: "99", assign: true });
   check("assign free lesson 99 -> 200", true, a.status === 200 && a.json.assignedLessons.some((x) => x.lessonNumber === "99"));
   const view = await req(student, "GET", "/api/lessons/view");
