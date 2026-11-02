@@ -1,12 +1,13 @@
 // `mentors` collection. Two rules live here:
-//   1. At most MAX_MENTORS_PER_LESSON mentors per lesson per cohort year
-//      (assignLesson enforces it).
+//   1. A lesson takes as many mentors per cohort year as the Lesson Editor
+//      gives it seats (none, one or two); assignLesson enforces it.
 //   2. `contacts[]` never leaves the server on a student-facing route.
 //      Use toPublicMentor() for anything the lesson view receives.
 
 import { findAll, findById, insert, updateOne, removeOne, newId } from "./store";
 import { removeMentorFromEvents } from "./events";
-import { MAX_MENTORS_PER_LESSON } from "../sessionDefaults";
+import { mentorSeats } from "../sessionDefaults";
+import { listLessons } from "./lessons";
 
 export const MENTOR_STATUSES = ["contacted", "responsive", "unresponsive", "unsure", "confirmed"];
 // Internal-only labels for what a mentor has done with EIB. `years` is free
@@ -75,8 +76,9 @@ export async function mentorsForLesson(lessonNumber, cohortYear, excludeId) {
   );
 }
 
-// Assign or unassign a lesson for a cohort year. Throws 409 if the lesson
-// already has its full set of mentors for that year.
+// Assign or unassign a lesson for a cohort year. Throws 409 if the lesson is
+// set to "No Mentor" or already has every seat filled for that year. A lesson
+// number with no lesson behind it gets one seat.
 export async function assignLesson(mentorId, { lessonNumber, cohortYear, assign }) {
   const mentor = await getMentor(mentorId);
   if (!mentor) return null;
@@ -84,9 +86,21 @@ export async function assignLesson(mentorId, { lessonNumber, cohortYear, assign 
   const year = Number(cohortYear);
 
   if (assign) {
+    const lesson = (await listLessons()).find((l) => l.number === num);
+    const seats = lesson ? mentorSeats(lesson) : 1;
+    if (seats === 0) {
+      const err = new Error(`Lesson ${num} is set to "No Mentor" in the Lesson Editor.`);
+      err.status = 409;
+      throw err;
+    }
     const others = await mentorsForLesson(num, year, mentorId);
-    if (others.length >= MAX_MENTORS_PER_LESSON) {
-      const err = new Error(`Lesson ${num} for cohort ${year} already has ${MAX_MENTORS_PER_LESSON} mentors (${others.map((m) => m.name).join(" and ")}). Unassign one first.`);
+    if (others.length >= seats) {
+      const names = others.map((m) => m.name).join(" and ");
+      const err = new Error(
+        seats === 1
+          ? `Lesson ${num} for cohort ${year} already has its mentor (${names}). Unassign them first, or give the lesson a second seat with "Mentor x2" in the Lesson Editor.`
+          : `Lesson ${num} for cohort ${year} already has both mentors (${names}). Unassign one first.`
+      );
       err.status = 409;
       throw err;
     }

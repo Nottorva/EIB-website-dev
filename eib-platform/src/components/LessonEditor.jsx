@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { BookOpen, Eye, Presentation, UserCheck, FileText, Trash2, Plus, Pencil, ExternalLink, Upload, CalendarCog, Send, CircleCheck } from "lucide-react";
+import { BookOpen, Eye, Presentation, UserCheck, Users, FileText, Trash2, Plus, Pencil, ExternalLink, Upload, CalendarCog, Send, CircleCheck } from "lucide-react";
 import { MENTOR_DEFAULTS, STUDENT_DEFAULTS } from "@/lib/sessionDefaults";
 import { fmtDate } from "@/lib/format";
 import {
@@ -379,55 +379,57 @@ function DeliverableCard({ item, onEdit }) {
 }
 
 /* ---------- Mentor toggle ---------- */
-function MentorToggle({ enabled, onToggle }) {
+// value: 0 = No Mentor, 1 = Yes Mentor (one seat), 2 = Mentor x2 (two seats).
+const MENTOR_OPTIONS = [
+  { value: 0, label: "No Mentor" },
+  { value: 1, label: "Yes Mentor", icon: UserCheck },
+  { value: 2, label: "Mentor \u00d72", icon: Users },
+];
+function MentorToggle({ value, onChange }) {
+  const on = value > 0;
   return (
     <div
+      role="radiogroup"
+      aria-label="Mentor for this lesson"
       style={{
         display: "flex",
         alignItems: "center",
         gap: 8,
-        border: `1px solid ${enabled ? COLORS.amberBorder : COLORS.border}`,
-        background: enabled ? COLORS.amberSoft : "#fff",
+        border: `1px solid ${on ? COLORS.amberBorder : COLORS.border}`,
+        background: on ? COLORS.amberSoft : "#fff",
         borderRadius: 12,
         padding: 4,
       }}
     >
-      <button
-        type="button"
-        onClick={() => onToggle(false)}
-        style={{
-          padding: "9px 14px",
-          borderRadius: 9,
-          fontSize: 14.5,
-          fontWeight: 700,
-          cursor: "pointer",
-          border: "none",
-          background: enabled ? "transparent" : COLORS.indigo,
-          color: enabled ? COLORS.sub : "#fff",
-        }}
-      >
-        No Mentor
-      </button>
-      <button
-        type="button"
-        onClick={() => onToggle(true)}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 7,
-          padding: "9px 14px",
-          borderRadius: 9,
-          fontSize: 14.5,
-          fontWeight: 700,
-          cursor: "pointer",
-          border: "none",
-          background: enabled ? COLORS.amber : "transparent",
-          color: enabled ? "#fff" : COLORS.faint,
-        }}
-      >
-        <UserCheck size={16} strokeWidth={2.25} />
-        Yes Mentor
-      </button>
+      {MENTOR_OPTIONS.map(({ value: v, label, icon: Icon }) => {
+        const active = v === value;
+        return (
+          <button
+            key={v}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            onClick={() => onChange(v)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 7,
+              padding: "9px 14px",
+              borderRadius: 9,
+              fontSize: 14.5,
+              fontWeight: 700,
+              cursor: "pointer",
+              border: "none",
+              fontFamily: "inherit",
+              background: active ? (v ? COLORS.amber : COLORS.indigo) : "transparent",
+              color: active ? "#fff" : v ? COLORS.faint : COLORS.sub,
+            }}
+          >
+            {Icon && <Icon size={16} strokeWidth={2.25} />}
+            {label}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -526,7 +528,7 @@ function LessonCard({ lesson, onPatch, onDelete }) {
         <Pill icon={Eye} label="Student Overview" onClick={() => setActiveModal("studentOverview")} />
         <Pill icon={Presentation} label="Slides" onClick={() => setActiveModal("slides")} />
         <Pill icon={FileText} label="Teaching Plan" onClick={() => setActiveModal("teachingPlan")} />
-        <MentorToggle enabled={lesson.mentorEnabled} onToggle={(enabled) => onPatch({ mentorEnabled: enabled })} />
+        <MentorToggle value={lesson.mentorEnabled ? (lesson.mentorSeats === 2 ? 2 : 1) : 0} onChange={(seats) => onPatch(seats ? { mentorEnabled: true, mentorSeats: seats } : { mentorEnabled: false })} />
         <PublishButton published={Boolean(lesson.studentVisible)} onToggle={(on) => onPatch({ studentVisible: on })} />
       </div>
 

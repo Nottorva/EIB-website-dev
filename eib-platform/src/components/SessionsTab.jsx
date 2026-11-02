@@ -11,10 +11,10 @@
 import React, { useRef, useState } from "react";
 import { ArrowLeft, Plus, Search, Clock, MapPin, ExternalLink, UserCheck, X, BookOpen, CalendarDays, GripVertical, Trash2 } from "lucide-react";
 import { COLORS, Avatar, EmptyState, EditableInput, EditableTextarea, SegmentedTabs } from "./ui";
-import { MENTOR_DEFAULTS, MAX_MENTORS_PER_LESSON, mentorWhere, mentorWhen } from "@/lib/sessionDefaults";
+import { MENTOR_DEFAULTS, mentorSeats, mentorWhere, mentorWhen } from "@/lib/sessionDefaults";
 
-// The mentors on a lesson this cohort year, in CRM order (at most
-// MAX_MENTORS_PER_LESSON; the server enforces the cap).
+// The mentors on a lesson this cohort year, in CRM order. The lesson's
+// seats (mentorSeats) say how many fit; the server enforces it.
 export function ownersOfLesson(mentors, lessonNumber, cohortYear) {
   return mentors.filter((m) => (m.assignedLessons || []).some((a) => a.lessonNumber === lessonNumber && a.cohortYear === cohortYear));
 }
@@ -167,7 +167,8 @@ export default function SessionsTab({ user, lessons, events, mentors, cohortYear
                   <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.text }}>{l.title || "Untitled lesson"}</div>
                   <Meta date={l.date} when={mentorWhen(l)} where={mentorWhere(l)} />
                 </div>
-                {owners.length === 1 ? <Person mentor={owners[0]} /> : owners.length ? <People people={owners} /> : <NoOne>No mentor yet</NoOne>}
+                {owners.length === 1 ? <Person mentor={owners[0]} /> : owners.length ? <People people={owners} /> : <NoOne>{mentorSeats(l) === 2 ? "No mentors yet" : "No mentor yet"}</NoOne>}
+                {owners.length === 1 && mentorSeats(l) === 2 && <NoOne>1 seat open</NoOne>}
               </div>
             );
           }
@@ -246,7 +247,8 @@ function NoOne({ children }) {
 function SessionDetail({ lesson, mentors, cohortYear, statuses, canEdit, onBack, onPatch, onAssign, onUnassign, onNewMentor, onOpenMentor }) {
   const [choosing, setChoosing] = useState(false);
   const owners = ownersOfLesson(mentors, lesson.number, cohortYear);
-  const full = owners.length >= MAX_MENTORS_PER_LESSON;
+  const seats = mentorSeats(lesson);
+  const full = owners.length >= seats;
 
   const pick = async (mentorId) => {
     await onAssign(mentorId);
@@ -280,7 +282,10 @@ function SessionDetail({ lesson, mentors, cohortYear, statuses, canEdit, onBack,
         fallbacks={{ where: MENTOR_DEFAULTS.mentorLocation, start: MENTOR_DEFAULTS.mentorStartTime, end: MENTOR_DEFAULTS.mentorEndTime }}
       />
 
-      <Section title={`Mentors · Cohort ${cohortYear}`} hint={`Up to ${MAX_MENTORS_PER_LESSON} mentors per session.`}>
+      <Section
+        title={`${seats === 2 ? "Mentors" : "Mentor"} · Cohort ${cohortYear}`}
+        hint={seats === 2 ? "This session has two mentor seats." : canEdit ? "One mentor seat. Pick \"Mentor \u00d72\" in the Lesson Editor to add a second." : "One mentor seat."}
+      >
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {owners.map((m) => (
             <PersonCard key={m.id} mentor={m} statuses={statuses} onOpen={() => onOpenMentor(m.id)} onRemove={() => onUnassign(m.id)} removeLabel="Unassign" />

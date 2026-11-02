@@ -403,8 +403,9 @@ export function sampleSeed() {
       currentCohortYear: COHORT_YEAR,
       classSizeCap: 23,
       applicationWindow: {
-        opensAt: "2026-09-01T04:00:00.000Z",
-        closesAt: "2026-10-31T03:59:00.000Z",
+        // Sandbox only: the window floats around today so the demo never closes.
+        opensAt: new Date(Date.now() - 60 * 864e5).toISOString(),
+        closesAt: new Date(Date.now() + 60 * 864e5).toISOString(),
         applicantDomain: "tfs.ca",
       },
     },

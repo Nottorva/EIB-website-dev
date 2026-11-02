@@ -155,9 +155,10 @@ let tempLessonId = null;
     (await req(admin, "GET", "/api/lessons/view")).json.lessons.some((l) => l.id === tempLessonId),
   ]);
   check("draft: still listed for leaders (manager) and admin", [true, true], [(await req(leader, "GET", "/api/lessons")).json.some((l) => l.id === tempLessonId), (await req(admin, "GET", "/api/lessons")).json.some((l) => l.id === tempLessonId)]);
-  const put = await req(admin, "PUT", `/api/lessons/${tempLessonId}`, { ...made.json, title: "Smoke lesson", number: "99", mentorEnabled: true, studentVisible: true });
+  const put = await req(admin, "PUT", `/api/lessons/${tempLessonId}`, { ...made.json, title: "Smoke lesson", number: "99", mentorEnabled: true, mentorSeats: 2, studentVisible: true });
   check("published: student and leader views include it", [true, true], [(await req(student, "GET", "/api/lessons/view")).json.lessons.some((l) => l.id === tempLessonId), (await req(leader, "GET", "/api/lessons/view")).json.lessons.some((l) => l.id === tempLessonId)]);
-  check("admin PUT lesson -> 200 with new title", ["Smoke lesson", "99"], [put.json?.title, put.json?.number]);
+  check("admin PUT lesson -> 200 with new title and two mentor seats", ["Smoke lesson", "99", 2], [put.json?.title, put.json?.number, put.json?.mentorSeats]);
+  check("lesson 1 (Yes Mentor) has one seat by default", 1, (await req(admin, "GET", "/api/lessons")).json.find((l) => l.id === "lesson_1")?.mentorSeats);
   check("leader DELETE lesson -> 403", 403, await code(leader, "DELETE", `/api/lessons/${tempLessonId}`));
   // slides + teaching plan are uploaded files
   {
@@ -223,18 +224,23 @@ let mentorId = null;
   await req(leader, "PATCH", `/api/mentors/${mentorId}`, { status: "confirmed" });
   const yt = await req(leader, "PATCH", `/api/mentors/${mentorId}`, { years: "'26 | '27", tags: ["panelist", "bogus", "speaker"] });
   check("years saved, tags kept to the known set in order", ["'26 | '27", "speaker,panelist"], [yt.json?.years, (yt.json?.tags || []).join(",")]);
-  // up to two mentors per session: Trent + the smoke mentor fit, a third is refused
-  check("assign lesson 1 as its second mentor -> 200", 200, await code(leader, "POST", `/api/mentors/${mentorId}/assign`, { lessonNumber: "1", assign: true }));
-  const third = await req(leader, "POST", "/api/mentors", { name: "Third Wheel" });
-  const tooMany = await req(leader, "POST", `/api/mentors/${third.json?.id}/assign`, { lessonNumber: "1", assign: true });
-  check("a third mentor on lesson 1 -> 409 naming both", [409, true], [tooMany.status, /Trent.*Smoke Mentor|Smoke Mentor.*Trent/.test(tooMany.json?.error || "")]);
-  const l1 = (await req(student, "GET", "/api/lessons/view")).json?.lessons.find((l) => l.id === "lesson_1");
-  check("view: lesson 1 lists both mentors, first one still in `mentor`", ["Trent", "Smoke Mentor", "Trent"], [(l1?.mentors?.[0]?.name || "").split(" ")[0], l1?.mentors?.[1]?.name, (l1?.mentor?.name || "").split(" ")[0]]);
-  check("view: no contacts on either", true, (l1?.mentors || []).every((m) => !("contacts" in m)));
-  check("unassign the second mentor from lesson 1 -> 200", 200, await code(leader, "POST", `/api/mentors/${mentorId}/assign`, { lessonNumber: "1", assign: false }));
-  await req(admin, "DELETE", `/api/mentors/${third.json?.id}`);
+  // seats: lesson 1 (Yes Mentor) holds one, lesson 99 (Mentor x2) holds two, lesson 3 (No Mentor) none
+  const oneSeat = await req(leader, "POST", `/api/mentors/${mentorId}/assign`, { lessonNumber: "1", assign: true });
+  check("assign lesson 1 (one seat, Trent's) -> 409 naming Trent", [409, true], [oneSeat.status, /Trent/.test(oneSeat.json?.error || "")]);
+  check("assign lesson 3 (No Mentor) -> 409", 409, await code(leader, "POST", `/api/mentors/${mentorId}/assign`, { lessonNumber: "3", assign: true }));
   const a = await req(leader, "POST", `/api/mentors/${mentorId}/assign`, { lessonNumber: "99", assign: true });
   check("assign free lesson 99 -> 200", true, a.status === 200 && a.json.assignedLessons.some((x) => x.lessonNumber === "99"));
+  const third = await req(leader, "POST", "/api/mentors", { name: "Third Wheel" });
+  check("second mentor on lesson 99 (two seats) -> 200", 200, await code(leader, "POST", `/api/mentors/${third.json?.id}/assign`, { lessonNumber: "99", assign: true }));
+  const fourth = await req(leader, "POST", "/api/mentors", { name: "Fourth Wheel" });
+  const tooMany = await req(leader, "POST", `/api/mentors/${fourth.json?.id}/assign`, { lessonNumber: "99", assign: true });
+  check("a third mentor on lesson 99 -> 409 naming both", [409, true], [tooMany.status, /Smoke Mentor.*Third Wheel/.test(tooMany.json?.error || "")]);
+  const l99 = (await req(student, "GET", "/api/lessons/view")).json?.lessons.find((l) => l.number === "99");
+  check("view: lesson 99 lists both mentors, first one still in `mentor`", ["Smoke Mentor", "Third Wheel", "Smoke Mentor"], [l99?.mentors?.[0]?.name, l99?.mentors?.[1]?.name, l99?.mentor?.name]);
+  check("view: no contacts on either", true, (l99?.mentors || []).every((m) => !("contacts" in m)));
+  check("unassign the second mentor from lesson 99 -> 200", 200, await code(leader, "POST", `/api/mentors/${third.json?.id}/assign`, { lessonNumber: "99", assign: false }));
+  await req(admin, "DELETE", `/api/mentors/${third.json?.id}`);
+  await req(admin, "DELETE", `/api/mentors/${fourth.json?.id}`);
   const view = await req(student, "GET", "/api/lessons/view");
   check("view shows the mentor on lesson 99 without contacts", ["Smoke Mentor", false], [view.json?.lessons.find((l) => l.number === "99")?.mentor?.name, "contacts" in (view.json?.lessons.find((l) => l.number === "99")?.mentor || {})]);
   check("unassign -> 200", 200, await code(leader, "POST", `/api/mentors/${mentorId}/assign`, { lessonNumber: "99", assign: false }));

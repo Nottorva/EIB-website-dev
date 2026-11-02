@@ -15,13 +15,16 @@ function numberSort(a, b) {
   return na - nb;
 }
 
+// Fields added after a lesson was first stored get their defaults on read.
+const withDefaults = (l) => (l ? { ...l, mentorSeats: l.mentorSeats === 2 ? 2 : 1 } : l);
+
 export async function listLessons() {
   const rows = await findAll("lessons");
-  return [...rows].sort(numberSort);
+  return rows.map(withDefaults).sort(numberSort);
 }
 
 export async function getLesson(id) {
-  return findById("lessons", id);
+  return withDefaults(await findById("lessons", id));
 }
 
 // Examples are stored in the same shape as a student submission payload for
@@ -63,6 +66,8 @@ export function normalizeLesson(input, id) {
     teachingPlanLink: String(input.teachingPlanLink ?? ""),
     teachingPlanFile: input.teachingPlanFile && typeof input.teachingPlanFile === "object" ? input.teachingPlanFile : null,
     mentorEnabled: Boolean(input.mentorEnabled),
+    // Seats for mentors when mentorEnabled: 1 ("Yes Mentor") or 2 ("Mentor x2").
+    mentorSeats: Number(input.mentorSeats) === 2 ? 2 : 1,
     // Published to the Lessons page. Until the super admin publishes, students
     // and student leaders do not receive the lesson there. Nothing else
     // (CRM, Student Manager, the public website) looks at this.

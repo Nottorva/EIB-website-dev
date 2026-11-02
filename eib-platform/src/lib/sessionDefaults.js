@@ -3,8 +3,9 @@
 // mentor side (Mentor CRM, advancement team) sees these mentor fields, and
 // these defaults fill any that are blank. Safe to import on client and server.
 
-// How many mentors one session can carry in a cohort year.
-export const MAX_MENTORS_PER_LESSON = 2;
+// How many mentors a lesson takes: 0 for "No Mentor", else its seats
+// (1 for "Yes Mentor", 2 for "Mentor x2") as set in the Lesson Editor.
+export const mentorSeats = (l) => (l && l.mentorEnabled ? (Number(l.mentorSeats) === 2 ? 2 : 1) : 0);
 
 export const MENTOR_DEFAULTS = {
   mentorLocation: "TFS Sr. School",
