@@ -208,6 +208,7 @@ async function run() {
   check("escalated", /escalated as Q-/.test(outcome(r)), outcome(r));
   const askRoot = r.mail.message_id;
   const qMail = lastTo(JOSEF);
+  check("escalation went to Josef's main address only", qMail?.to?.length === 1 && !(qMail?.cc || []).includes(TFS), JSON.stringify([qMail?.to, qMail?.cc]));
   const qid = /\[EIB Q-([a-z0-9]+)\]/.exec(qMail?.subject || "")?.[1];
   r = await deliver(email({ from: JOSEF, name: "Josef", subject: `Re: ${qMail.subject}`, text: "Yes, the east lot is free after 6pm; tell them to use the Lawrence entrance.", inReplyTo: qMail.messageId, references: [qMail.messageId] }));
   check("relayed", /relayed Josef's answer/.test(outcome(r)), outcome(r));
@@ -311,9 +312,14 @@ async function run() {
     };
     setSwitch(true);
     const memBefore = (db().agent_memory || []).length;
+    const escBefore = (db().agent_escalations || []).length;
+    let nb = outbox().length;
     r = await deliver(email({ from: JOSEF2, name: "Josef Marshall", subject: "Note", text: "remember: the venue is booked for March 3" }));
-    check("as a colleague, remember is refused politely and not escalated", /^answered/.test(outcome(r)) && /Only Josef can make changes/.test(lastTo(JOSEF2)?.text || ""), outcome(r));
-    check("memory unchanged", (db().agent_memory || []).length === memBefore);
+    check("as a colleague, remember gets one polite refusal and nothing else", outcome(r) === "refused memory request from staff" && /Only Josef can change what I remember/.test(lastTo(JOSEF2)?.text || "") && outbox().length === nb + 1, outcome(r));
+    check("memory unchanged, nothing escalated", (db().agent_memory || []).length === memBefore && (db().agent_escalations || []).length === escBefore);
+    nb = outbox().length;
+    r = await deliver(email({ from: JOSEF2, name: "Josef Marshall", subject: "New mentor", text: "Please add a mentor: Test Colleague, testcolleague@example.com, status confirmed." }));
+    check("as a colleague, an edit request gets the same refusal", outcome(r) === "refused edit request from staff" && outbox().length === nb + 1 && !db().mentors?.some((m) => /test colleague/i.test(m.name)), outcome(r));
     r = await deliver(email({ from: JOSEF2, name: "Josef Marshall", subject: "Mentor coverage", text: "Which lessons still need a mentor, and what is the phone number for each confirmed mentor?" }));
     const m2 = lastTo(JOSEF2);
     check("as a colleague, answered with no phone numbers", /^answered/.test(outcome(r)) && Boolean(m2) && !/\+?\d[\d\s().-]{7,}\d/.test(m2.text), (m2?.text || "").slice(0, 200));
@@ -322,8 +328,11 @@ async function run() {
     check("forward: replied to the colleague address", outcome(r) === `forward: replied to ${JOSEF2}`, outcome(r));
     const sentId = lastTo(JOSEF2)?.messageId;
     const n6 = outbox().length;
-    r = await deliver(email({ from: JOSEF2, name: "Josef Marshall", subject: "Re: Fee question", text: "Thanks, and is that per term?", inReplyTo: sentId, references: [sentId] }));
-    check("their reply is passed to Josef with a summary, nothing sent to them", /passed to Josef, no reply sent/.test(outcome(r)) && outbox().length === n6 + 1 && /replied to the email I sent/.test(lastTo(JOSEF)?.text || "") && lastTo(JOSEF)?.to?.length === 1, outcome(r));
+    const theirReply = `Thanks, and is that per term?\n\nOn Thu, Nov 6, 2026 at 9:41 AM EIB Assistant <${AGENT}> wrote:\n> Hi Josef,\n>\n> The fee is 50 dollars per student.\n`;
+    r = await deliver({ ...email({ from: JOSEF2, name: "Josef Marshall", subject: "Re: Fee question", text: theirReply, inReplyTo: sentId, references: [sentId] }), text: theirReply });
+    const passed = lastTo(JOSEF);
+    check("their reply is passed to Josef with a summary, nothing sent to them", /passed to Josef, no reply sent/.test(outcome(r)) && outbox().length === n6 + 1 && /replied to the email I sent/.test(passed?.text || "") && passed?.to?.length === 1, outcome(r));
+    check("pass-through has no quoted lines and a one-line summary", !/^On .+wrote:|^>/m.test(passed?.text || "") && /In short: [^\n]+\n\n/.test(passed?.text || ""), (passed?.text || "").slice(0, 300));
     setSwitch(false);
     r = await deliver(email({ from: JOSEF2, name: "Josef Marshall", subject: "Note", text: "remember: the venue is booked for March 3" }));
     check("switch off: the address counts as Josef again", /^remember:/.test(outcome(r)), outcome(r));

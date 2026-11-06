@@ -10,7 +10,7 @@ import { isAutomatedMail, reSubject, sendMail, firstLineOf } from "./mail";
 import { classifySender, otherParticipants } from "./classify";
 import { runAnswer, runForward, classifyJosefIntent, relayAnswer, memoryPass, rememberNote, summarizeEmail, timed } from "./claude";
 import { buildDraft, commitDraft, confirmMessage } from "./edits";
-import { parseForward } from "./forward";
+import { parseForward, unquoted } from "./forward";
 import { listMemory, isArchived, memoryContext, upsertMemory, forgetMemory, searchMemory, describeMemory } from "./memory";
 import { getThread, listThreads, saveThread, createEscalation, findEscalation, updateEscalation } from "./db";
 import { describeAccess, grantAccess, revokeAccess } from "./access";
@@ -127,6 +127,23 @@ const replyToJosef = (thread, email, text) => send(thread, email, { to: [email.f
 const noteToJosef = (subject, text) => sendMail({ to: [agentConfig().josefAddresses[0]], subject, text: composeForJosef(text) });
 
 /** Everyone else on the original email plus Josef: he is CC'd on every reply not addressed only to him. */
+/** The first sentence of a summary, on one line. */
+function oneSentence(s) {
+  const t = String(s || "").replace(/\s+/g, " ").trim();
+  const m = /^(.+?[.!?])(?:\s+[A-Z"(]|$)/.exec(t);
+  return m ? m[1] : t;
+}
+
+/** Text the model wrote for Josef, with any sentence about its own tools or inner workings dropped. */
+function plainForJosef(s) {
+  const t = String(s || "").replace(/\s+/g, " ").trim();
+  if (!t) return "";
+  const kept = t
+    .split(/(?<=[.!?])\s+/)
+    .filter((sent) => !/\btools?\b|\bfunction\b|\bschema\b|\b(search|get)_[a-z_]+\b|\bI (have|had) no (tool|way|function)\b|\bmemory (tool|system)\b/i.test(sent));
+  return kept.join(" ").trim();
+}
+
 function ccForAsker(email) {
   const cfg = agentConfig();
   return [...otherParticipants(email).filter((e) => e !== email.from.email), ...cfg.josefAddresses.slice(0, 1)];
@@ -162,8 +179,9 @@ export async function handleEmail(email) {
   try {
     if (thread.mode === "forward-reply" && sender.kind !== "josef") {
       // The person Josef had the agent write to has replied: Josef gets it, they get nothing.
-      const { summary } = await summarizeEmail(email);
-      await noteToJosef(`Re: ${thread.subject || email.subject}`, `${email.from.name || email.from.email} replied to the email I sent on your behalf.\n\nIn short: ${summary}\n\nTheir message:\n${(email.text || email.fullText).slice(0, 3000)}\n\nI have not replied to them; this one is yours.`);
+      const theirs = unquoted(email.text || email.fullText).trim() || (email.text || email.fullText || "").trim();
+      const { summary } = await summarizeEmail({ ...email, text: theirs, fullText: theirs });
+      await noteToJosef(`Re: ${thread.subject || email.subject}`, `${email.from.name || email.from.email} replied to the email I sent on your behalf.\n\nIn short: ${oneSentence(summary)}\n\nTheir message:\n${theirs.slice(0, 3000)}\n\nI have not replied to them; this one is yours.`);
       outcome = "forward-reply thread: passed to Josef, no reply sent";
     } else if (groupMail(email)) {
       if (sender.kind !== "josef") {
@@ -260,7 +278,7 @@ async function handleUnknown(email, thread, sender) {
   thread.mode = "forwarded";
   await send(thread, email, { to: [email.from.email], cc: cfg.josefAddresses.slice(0, 1), firstName: firstNameOf(email.from), text: "Thanks for your email. I have passed it along to Josef, who will get back to you." });
   await sendMail({
-    to: cfg.josefAddresses,
+    to: cfg.josefAddresses.slice(0, 1),
     subject: `[EIB fwd${sender.lookalike ? ", suspicious" : ""}] ${email.subject}`,
     text: composeForJosef(`${sender.lookalike ? "Warning: this email claims to be from one of your addresses but failed authentication. Treat it as unknown.\n\n" : ""}This came in from ${email.from.name ? `${email.from.name} <${email.from.email}>` : email.from.email}, who is not on the access list (${sender.why}). I told them I have passed it to you.\n\n${email.fullText}`),
   });
@@ -272,6 +290,20 @@ async function handleUnknown(email, thread, sender) {
 // ---------------------------------------------------------------------------
 async function handleStaff(email, thread, sender) {
   thread.mode = "answer";
+  // Only Josef changes anything. A colleague's "remember:", "forget:" or request to edit records or access
+  // gets one polite line back (Josef in CC sees it) and nothing else: no escalation, no draft, no model answer.
+  const text = (email.text || email.fullText || "").trim();
+  let change = /^(remember|forget)\s*:/i.test(firstLineOf(text)) ? "memory" : "";
+  const CHANGE_VERB = /\b(add|create|update|change|set|assign|move|reschedule|remove|give|grant|revoke|make|mark|edit|rename|open|close)\b/i;
+  if (!change && CHANGE_VERB.test(text)) {
+    const intent = await timed("staff intent", () => classifyJosefIntent({ email, pendingDraft: null }));
+    if (intent.intent === "edit") change = "edit";
+    else if (intent.intent === "access_add" || intent.intent === "access_remove") change = "access";
+  }
+  if (change) {
+    await send(thread, email, { to: [email.from.email], cc: ccForAsker(email), firstName: firstNameOf(email.from), text: "Only Josef can change what I remember or edit records, so I have not changed anything. I have let him know you asked, and you can also email him directly." });
+    return `refused ${change} request from staff`;
+  }
   const result = await runAnswer({ email, senderKind: sender.kind, senderName: email.from.name, threadContext: threadContext(thread), memory: await memoryContext() });
   return applyAnswer(email, thread, sender, result);
 }
@@ -309,12 +341,12 @@ async function escalate(email, thread, sender, result) {
     "",
     email.text || email.fullText,
     "",
-    `What I found: ${result.what_you_found || "nothing on the EIB platform or in the documents folder"}`,
-    result.draft_read ? `\nMy first read, for you to check: ${result.draft_read}` : "",
+    `What I found: ${plainForJosef(result.what_you_found) || "nothing on the EIB platform or in the documents folder"}`,
+    result.draft_read ? `\nMy first read, for you to check: ${plainForJosef(result.draft_read)}` : "",
     "",
     `Reply to this email in plain language and I will pass your answer to ${firstNameOf(email.from) || "them"} in their thread. Say "don't save this" if it should not be remembered.`,
   ].join("\n");
-  const sent = await sendMail({ to: cfg.josefAddresses, subject, text: composeForJosef(text) });
+  const sent = await sendMail({ to: cfg.josefAddresses.slice(0, 1), subject, text: composeForJosef(text) });
   await createEscalation({ shortId: id, askerEmail: email.from.email, askerName: email.from.name, askerCc, askerThreadRoot: thread.rootId, askerMessageId: email.messageId, askerReferences: email.references, askerSubject: email.subject, question: email.text || email.fullText, josefMessageId: sent.messageId, josefSubject: subject });
   return `escalated as Q-${id}`;
 }

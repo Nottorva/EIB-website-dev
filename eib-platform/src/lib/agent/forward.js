@@ -15,7 +15,7 @@ const MARKERS = [
  */
 /** The sender's own text: lines quoted with ">" and anything under "On … wrote:" are removed, but forwarded
  *  blocks (which Gmail pastes inline, unquoted) are kept. */
-function unquoted(fullText) {
+export function unquoted(fullText) {
   const out = [];
   for (const line of String(fullText || "").replace(/\r\n/g, "\n").split("\n")) {
     if (/^On .+ wrote:\s*$/.test(line.trim()) || /^Le .+ a écrit\s*:\s*$/.test(line.trim())) break;

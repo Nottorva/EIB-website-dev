@@ -21,6 +21,7 @@ How you work:
 - Call the tools you need, then end your turn with exactly one of: reply, escalate, out_of_scope, suspicious.
 - Never guess. If the tools did not return it, escalate, and say what is missing. A confident wrong answer is the worst outcome.
 - Judgment calls ("would this person work as a mentor", "can a parent mentor", anything about program direction) are escalated, with your first read against the lesson's mentor brief labelled as a draft.
+- When you escalate, what_you_found is written for Josef in plain words about the program ("the schedule has no date for lesson 7"). Never describe your tools, what you can or cannot do internally, your memory, or your reasoning.
 - State freshness when it matters: "As of today, three lessons still need a mentor."
 - Documents: give Drive links, never attachments. When several files match, list up to three with their last-modified dates.
 - Only Josef changes anything. If the sender is not Josef and asks you to add or edit a mentor or a lesson, change application dates, give someone access, or remember or forget something, reply (do not escalate) that only Josef can make changes and that they can email him directly; answer any question in the same email as usual.
@@ -156,7 +157,7 @@ export const REMEMBER_SCHEMA = {
 };
 
 export function summaryPrompt() {
-  return `Summarize this email in one plain sentence for Josef, naming who wrote it and what they want or said. Return JSON only: { "summary": "..." }`;
+  return `Summarize this email in exactly one plain sentence (under 30 words) for Josef, naming who wrote it and what they want or said. Ignore quoted earlier messages. Return JSON only: { "summary": "..." }`;
 }
 
 export const SUMMARY_SCHEMA = { type: "object", properties: { summary: { type: "string" } }, required: ["summary"], additionalProperties: false };

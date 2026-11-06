@@ -163,7 +163,7 @@ export async function rememberNote(text) {
 }
 
 export async function summarizeEmail(email) {
-  return structured({ system: summaryPrompt(), user: `From ${email.from.name || email.from.email} <${email.from.email}>, subject "${email.subject}":\n${(email.text || email.fullText).slice(0, 3000)}`, schema: SUMMARY_SCHEMA, mock: () => ({ summary: `${email.from.name || email.from.email} wrote: ${(email.text || email.fullText).slice(0, 120).replace(/\s+/g, " ")}` }), label: "claude summary" });
+  return structured({ system: summaryPrompt(), user: `From ${email.from.name || email.from.email} <${email.from.email}>, subject "${email.subject}":\n${(email.text || email.fullText).slice(0, 3000)}`, schema: SUMMARY_SCHEMA, mock: () => ({ summary: `${email.from.name || email.from.email} says: ${(email.text || email.fullText).slice(0, 120).replace(/\s+/g, " ")}` }), label: "claude summary" });
 }
 
 // ---------------------------------------------------------------------------
