@@ -59,7 +59,7 @@ export async function buildDraft({ edit, existingDraft }) {
       return finish(d);
     }
     const matches = await findMentors(edit.target_name);
-    if (!matches.length) return { status: "not_found", message: `I could not find a mentor named "${edit.target_name}" in joineib.` };
+    if (!matches.length) return { status: "not_found", message: `I could not find a mentor named "${edit.target_name}" in the Mentor CRM.` };
     if (matches.length > 1) return { status: "ambiguous", message: `Which one? I found ${matches.map((m) => `${m.name}${m.publicRole ? ` (${m.publicRole})` : ""}`).join(", ")}.` };
     return finish({ kind: "mentor", action: "update", targetId: matches[0].id, targetName: matches[0].name, fields: clean(edit.fields), createdAt: new Date().toISOString() });
   }
@@ -241,7 +241,7 @@ export async function commitDraft(draft, sourceMessageId) {
     if (draft.fields.lesson && draft.fields.lesson !== "none") rec.assignedLessons = [await lessonAssignment(draft.fields.lesson, null)];
     rec.agentLastChange = { before: null, after: snapshot(rec), at, sourceMessageId };
     await writeInsert("mentors", rec);
-    return `Saved: ${rec.name} added to joineib${rec.assignedLessons.length ? ` and assigned to lesson ${rec.assignedLessons[0].lessonNumber}` : ""}.`;
+    return `Saved: ${rec.name} added to the Mentor CRM${rec.assignedLessons.length ? ` and assigned to lesson ${rec.assignedLessons[0].lessonNumber}` : ""}.`;
   }
   if (draft.kind === "mentor") {
     const current = (await readAll("mentors")).find((m) => m.id === draft.targetId);

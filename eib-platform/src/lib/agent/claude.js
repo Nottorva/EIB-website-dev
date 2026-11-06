@@ -130,7 +130,7 @@ async function mockAnswer(email, senderKind) {
   if (/run of show|document|slides|deck/.test(t)) {
     const r = await runTool("search_documents", { query: email.subject }, senderKind);
     toolCalls.push({ name: "search_documents", ok: true });
-    if (!r.files?.length) return { action: "escalate", question_summary: email.subject, what_you_found: "nothing in joineib or the docs folder", draft_read: "", toolCalls };
+    if (!r.files?.length) return { action: "escalate", question_summary: email.subject, what_you_found: "nothing on the EIB platform or in the documents folder", draft_read: "", toolCalls };
     return { action: "reply", text: r.files.map((f) => `${f.name} (updated ${String(f.modifiedTime).slice(0, 10)}): ${f.link}`).join("\n"), toolCalls };
   }
   if (/mentor/.test(t)) {
@@ -150,10 +150,10 @@ async function mockAnswer(email, senderKind) {
     const m = /lesson\s*(\d+)/.exec(t);
     const l = m ? r.find((x) => x.number === m[1]) : null;
     if (l) return { action: "reply", text: `Lesson ${l.number}, ${l.title}, is on ${l.date} from ${l.time} in ${l.room}.`, toolCalls };
-    return { action: "escalate", question_summary: email.subject, what_you_found: "nothing in joineib or the docs folder", draft_read: "", toolCalls };
+    return { action: "escalate", question_summary: email.subject, what_you_found: "nothing on the EIB platform or in the documents folder", draft_read: "", toolCalls };
   }
   if (/weather|lunch|joke/.test(t)) return { action: "out_of_scope", toolCalls };
-  return { action: "escalate", question_summary: email.subject, what_you_found: "nothing in joineib or the docs folder", draft_read: "", toolCalls };
+  return { action: "escalate", question_summary: email.subject, what_you_found: "nothing on the EIB platform or in the documents folder", draft_read: "", toolCalls };
 }
 
 function mockIntent(email, pendingDraft) {

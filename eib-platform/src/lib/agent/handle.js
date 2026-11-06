@@ -6,19 +6,79 @@ import { isAutomatedMail, reSubject, sendMail } from "./mail";
 import { classifySender, agentOnlyCcd, otherParticipants } from "./classify";
 import { runAnswer, classifyJosefIntent, relayAnswer, timed } from "./claude";
 import { buildDraft, commitDraft, confirmMessage, undoDraft, commitUndo } from "./edits";
-import { getThread, saveThread, createEscalation, findEscalation, updateEscalation, saveFaq } from "./db";
+import { getThread, listThreads, saveThread, createEscalation, findEscalation, updateEscalation, saveFaq } from "./db";
 import { describeAccess, grantAccess, revokeAccess } from "./access";
 
 const now = () => new Date().toISOString();
 const shortId = () => Math.random().toString(36).slice(2, 7);
 
-function rootIdOf(email) {
-  return email.references[0] || email.inReplyTo || email.messageId || `<${email.id}@resend>`;
+const normSubject = (s) =>
+  String(s || "")
+    .replace(/^\s*((re|fwd?|tr|aw)\s*:\s*)+/i, "")
+    .trim()
+    .toLowerCase();
+
+/**
+ * Find the thread this email belongs to. In order: the References/In-Reply-To headers against thread roots,
+ * then against every message id the thread has seen or sent (including Resend's send ids, which appear
+ * inside the Message-ID Resend assigns), then a recent thread from the same sender with the same subject.
+ * Without that last fallback a reply whose headers were stripped would start a new thread and lose the
+ * pending draft.
+ */
+async function findThread(email) {
+  const ids = [...email.references, email.inReplyTo].filter(Boolean);
+  for (const id of ids) {
+    const t = await getThread(id);
+    if (t) return { thread: t, how: "root id" };
+  }
+  const all = await listThreads(() => true);
+  if (ids.length) {
+    const hit = all.find((t) => (t.messages || []).some((m) => ids.includes(m.messageId)) || (t.sent || []).some((s) => ids.includes(s.messageId) || (s.resendId && ids.some((id) => id.includes(s.resendId)))));
+    if (hit) return { thread: hit, how: "message id" };
+  }
+  const subject = normSubject(email.subject);
+  const cutoff = Date.now() - 14 * 86400_000;
+  const recentFromSender = all.filter((t) => Date.parse(t.updatedAt || 0) > cutoff && (t.participants || []).includes(email.from.email)).sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+  if (subject) {
+    const same = recentFromSender.find((t) => normSubject(t.subject) === subject);
+    if (same) return { thread: same, how: "sender and subject" };
+  }
+  // Last resort: the quoted reply in the body contains text the agent sent earlier.
+  const body = String(email.fullText || "").replace(/\s+/g, " ");
+  if (body.includes("EIB Assistant (AI)")) {
+    for (const t of recentFromSender) {
+      const lastSent = (t.sent || [])[t.sent.length - 1];
+      const probe = String(lastSent?.text || "").replace(/\s+/g, " ").slice(0, 80);
+      if (probe.length > 20 && body.includes(probe)) return { thread: t, how: "quoted body" };
+    }
+  }
+  return { thread: null, how: "new" };
 }
 
+/** The pending step of a thread, with its expiry applied. */
+function pendingOf(thread) {
+  const d = thread.draft;
+  if (!d) return null;
+  if (d.expiresAt && Date.parse(d.expiresAt) < Date.now()) {
+    thread.draft = null;
+    return null;
+  }
+  return d;
+}
+
+function setPending(thread, draft, awaiting) {
+  thread.draft = { ...draft, awaiting, expiresAt: new Date(Date.now() + DRAFT_EXPIRY_DAYS * 86400_000).toISOString() };
+  thread.mode = "edit";
+}
+
+const YES_RE = /^\s*(yes|yes[.!]*|y|yep|yeah|yup|confirmed?|go ahead|do it|save( it)?|looks good|correct|ok(ay)?|oui|d'accord)\b[\s.!]*$/i;
+const NO_RE = /^\s*(no|nope|cancel|never mind|nevermind|forget it|stop|don'?t|non|annule[rz]?)\b[\s.!]*$/i;
+
 async function loadThread(email) {
-  const rootId = rootIdOf(email);
-  const existing = await getThread(rootId);
+  const found = await findThread(email);
+  const rootId = found.thread?.rootId || email.messageId || `<${email.id}@resend>`;
+  console.log(`[eib agent] thread ${rootId} (${found.how}; in-reply-to ${email.inReplyTo || "none"}, refs ${email.references.length})`);
+  const existing = found.thread;
   const thread = existing || { rootId, subject: email.subject, participants: [], mode: "", messages: [], sent: [], draft: null };
   const ids = new Set(thread.participants);
   ids.add(email.from.email);
@@ -44,7 +104,7 @@ async function reply(thread, email, { to, cc, text, subject }) {
   const body = `${text.trim()}\n\n--\n${SIGNATURE(cfg.josefName)}`;
   const ccList = [...new Set((cc || []).filter((e) => e && e !== cfg.address && !to.includes(e)))];
   const r = await sendMail({ to, cc: ccList, subject: subject || reSubject(email.subject), text: body, inReplyTo: email.messageId, references: email.references });
-  thread.sent = [...(thread.sent || []), { at: now(), to, cc: ccList, messageId: r.messageId, text: text.slice(0, 2000) }];
+  thread.sent = [...(thread.sent || []), { at: now(), to, cc: ccList, messageId: r.messageId, resendId: r.id, text: text.slice(0, 2000) }];
   return r;
 }
 
@@ -167,7 +227,7 @@ async function escalate(email, thread, sender, result) {
     "",
     email.text || email.fullText,
     "",
-    `What I found: ${result.what_you_found || "nothing in joineib or the docs folder"}`,
+    `What I found: ${result.what_you_found || "nothing on the EIB platform or in the documents folder"}`,
     result.draft_read ? `\nDRAFT (my first read, for you to check): ${result.draft_read}` : "",
     "",
     "Reply to this email in plain language and I will pass your answer to them in their thread. Say \"don't save this\" if it should not go in the FAQ.",
@@ -207,18 +267,31 @@ async function handleJosef(email, thread) {
     return `relayed Josef's answer for Q-${q}${saved ? " and saved to FAQ" : ""}`;
   }
 
-  // Expire stale drafts.
-  if (thread.draft && Date.parse(thread.draft.createdAt) < Date.now() - DRAFT_EXPIRY_DAYS * 86400_000) thread.draft = null;
-
-  const intent = await classifyJosefIntent({ email, pendingDraft: thread.draft });
+  const pending = pendingOf(thread);
   const josefReply = (text) => reply(thread, email, { to: [email.from.email], cc: [], text });
+  const firstLine = String(email.text || "").trim();
+
+  // A pending step is answered before any fresh intent detection: YES/NO are decided in code.
+  let intent;
+  if (pending && pending.awaiting === "confirm" && YES_RE.test(firstLine)) intent = { intent: "confirm", edit: { target_kind: "", target_name: "", action: "", fields: {}, dont_save_faq: false } };
+  else if (pending && NO_RE.test(firstLine)) intent = { intent: "cancel", edit: { target_kind: "", target_name: "", action: "", fields: {}, dont_save_faq: false } };
+  else intent = await classifyJosefIntent({ email, pendingDraft: pending });
+  if (pending && pending.awaiting === "details" && (intent.intent === "other" || intent.intent === "question" || intent.intent === "confirm")) {
+    // Still gathering: whatever he wrote is treated as the answer to the questions, never as a new request.
+    intent = { ...intent, intent: "edit", edit: { ...intent.edit, action: "update_draft", target_kind: pending.kind, target_name: pending.targetName } };
+  }
+  console.log(`[eib agent] josef intent ${intent.intent}${pending ? ` (pending ${pending.kind} ${pending.action}, awaiting ${pending.awaiting})` : ""}`);
 
   if (intent.intent === "confirm") {
-    if (!thread.draft) {
+    if (!pending) {
       await josefReply("There is nothing waiting for a yes in this thread.");
       return "confirm with no draft";
     }
-    const draft = thread.draft;
+    if (pending.awaiting === "details") {
+      await josefReply(`I still need the ${pending.missing.join(", ")} before I can save. ${pending.kind === "mentor" ? "Reply with the email address at least." : ""}`.trim());
+      return "confirm while details missing";
+    }
+    const draft = pending;
     try {
       const done =
         draft.kind === "access"
@@ -251,8 +324,7 @@ async function handleJosef(email, thread) {
       return "access: no target";
     }
     const draft = { kind: "access", action: intent.intent === "access_add" ? "grant" : "revoke", targetId: target, targetName: target, fields: { name: intent.edit.fields?.name || "" }, missing: [], createdAt: now() };
-    thread.draft = draft;
-    thread.mode = "edit";
+    setPending(thread, draft, "confirm");
     await josefReply(draft.action === "grant" ? `Give ${target} access to ask me questions${target.includes("@") ? "" : " (everyone at that domain)"}?\n\nReply YES to confirm.` : `Remove ${target}'s access?\n\nReply YES to confirm.`);
     return `access ${draft.action} proposed, awaiting YES`;
   }
@@ -262,27 +334,30 @@ async function handleJosef(email, thread) {
       await josefReply(r.message);
       return `undo: ${r.status}`;
     }
-    thread.draft = r.draft;
-    thread.mode = "edit";
+    setPending(thread, r.draft, "confirm");
     await josefReply(r.message);
     return "undo proposed, awaiting YES";
   }
   if (intent.intent === "edit") {
-    const existing = thread.draft && thread.draft.action !== "undo" && (intent.edit.action === "update_draft" || !intent.edit.target_name || intent.edit.target_name.toLowerCase() === String(thread.draft.targetName).toLowerCase()) ? thread.draft : null;
+    const sameTarget = !intent.edit.target_name || intent.edit.target_name.toLowerCase() === String(thread.draft?.targetName || "").toLowerCase() || String(thread.draft?.targetName || "").toLowerCase().includes(intent.edit.target_name.toLowerCase());
+    const existing = thread.draft && thread.draft.action !== "undo" && thread.draft.kind !== "access" && (intent.edit.action === "update_draft" || sameTarget) ? thread.draft : null;
+    if (!existing && !intent.edit.target_name && !intent.edit.fields?.name) {
+      await josefReply("Which mentor or lesson do you mean? Give me the name, for example: add a mentor, Sarah Chen.");
+      return "edit: no target";
+    }
     const r = await buildDraft({ edit: intent.edit, existingDraft: existing });
     if (r.status === "not_found" || r.status === "ambiguous") {
       await josefReply(r.message);
       return `edit: ${r.status}`;
     }
-    thread.draft = r.draft;
-    thread.mode = "edit";
+    setPending(thread, r.draft, r.status === "ready" ? "confirm" : "details");
     await josefReply(r.message);
     return r.status === "ready" ? "edit drafted, awaiting YES" : `edit: asked for ${r.draft.missing.join(", ")}`;
   }
-  if (intent.intent === "other" && thread.draft) {
-    // A correction in prose: treat as more fields for the draft via the intent extractor's field map.
-    const r = await buildDraft({ edit: { ...intent.edit, action: "update_draft" }, existingDraft: thread.draft });
-    thread.draft = r.draft;
+  if (intent.intent === "other" && pending && pending.kind !== "access") {
+    // A correction in prose while a record is waiting for YES: merge whatever fields were found.
+    const r = await buildDraft({ edit: { ...intent.edit, action: "update_draft" }, existingDraft: pending });
+    setPending(thread, r.draft, r.status === "ready" ? "confirm" : "details");
     await josefReply(r.status === "ready" ? await confirmMessage(r.draft) : r.message);
     return "draft corrected";
   }
@@ -290,7 +365,7 @@ async function handleJosef(email, thread) {
   thread.mode = "answer";
   const result = await runAnswer({ email, senderKind: "josef", senderName: cfg.josefName, threadContext: threadContext(thread) });
   if (result.action === "escalate") {
-    await josefReply(`I could not answer that from joineib or the documents folder. ${result.what_you_found || ""}`.trim());
+    await josefReply(`I could not answer that from the EIB platform or the documents folder. ${result.what_you_found || ""}`.trim());
     return "josef question: no answer in data";
   }
   if (result.action === "reply") {

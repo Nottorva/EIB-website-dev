@@ -252,6 +252,17 @@ async function run() {
   check("bio written", /three cohorts/.test(dana?.publicBio || ""), dana?.publicBio);
   check("agentLastChange has before", Boolean(dana?.agentLastChange?.before));
 
+  head("A reply with no threading headers still continues the pending add");
+  r = await deliver(email({ from: JOSEF, name: "Josef", subject: "new mentor two", text: "add a mentor, Headerless Harry" }));
+  check("asked for fields", /asked for email/.test(r.first.result?.outcome), r.first.result?.outcome);
+  r = await deliver(email({ from: JOSEF, name: "Josef", subject: "Re: new mentor two", text: "email: harry@example.com, organization: Example Co, title: Founder, preferred: email, public: email" }));
+  check("matched by sender and subject, draft ready", /awaiting YES/.test(r.first.result?.outcome), r.first.result?.outcome);
+  r = await deliver(email({ from: JOSEF, name: "Josef", subject: "RE: New mentor two", text: "YES" }));
+  check("written", /^wrote:/.test(r.first.result?.outcome || ""), r.first.result?.outcome);
+  const harry = db().mentors.find((x) => x.name === "Headerless Harry");
+  check("record has email, role, public email", harry?.contacts?.[0]?.value === "harry@example.com" && harry?.contacts?.[0]?.public === true && /Founder, Example Co/.test(harry?.publicRole || ""), JSON.stringify(harry));
+  check("no 'joineib' in any reply", !outbox().some((m) => /joineib/i.test(m.text) && !/mail\.joineib|@joineib/i.test(m.text)));
+
   head("Josef cancels a draft");
   r = await deliver(email({ from: JOSEF, name: "Josef", subject: "another mentor", text: "add a mentor, Temp Person" }));
   const cr = r.mail.message_id;
