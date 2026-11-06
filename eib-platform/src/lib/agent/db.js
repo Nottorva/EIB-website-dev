@@ -18,7 +18,19 @@ const g = globalThis;
 
 function client(key, uri) {
   const slot = `__eibAgentClient_${key}`;
-  if (!g[slot]) g[slot] = new MongoClient(uri, { maxPoolSize: 3, serverSelectionTimeoutMS: 8000 }).connect();
+  if (!g[slot]) {
+    const t = Date.now();
+    g[slot] = new MongoClient(uri, { maxPoolSize: 3, serverSelectionTimeoutMS: 8000, connectTimeoutMS: 8000, socketTimeoutMS: 20000 })
+      .connect()
+      .then((c) => {
+        console.log(`[eib agent] mongo ${key} connect: ${Date.now() - t} ms`);
+        return c;
+      })
+      .catch((e) => {
+        delete g[slot]; // let the next request try again instead of caching the failure
+        throw new Error(`mongo ${key} connect failed after ${Date.now() - t} ms: ${e.message}`);
+      });
+  }
   return g[slot];
 }
 

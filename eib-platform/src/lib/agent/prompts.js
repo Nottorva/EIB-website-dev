@@ -37,7 +37,7 @@ For "edit", fill the edit object. target_kind is "mentor", "lesson", or "applica
  lessons: date (YYYY-MM-DD), startTime, endTime, room, mentorLocation, mentorStartTime, mentorEndTime, mentorBrief (what kind of mentor the lesson needs), title
  applications: opensAt, closesAt as ISO 8601 date-times in Toronto time (for example "2026-12-01T09:00:00-05:00"); a date with no time opens at 09:00 and closes at 23:59; "now" means the current moment; "none" or "no close" clears that bound
 Today's date is ${new Date().toISOString().slice(0, 10)}.
-Never invent a value. Leave fields out when he did not state them. For a reply that supplies more fields for an in-progress edit, use intent "edit" with action "update_draft" and the fields he gave.`;
+Never invent a value. Every field is present in the JSON: put "" in any field he did not state. For a reply that supplies more fields for an in-progress edit, use intent "edit" with action "update_draft" and the fields he gave. For intents other than edit, target_kind, target_name and action are "" (except access_add and access_remove, which carry the address or domain in target_name).`;
 }
 
 export const JOSEF_INTENT_SCHEMA = {
@@ -78,6 +78,9 @@ export const JOSEF_INTENT_SCHEMA = {
             opensAt: { type: "string" },
             closesAt: { type: "string" },
           },
+          // Every field required (empty string when not stated). A schema with this many optional
+          // properties makes the structured-output request stall; required ones answer in seconds.
+          required: ["name", "email", "phone", "linkedin", "organization", "title", "status", "lesson", "notes", "years", "publicRole", "bio", "preferred", "publicContact", "date", "startTime", "endTime", "room", "mentorLocation", "mentorStartTime", "mentorEndTime", "mentorBrief", "opensAt", "closesAt"],
           additionalProperties: false,
         },
         dont_save_faq: { type: "boolean" },

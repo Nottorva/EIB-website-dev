@@ -4,7 +4,7 @@
 import { agentConfig, SIGNATURE, MAX_REPLIES_PER_THREAD_PER_HOUR, THREAD_CONTEXT_MESSAGES, DRAFT_EXPIRY_DAYS } from "./config";
 import { isAutomatedMail, reSubject, sendMail } from "./mail";
 import { classifySender, agentOnlyCcd, otherParticipants } from "./classify";
-import { runAnswer, classifyJosefIntent, relayAnswer } from "./claude";
+import { runAnswer, classifyJosefIntent, relayAnswer, timed } from "./claude";
 import { buildDraft, commitDraft, confirmMessage, undoDraft, commitUndo } from "./edits";
 import { getThread, saveThread, createEscalation, findEscalation, updateEscalation, saveFaq } from "./db";
 import { describeAccess, grantAccess, revokeAccess } from "./access";
@@ -66,9 +66,9 @@ export async function handleEmail(email) {
   const automated = isAutomatedMail(email);
   if (automated) return { ...log, outcome: `ignored: ${automated}` };
 
-  const sender = await classifySender(email);
+  const sender = await timed("classify sender", () => classifySender(email));
   log.sender = sender.kind;
-  const thread = await loadThread(email);
+  const thread = await timed("load thread", () => loadThread(email));
   thread.lastFrom = email.from.email;
   thread.lastAt = now();
 
@@ -96,6 +96,12 @@ export async function handleEmail(email) {
     else outcome = await handleUnknown(email, thread, sender);
   } catch (e) {
     outcome = `error: ${e.message}`;
+    // Best effort: tell Josef which step failed, so a silent failure never happens twice.
+    try {
+      await sendMail({ to: cfg.josefAddresses, subject: `[EIB agent error] ${email.subject}`, text: `I could not finish handling an email from ${email.from.email} (${sender.kind}).\n\nStep: ${e.step || "unknown"}\nError: ${e.message}\n\nThe email:\n${(email.text || email.fullText).slice(0, 2000)}` });
+    } catch (e2) {
+      console.error(`[eib agent] could not send the error email either: ${e2?.message || e2}`);
+    }
     throw e;
   } finally {
     thread.lastOutcome = outcome;

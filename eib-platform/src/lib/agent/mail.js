@@ -98,10 +98,13 @@ export function isAutomatedMail({ from, subject, headers }) {
 // ---------------------------------------------------------------------------
 // Fetching a received email. Returns one normalized shape whatever the source.
 // ---------------------------------------------------------------------------
+const FETCH_TIMEOUT_MS = 15_000;
+
 async function api(path, init = {}) {
   const { resendKey } = agentConfig();
   const res = await fetch(`${API}${path}`, {
     ...init,
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     headers: { Authorization: `Bearer ${resendKey}`, "User-Agent": UA, "Content-Type": "application/json", ...(init.headers || {}) },
   });
   const data = await res.json().catch(() => null);
@@ -120,13 +123,18 @@ async function api(path, init = {}) {
  */
 export async function fetchReceivedEmail(emailId, inline) {
   if (inline && agentSandbox()) return normalize(inline, {});
+  const t0 = Date.now();
   const data = await api(`/emails/receiving/${emailId}`);
+  console.log(`[eib agent] resend fetch email: ${Date.now() - t0} ms`);
   let rawHeaders = {};
   if (data?.raw?.download_url) {
+    const t1 = Date.now();
     try {
-      const res = await fetch(data.raw.download_url);
+      const res = await fetch(data.raw.download_url, { signal: AbortSignal.timeout(10_000) });
       if (res.ok) rawHeaders = parseRawHeaders(await res.text());
-    } catch {
+      console.log(`[eib agent] resend raw download: ${Date.now() - t1} ms (${Object.keys(rawHeaders).length} headers)`);
+    } catch (e) {
+      console.warn(`[eib agent] resend raw download failed after ${Date.now() - t1} ms: ${e?.message || e}; using JSON headers only`);
       rawHeaders = {};
     }
   }
@@ -214,7 +222,9 @@ export async function sendMail({ to, cc = [], subject, text, inReplyTo, referenc
     console.log(`[eib agent → outbox] to ${payload.to.join(", ")}: ${subject}`);
     return { id, messageId: id };
   }
+  const t0 = Date.now();
   const data = await api("/emails", { method: "POST", body: JSON.stringify(payload), headers: { "Idempotency-Key": crypto.randomUUID() } });
+  console.log(`[eib agent] resend send to ${payload.to.join(",")}: ${Date.now() - t0} ms (id ${data?.id})`);
   return { id: data?.id, messageId: `<${data?.id}@${cfg.address.split("@")[1]}>` };
 }
 

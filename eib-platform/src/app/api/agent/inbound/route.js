@@ -41,14 +41,16 @@ export async function POST(req) {
   await markProcessed(emailId, "received");
 
   const work = async () => {
+    const started = Date.now();
+    console.log(`[eib agent] ${emailId}: start`);
     try {
       const email = await fetchReceivedEmail(emailId, event.data?.inline);
       const result = await handleEmail(email);
-      console.log(`[eib agent] ${emailId}: ${JSON.stringify(result)}`);
+      console.log(`[eib agent] ${emailId}: done in ${Date.now() - started} ms ${JSON.stringify(result)}`);
       return result;
     } catch (e) {
-      console.error(`[eib agent] ${emailId} failed:`, e);
-      return { error: String(e?.message || e) };
+      console.error(`[eib agent] ${emailId}: FAILED after ${Date.now() - started} ms at step "${e?.step || "unknown"}": ${e?.message || e}`);
+      return { error: String(e?.message || e), step: e?.step || "unknown" };
     }
   };
 

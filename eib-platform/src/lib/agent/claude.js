@@ -11,8 +11,26 @@ const g = globalThis;
 function client() {
   const { anthropicKey } = agentConfig();
   if (!anthropicKey) return null;
-  if (!g.__eibAnthropic) g.__eibAnthropic = new Anthropic({ maxRetries: 3 });
+  // One retry and a 45-second ceiling: the route has 60 seconds in total, and a stuck request must
+  // surface as an error with a step name, never as a silent timeout.
+  if (!g.__eibAnthropic) g.__eibAnthropic = new Anthropic({ maxRetries: 1, timeout: 45_000 });
   return g.__eibAnthropic;
+}
+
+/** Log how long a step took; rethrow with the step name on failure. */
+export async function timed(label, fn) {
+  const t = Date.now();
+  try {
+    const r = await fn();
+    console.log(`[eib agent] ${label}: ${Date.now() - t} ms`);
+    return r;
+  } catch (e) {
+    console.error(`[eib agent] ${label} FAILED after ${Date.now() - t} ms: ${e?.message || e}`);
+    const err = new Error(`${label}: ${e?.message || e}`);
+    err.step = label;
+    err.cause = e;
+    throw err;
+  }
 }
 
 /**
@@ -31,7 +49,7 @@ export async function runAnswer({ email, senderKind, senderName, threadContext }
   const messages = [{ role: "user", content: userText }];
   const toolCalls = [];
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-    const res = await c.messages.create({ model: cfg.model, max_tokens: 8000, system, messages, tools, output_config: { effort: "medium" } });
+    const res = await timed(`claude answer round ${round + 1}`, () => c.messages.create({ model: cfg.model, max_tokens: 8000, system, messages, tools, output_config: { effort: "medium" } }));
     const uses = res.content.filter((b) => b.type === "tool_use");
     if (res.stop_reason === "refusal") return { action: "escalate", question_summary: email.subject, what_you_found: "The model declined to process this email.", draft_read: "", toolCalls };
     if (!uses.length) {
@@ -45,7 +63,7 @@ export async function runAnswer({ email, senderKind, senderName, threadContext }
     for (const u of uses) {
       let result;
       try {
-        result = await runTool(u.name, u.input || {}, senderKind);
+        result = await timed(`tool ${u.name}`, () => runTool(u.name, u.input || {}, senderKind));
       } catch (e) {
         result = { error: String(e?.message || e) };
       }
@@ -57,17 +75,19 @@ export async function runAnswer({ email, senderKind, senderName, threadContext }
   return { action: "escalate", question_summary: email.subject, what_you_found: "Too many lookups without a conclusion.", draft_read: "", toolCalls };
 }
 
-async function structured({ system, user, schema, mock }) {
+async function structured({ system, user, schema, mock, label = "claude structured" }) {
   const cfg = agentConfig();
   const c = client();
   if (!c) return mock();
-  const res = await c.messages.create({
-    model: cfg.model,
-    max_tokens: 4000,
-    system,
-    messages: [{ role: "user", content: user }],
-    output_config: { effort: "low", format: { type: "json_schema", schema } },
-  });
+  const res = await timed(label, () =>
+    c.messages.create({
+      model: cfg.model,
+      max_tokens: 4000,
+      system,
+      messages: [{ role: "user", content: user }],
+      output_config: { effort: "low", format: { type: "json_schema", schema } },
+    }),
+  );
   const text = res.content.filter((b) => b.type === "text").map((b) => b.text).join("");
   return JSON.parse(text);
 }
@@ -81,7 +101,7 @@ export async function classifyJosefIntent({ email, pendingDraft }) {
   ]
     .filter(Boolean)
     .join("\n\n");
-  return structured({ system: josefIntentPrompt({ josefName: cfg.josefName }), user, schema: JOSEF_INTENT_SCHEMA, mock: () => mockIntent(email, pendingDraft) });
+  return structured({ system: josefIntentPrompt({ josefName: cfg.josefName }), user, schema: JOSEF_INTENT_SCHEMA, mock: () => mockIntent(email, pendingDraft), label: "claude intent" });
 }
 
 /** Josef's reply to an escalation, rewritten for the asker. */
@@ -92,6 +112,7 @@ export async function relayAnswer({ question, josefReply, askerName }) {
     user: `<question from="${askerName}">\n${question}\n</question>\n<josef_reply>\n${josefReply}\n</josef_reply>`,
     schema: RELAY_SCHEMA,
     mock: () => ({ answer: josefReply.trim(), save_to_faq: !/don'?t save|do not save|one[- ]off/i.test(josefReply) }),
+    label: "claude relay",
   });
 }
 

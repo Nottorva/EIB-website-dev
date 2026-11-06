@@ -25,6 +25,7 @@ async function accessToken() {
   const jwt = `${header}.${claims}.${base64url(signature)}`;
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
+    signal: AbortSignal.timeout(10_000),
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer", assertion: jwt }),
   });
@@ -63,7 +64,7 @@ async function listFolder(token, folderId, depth) {
     supportsAllDrives: "true",
     includeItemsFromAllDrives: "true",
   });
-  const res = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`, { headers: { Authorization: `Bearer ${token}` } });
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files?${params}`, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(10_000) });
   const data = await res.json();
   if (!res.ok) throw new Error(`Drive error: ${data.error?.message || res.status}`);
   const files = [];
