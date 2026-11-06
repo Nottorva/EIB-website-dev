@@ -1,11 +1,24 @@
-// Claude calls: the answer loop with tools, and two structured-output calls (Josef's intent, relaying an
-// answer). With no ANTHROPIC_API_KEY (the local sandbox) a small mock answers instead so the whole flow can be
-// exercised by scripts/agent-smoke.mjs.
+// Claude calls: the answer loop with tools, the forward-reply loop, and the structured-output calls
+// (Josef's intent, relaying an answer, the memory pass, remember notes, summaries). With no
+// ANTHROPIC_API_KEY (the local sandbox) a small mock answers instead so scripts/agent-smoke.mjs can run.
 
 import Anthropic from "@anthropic-ai/sdk";
 import { agentConfig, MAX_TOOL_ROUNDS } from "./config";
-import { answerSystemPrompt, josefIntentPrompt, JOSEF_INTENT_SCHEMA, relayPrompt, RELAY_SCHEMA } from "./prompts";
-import { TOOL_DEFINITIONS, TERMINAL_TOOLS, TERMINAL_NAMES, runTool } from "./tools";
+import {
+  answerSystemPrompt,
+  forwardSystemPrompt,
+  josefIntentPrompt,
+  JOSEF_INTENT_SCHEMA,
+  relayPrompt,
+  RELAY_SCHEMA,
+  memoryPassPrompt,
+  MEMORY_PASS_SCHEMA,
+  rememberPrompt,
+  REMEMBER_SCHEMA,
+  summaryPrompt,
+  SUMMARY_SCHEMA,
+} from "./prompts";
+import { TOOL_DEFINITIONS, TERMINAL_TOOLS, FORWARD_TERMINAL_TOOLS, TERMINAL_NAMES, runTool } from "./tools";
 
 const g = globalThis;
 function client() {
@@ -33,31 +46,22 @@ export async function timed(label, fn) {
   }
 }
 
-/**
- * Answer mode. Returns { action: "reply" | "escalate" | "out_of_scope" | "suspicious", ...tool input, toolCalls }.
- */
-export async function runAnswer({ email, senderKind, senderName, threadContext }) {
+async function toolLoop({ label, system, user, terminal, senderKind, onFallback }) {
   const cfg = agentConfig();
   const c = client();
-  const userText = [threadContext ? `<thread_so_far>\n${threadContext}\n</thread_so_far>` : "", `<email from="${email.from.name || email.from.email}" subject="${email.subject}">\n${email.text || email.fullText}\n</email>`]
-    .filter(Boolean)
-    .join("\n\n");
-  if (!c) return mockAnswer(email, senderKind);
-
-  const system = answerSystemPrompt({ josefName: cfg.josefName, senderKind, senderName });
-  const tools = [...TOOL_DEFINITIONS, ...TERMINAL_TOOLS];
-  const messages = [{ role: "user", content: userText }];
+  const tools = [...TOOL_DEFINITIONS, ...terminal];
+  const messages = [{ role: "user", content: user }];
   const toolCalls = [];
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-    const res = await timed(`claude answer round ${round + 1}`, () => c.messages.create({ model: cfg.model, max_tokens: 8000, system, messages, tools, output_config: { effort: "medium" } }));
+    const res = await timed(`${label} round ${round + 1}`, () => c.messages.create({ model: cfg.model, max_tokens: 8000, system, messages, tools, output_config: { effort: "medium" } }));
     const uses = res.content.filter((b) => b.type === "tool_use");
-    if (res.stop_reason === "refusal") return { action: "escalate", question_summary: email.subject, what_you_found: "The model declined to process this email.", draft_read: "", toolCalls };
+    if (res.stop_reason === "refusal") return onFallback("The model declined to process this email.", toolCalls);
     if (!uses.length) {
       const text = res.content.filter((b) => b.type === "text").map((b) => b.text).join("").trim();
-      return { action: "reply", text: text || "I could not work out an answer; I am checking with Josef.", toolCalls, fallback: !text };
+      return text ? { action: terminal[0].name, text, toolCalls } : onFallback("No answer was produced.", toolCalls);
     }
-    const terminal = uses.find((u) => TERMINAL_NAMES.has(u.name));
-    if (terminal) return { action: terminal.name, ...terminal.input, toolCalls };
+    const t = uses.find((u) => TERMINAL_NAMES.has(u.name));
+    if (t) return { action: t.name, ...t.input, toolCalls };
     messages.push({ role: "assistant", content: res.content });
     const results = [];
     for (const u of uses) {
@@ -72,7 +76,43 @@ export async function runAnswer({ email, senderKind, senderName, threadContext }
     }
     messages.push({ role: "user", content: results });
   }
-  return { action: "escalate", question_summary: email.subject, what_you_found: "Too many lookups without a conclusion.", draft_read: "", toolCalls };
+  return onFallback("Too many lookups without a conclusion.", toolCalls);
+}
+
+/** Answer mode. Returns { action: "reply" | "escalate" | "out_of_scope" | "suspicious", ...tool input, toolCalls }. */
+export async function runAnswer({ email, senderKind, senderName, threadContext, memory }) {
+  const cfg = agentConfig();
+  const user = [threadContext ? `<thread_so_far>\n${threadContext}\n</thread_so_far>` : "", `<email from="${email.from.name || email.from.email}" subject="${email.subject}">\n${email.text || email.fullText}\n</email>`].filter(Boolean).join("\n\n");
+  if (!client()) return mockAnswer(email, senderKind);
+  return toolLoop({
+    label: "claude answer",
+    system: answerSystemPrompt({ josefName: cfg.josefName, senderKind, senderName, memory }),
+    user,
+    terminal: TERMINAL_TOOLS,
+    senderKind,
+    onFallback: (why, toolCalls) => ({ action: "escalate", question_summary: email.subject, what_you_found: why, draft_read: "", toolCalls }),
+  });
+}
+
+/** Forward mode. Returns { action: "send_reply" | "needs_ok", text | reason+draft, toolCalls }. */
+export async function runForward({ instruction, original, memory, extra = "" }) {
+  const cfg = agentConfig();
+  const user = [
+    `<josef_instruction>\n${instruction || "(no instruction: handle this)"}\n</josef_instruction>`,
+    extra ? `<josef_changes>\n${extra}\n</josef_changes>` : "",
+    `<original_email from="${original.from.name || original.from.email}" email="${original.from.email}" subject="${original.subject}">\n${original.body}\n</original_email>`,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+  if (!client()) return mockForward({ instruction: `${instruction}\n${extra}`, original });
+  return toolLoop({
+    label: "claude forward",
+    system: forwardSystemPrompt({ josefName: cfg.josefName, memory }),
+    user,
+    terminal: FORWARD_TERMINAL_TOOLS,
+    senderKind: "josef",
+    onFallback: (why, toolCalls) => ({ action: "needs_ok", reason: why, draft: "", toolCalls }),
+  });
 }
 
 async function structured({ system, user, schema, mock, label = "claude structured" }) {
@@ -80,13 +120,7 @@ async function structured({ system, user, schema, mock, label = "claude structur
   const c = client();
   if (!c) return mock();
   const res = await timed(label, () =>
-    c.messages.create({
-      model: cfg.model,
-      max_tokens: 4000,
-      system,
-      messages: [{ role: "user", content: user }],
-      output_config: { effort: "low", format: { type: "json_schema", schema } },
-    }),
+    c.messages.create({ model: cfg.model, max_tokens: 4000, system, messages: [{ role: "user", content: user }], output_config: { effort: "low", format: { type: "json_schema", schema } } }),
   );
   const text = res.content.filter((b) => b.type === "text").map((b) => b.text).join("");
   return JSON.parse(text);
@@ -96,7 +130,7 @@ async function structured({ system, user, schema, mock, label = "claude structur
 export async function classifyJosefIntent({ email, pendingDraft }) {
   const cfg = agentConfig();
   const user = [
-    pendingDraft ? `<pending_edit>\nThe assistant is waiting on this ${pendingDraft.kind} ${pendingDraft.action}: ${JSON.stringify(pendingDraft.fields)}. Still missing: ${pendingDraft.missing.join(", ") || "nothing; awaiting YES"}.\n</pending_edit>` : "",
+    pendingDraft ? `<pending_edit>\nThe assistant is waiting on this ${pendingDraft.kind} ${pendingDraft.action}: ${JSON.stringify(pendingDraft.fields)}. Still missing: ${(pendingDraft.missing || []).join(", ") || "nothing; awaiting YES"}.\n</pending_edit>` : "",
     `<email subject="${email.subject}">\n${email.text || email.fullText}\n</email>`,
   ]
     .filter(Boolean)
@@ -111,9 +145,25 @@ export async function relayAnswer({ question, josefReply, askerName }) {
     system: relayPrompt({ josefName: cfg.josefName }),
     user: `<question from="${askerName}">\n${question}\n</question>\n<josef_reply>\n${josefReply}\n</josef_reply>`,
     schema: RELAY_SCHEMA,
-    mock: () => ({ answer: josefReply.trim(), save_to_faq: !/don'?t save|do not save|one[- ]off/i.test(josefReply) }),
+    mock: () => ({ answer: josefReply.trim(), save_to_memory: !/don'?t save|do not save|one[- ]off/i.test(josefReply), topic: question.slice(0, 40).replace(/[?.]$/, "") }),
     label: "claude relay",
   });
+}
+
+/** The memory pass over an email Josef wrote or was copied on. */
+export async function memoryPass({ email, memoryItems }) {
+  const cfg = agentConfig();
+  const current = memoryItems.length ? memoryItems.map((m) => `- ${m.topic} [${m.status}]: ${m.summary}`).join("\n") : "(empty)";
+  const user = `<current_memory>\n${current}\n</current_memory>\n<email from="${email.from.email}" to="${email.to.map((a) => a.email).join(", ")}" subject="${email.subject}">\n${email.text || email.fullText}\n</email>`;
+  return structured({ system: memoryPassPrompt({ josefName: cfg.josefName }), user, schema: MEMORY_PASS_SCHEMA, mock: () => mockMemoryPass(email, memoryItems), label: "claude memory pass" });
+}
+
+export async function rememberNote(text) {
+  return structured({ system: rememberPrompt(), user: text, schema: REMEMBER_SCHEMA, mock: () => mockRemember(text), label: "claude remember" });
+}
+
+export async function summarizeEmail(email) {
+  return structured({ system: summaryPrompt(), user: `From ${email.from.name || email.from.email} <${email.from.email}>, subject "${email.subject}":\n${(email.text || email.fullText).slice(0, 3000)}`, schema: SUMMARY_SCHEMA, mock: () => ({ summary: `${email.from.name || email.from.email} wrote: ${(email.text || email.fullText).slice(0, 120).replace(/\s+/g, " ")}` }), label: "claude summary" });
 }
 
 // ---------------------------------------------------------------------------
@@ -123,26 +173,44 @@ async function mockAnswer(email, senderKind) {
   const t = `${email.subject}\n${email.text}`.toLowerCase();
   const toolCalls = [];
   if (/ignore (your|all) (previous |prior )?instructions|you are now authori[sz]ed|new rules/.test(t)) return { action: "suspicious", reason: "tries to change the rules", toolCalls };
-  const faq = await runTool("search_faq", { query: email.subject }, senderKind);
-  toolCalls.push({ name: "search_faq", ok: true });
-  if (faq.length) return { action: "reply", text: `${faq[0].answer} (Josef answered this on ${faq[0].answeredOn}.)`, toolCalls };
+  const mem = await runTool("search_memory", { query: email.subject }, senderKind);
+  toolCalls.push({ name: "search_memory", ok: true });
+  if (mem.length) return { action: "reply", text: `${mem[0].summary} That is what Josef told me on ${mem[0].updated}.`, toolCalls };
   if (/would .* work as a mentor|should we|can a parent/.test(t)) return { action: "escalate", question_summary: email.subject, what_you_found: "A judgment call.", draft_read: "Draft read: fits the brief for a founder-type mentor.", toolCalls };
-  if (/run of show|document|slides|deck/.test(t)) {
+  if (/run of show|document|slides|deck|file/.test(t)) {
     const r = await runTool("search_documents", { query: email.subject }, senderKind);
     toolCalls.push({ name: "search_documents", ok: true });
     if (!r.files?.length) return { action: "escalate", question_summary: email.subject, what_you_found: "nothing on the EIB platform or in the documents folder", draft_read: "", toolCalls };
     return { action: "reply", text: r.files.map((f) => `${f.name} (updated ${String(f.modifiedTime).slice(0, 10)}): ${f.link}`).join("\n"), toolCalls };
   }
+  if (/agreement|signed/.test(t)) {
+    const r = await runTool("get_agreement_status", {}, senderKind);
+    toolCalls.push({ name: "get_agreement_status", ok: true });
+    return { action: "reply", text: `${r.counts.signed} students have signed, ${r.counts.pending} are waiting on a parent's confirmation, and ${r.counts.notStarted} have not started. Not yet signed: ${[...r.pending, ...r.notStarted].join(", ") || "nobody"}.`, toolCalls };
+  }
+  if (/(when|which day|what day|coming to class|in class)/.test(t) && /mentor|[A-Z][a-z]+ [A-Z][a-z]+/.test(`${email.subject}
+${email.text}`)) {
+    const r = await runTool("get_mentor_schedule", {}, senderKind);
+    toolCalls.push({ name: "get_mentor_schedule", ok: true });
+    const named = r.visits.find((v) => t.includes(v.mentor.split(" ")[0].toLowerCase()));
+    if (named) return { action: "reply", text: `${named.mentor} is in for ${named.lesson} on ${named.date}, ${named.time} at ${named.location}.`, toolCalls };
+    return { action: "reply", text: r.visits.length ? `Mentors are coming on: ${r.visits.map((v) => `${v.date} (${v.mentor}, ${v.lesson})`).join("; ")}.` : "No mentor visits are scheduled yet.", toolCalls };
+  }
   if (/mentor/.test(t)) {
-    const r = await runTool("get_open_mentor_slots", {}, senderKind);
-    toolCalls.push({ name: "get_open_mentor_slots", ok: true });
-    const n = r.openSlots.length;
-    return { action: "reply", text: n ? `As of today, ${n} lesson${n === 1 ? "" : "s"} still need${n === 1 ? "s" : ""} a confirmed mentor: ${r.openSlots.map((s) => s.lesson).join("; ")}.` : "As of today, every mentor lesson has a confirmed mentor.", toolCalls };
+    const r = await runTool("get_mentor_coverage", {}, senderKind);
+    toolCalls.push({ name: "get_mentor_coverage", ok: true });
+    const n = r.lessonsWithoutConfirmedMentor.length;
+    return { action: "reply", text: n ? `As of today, ${n} lesson${n === 1 ? "" : "s"} still need${n === 1 ? "s" : ""} a confirmed mentor: ${r.lessonsWithoutConfirmedMentor.map((s) => s.lesson).join("; ")}.` : "As of today, every mentor lesson has a confirmed mentor.", toolCalls };
   }
   if (/student|cohort|how many/.test(t)) {
     const r = await runTool("get_cohort", {}, senderKind);
     toolCalls.push({ name: "get_cohort", ok: true });
-    return { action: "reply", text: `The ${r.cohortYear} cohort has ${r.studentCount} students${r.students ? `: ${r.students.join(", ")}` : ""}.`, toolCalls };
+    return { action: "reply", text: `The ${r.cohortYear} cohort has ${r.studentCount} students${r.students ? `: ${r.students.map((s) => s.name).join(", ")}` : ""}.`, toolCalls };
+  }
+  if (/next week/.test(t)) {
+    const r = await runTool("get_schedule", {}, senderKind);
+    toolCalls.push({ name: "get_schedule", ok: true });
+    return { action: "reply", text: r.nextWeek.length ? `Next week: ${r.nextWeek.map((l) => `lesson ${l.number} (${l.title}) on ${l.date}`).join("; ")}.` : "Nothing is scheduled in the next seven days.", toolCalls };
   }
   if (/lesson|when is|where is/.test(t)) {
     const r = await runTool("get_lessons", {}, senderKind);
@@ -156,6 +224,24 @@ async function mockAnswer(email, senderKind) {
   return { action: "escalate", question_summary: email.subject, what_you_found: "nothing on the EIB platform or in the documents folder", draft_read: "", toolCalls };
 }
 
+async function mockForward({ instruction, original }) {
+  const i = String(instruction || "").toLowerCase();
+  const saying = /reply saying (.+)/i.exec(instruction);
+  if (saying) return { action: "send_reply", text: saying[1].trim(), toolCalls: [] };
+  if (/run of show|document|file/.test(i) || /run of show|document|file/.test(original.body.toLowerCase())) {
+    const r = await runTool("search_documents", { query: `${instruction} ${original.subject}` }, "josef");
+    if (r.files?.length) return { action: "send_reply", text: `Here is the document you asked about: ${r.files[0].name}: ${r.files[0].link}`, toolCalls: ["search_documents"] };
+    return { action: "needs_ok", reason: "I could not find that document in the EIB Documents folder.", draft: "Thanks for asking. I will send the document over as soon as it is ready.", toolCalls: ["search_documents"] };
+  }
+  const b = original.body.toLowerCase();
+  if (/how many students|mentor|lesson/.test(b)) {
+    const a = await mockAnswer({ subject: original.subject, text: original.body }, "josef");
+    if (a.action === "reply") return { action: "send_reply", text: a.text, toolCalls: a.toolCalls };
+  }
+  if (/date|when can|pay|invoice|\$|budget|decide|confirm/.test(b)) return { action: "needs_ok", reason: "The reply would commit you to a date or a decision you did not state.", draft: "Thanks for your note. Josef will confirm the details shortly.", toolCalls: [] };
+  return { action: "needs_ok", reason: "I do not have enough information to answer this one.", draft: "Thanks for your email. Josef will get back to you shortly.", toolCalls: [] };
+}
+
 function mockIntent(email, pendingDraft) {
   const text = (email.text || "").trim();
   const t = text.toLowerCase();
@@ -167,8 +253,6 @@ function mockIntent(email, pendingDraft) {
   if (give) return { intent: "access_add", edit: { ...empty, target_name: give[1].replace(/[.,]$/, "") } };
   const rm = /remove\s+(?:agent\s+)?access\s+(?:from|for)\s+(\S+)/i.exec(text) || /revoke\s+(\S+)/i.exec(text);
   if (rm) return { intent: "access_remove", edit: { ...empty, target_name: rm[1].replace(/[.,]$/, "") } };
-  const undo = /undo the last change to (.+)/i.exec(text);
-  if (undo) return { intent: "undo", edit: { ...empty, target_kind: "mentor", target_name: undo[1].trim().replace(/[.!]$/, "") } };
   const fields = {};
   for (const [key, re] of Object.entries({
     email: /email(?::| to| is)?\s*([^\s,]+@[^\s,]+)/i,
@@ -211,4 +295,25 @@ function mockIntent(email, pendingDraft) {
   if (pendingDraft && Object.keys(fields).length) return { intent: "edit", edit: { ...empty, target_kind: pendingDraft.kind, target_name: pendingDraft.targetName, action: "update_draft", fields } };
   if (/\?/.test(text) || /^(what|when|where|who|how)\b/.test(t)) return { intent: "question", edit: empty };
   return { intent: "other", edit: empty };
+}
+
+function mockRemember(text) {
+  const t = text.replace(/^remember:\s*/i, "").trim();
+  const [topic, ...rest] = t.split(/\s*(?:-|:|–|—)\s*/);
+  const summary = rest.join(" ").trim() || t;
+  const status = /waiting|pending|owe|due/i.test(t) ? "waiting" : /done|finished|complete/i.test(t) ? "done" : "info";
+  return { topic: topic.trim().slice(0, 60), status, summary };
+}
+
+function mockMemoryPass(email, memoryItems) {
+  const text = String(email.text || "").trim();
+  const t = text.toLowerCase();
+  const done = /^(.+?)\s+(?:is|are|was|were|has been)\s+(done|finished|complete|completed|paid|sorted)\b/i.exec(text);
+  if (done) {
+    const words = done[1].toLowerCase().split(/\W+/).filter((w) => w.length > 2);
+    const hit = memoryItems.find((m) => words.filter((w) => m.topic.toLowerCase().includes(w)).length >= Math.min(2, words.length));
+    if (hit) return { changes: [{ action: "update", topic: hit.topic, match_topic: hit.topic, status: "done", summary: `${hit.topic} is done.` }], unsure_question: "" };
+  }
+  if (/\b(we agreed|i promised|i will|we will|deadline|by friday|owes|waiting on)\b/.test(t) && text.length < 300) return { changes: [{ action: "create", topic: text.slice(0, 40), match_topic: "", status: /waiting|owes|by /.test(t) ? "waiting" : "info", summary: text }], unsure_question: "" };
+  return { changes: [], unsure_question: "" };
 }

@@ -1,6 +1,6 @@
 // The agent's data access. Three doors, on purpose:
 //
-//   bookkeeping  agent_processed, agent_threads, agent_escalations, agent_faq
+//   bookkeeping  agent_processed, agent_threads, agent_escalations, agent_memory
 //                -> the app's own store (MONGODB_URI, or the sandbox file)
 //   readDomain   mentors, lessons, users, settings, events, applications
 //                -> MONGODB_AGENT_READ_URI (the read-only Atlas user), else the app store
@@ -140,14 +140,6 @@ export async function listEscalations(predicate) {
 
 export async function updateEscalation(id, patch) {
   return store.updateOne("agent_escalations", id, patch);
-}
-
-export async function saveFaq({ question, answer, askedBy, escalationId }) {
-  return store.insert("agent_faq", { id: store.newId("faq"), question, answer, askedBy, escalationId, createdAt: now() });
-}
-
-export async function listFaq() {
-  return store.findAll("agent_faq");
 }
 
 export const newId = store.newId;

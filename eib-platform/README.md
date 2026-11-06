@@ -406,67 +406,68 @@ Google sign-in against the JSON file store, or Atlas with the dev role-switch UR
 
 ## EIB Email Agent
 
-An email assistant at `AGENT_ADDRESS` (for example `assistant@joineib.ca`) that answers routine EIB questions
-from TFS staff, escalates what it cannot answer to Josef, and edits joineib data only when Josef asks. Spec:
-`EIB-Email-Agent-Spec.md` (Nov 6, 2026). Code: `src/lib/agent/`, routes `POST /api/agent/inbound` (Resend
-webhook) and `GET /api/agent/remind` (daily cron, `vercel.json`).
+An email assistant at `AGENT_ADDRESS` (`assistant@mail.joineib.ca`) that answers routine EIB questions from TFS
+staff, escalates what it cannot answer to Josef, writes replies on his behalf when he forwards an email with an
+instruction, keeps a long-term memory, and edits platform data only when Josef asks. Spec:
+`EIB-Email-Agent-Spec.md`. Code: `src/lib/agent/`, routes `POST /api/agent/inbound` (Resend webhook),
+`GET /api/agent/remind` (daily cron, `vercel.json`), `/api/agent/admin` and `/api/agent/memory` (super admin).
 
-**Three modes, decided by who sent the email.** Identity comes from email authentication (Resend's SPF, DKIM
-and DMARC verdicts plus the DKIM signing domain from the raw message), never from the From line alone.
+**Who sent it decides everything.** Identity comes from email authentication (Resend's SPF, DKIM and DMARC
+verdicts plus the DKIM signing domain from the raw message), never from the From line alone.
 
-- **Answer.** A whitelisted TFS sender (`TFS_WHITELIST_DOMAINS` / `TFS_WHITELIST_ADDRESSES`, authenticated)
-  asks a question. Claude reads joineib through fixed tools (lessons, mentors, open mentor slots, cohort, the
-  EIB Documents Drive folder, past answers) and replies. Student names go to TFS staff; contact details,
-  application answers and grades never leave the server by email. Josef is CC'd on every reply that is not
-  addressed only to him.
-- **Escalate.** No answer in the data, or a judgment call. The asker hears "I'm checking with Josef"; Josef
-  gets an `[EIB Q-xxxx]` email with what was found; his plain-language reply is relayed into the asker's thread
-  and saved to the FAQ (unless he says "don't save this"). One reminder after 3 days, then silence.
-- **Edit.** Verified Josef only. Add or update mentors (email, phone, LinkedIn, organization and title, the
-  student-facing role line and bio, which contact is preferred, which contact students may see, status, lesson
-  assignment with the seat rule checked up front, notes), set a lesson's date, time, room or mentor brief (what
-  kind of mentor it needs), set when applications open and close, and manage who may email the agent ("who has
-  agent access?", "give name@tfs.ca access", "remove access from name@tfs.ca"). The agent gathers missing fields
-  over as many emails as needed, shows the full record, and writes only after a reply of YES. Every record keeps
-  one `agentLastChange` snapshot; "undo the last change to X" restores it (undoing a creation archives the
-  record). No deletes.
+- **Whitelisted TFS staff** (the Vercel whitelist plus the list Josef manages) get answers from real read-only
+  queries: student count and agreement status by name, the lesson schedule ("when is lesson 4", "what's next
+  week"), when each mentor comes to class, mentor coverage, applications, events, documents in the EIB
+  Documents folder, and what Josef has told the assistant to remember. Student names go to staff; emails and
+  phone numbers go to Josef only. Anything the data cannot answer, or any judgment call, is escalated to Josef
+  as an `[EIB Q-xxxx]` email; his reply is relayed into the asker's thread and remembered.
+- **Verified Josef** can also edit: add or update mentors (contact details, the student-facing role and bio,
+  preferred and public contact, status, lesson assignment with the seat rule checked up front), set a lesson's
+  date, time, room or mentor brief, set the application open and close dates, and manage who may email the
+  agent. The agent gathers missing fields over as many emails as needed, shows the full record in plain words,
+  and writes only after YES. Purely additive: nothing is deleted or archived by email; "undo", "delete" or
+  "remove" get a polite pointer to the CRM. Each written record keeps one `agentLastChange` snapshot.
+- **Forward + "handle this".** Josef forwards an email with an instruction ("handle this", "reply saying X",
+  "send them the run of show"). The agent replies directly to the original sender with Josef in CC, using the
+  platform, the documents folder and memory. If the answer needs information it does not have, or would commit
+  Josef to a date, money or a decision he did not state, the draft comes to Josef instead ("I need your OK on
+  this one"; YES sends it, anything else redrafts). When the original sender replies later, the agent passes
+  it to Josef with a one-line summary and never answers them itself.
+- **Long-term memory** (`agent_memory`, main database): one line per topic with a status (waiting, done,
+  info), a summary, and a history. Every email Josef writes (direct, CC'd or BCC'd) gets a memory pass that
+  prefers updating an existing topic over creating one; "remember: …", "forget: …" and "what do you remember
+  about …?" work directly. When the agent is one recipient among several it never replies to anyone but Josef:
+  a one-line "Memory updated" note when something changed, nothing otherwise; reply-alls from other people are
+  stored silently. All current memory is context for every reply. Website: `/memory` ("Long-term memory" on
+  the hub, "Memory" in the top bar) and the same list as the Mentor CRM's Memory tab: grouped by status,
+  inline edits, add, delete, history; topics done for 60 days collapse into Archived. The old `agent_faq`
+  collection is folded into memory: answers Josef gives to escalations are saved as "info" topics.
+- **Everyone else** gets a one-line acknowledgement and a forward to Josef. Auto-replies, bounces and the
+  agent's own mail are ignored; emails that try to change its rules are forwarded as suspicious; Resend retries
+  are deduplicated; at most 5 replies per thread per hour.
 
-**`/agent` page** (super admin, "EIB Assistant" on the hub and "Assistant" in the top bar): which services are
-connected, who may email the agent (the Vercel whitelist plus the list Josef manages, editable there and by
-email; stored in the `agentAccess` setting), escalations waiting on Josef, the FAQ it has learned (entries can
-be forgotten), and recent threads with what the agent did. API: `/api/agent/admin`.
+**Writing style.** Every email greets by first name ("Hi Ray,", or "Hi there," when only an address is known),
+answers in natural paragraphs, signs "Best, EIB Assistant, on behalf of Josef Marshall", and carries the AI
+disclosure in the footer. Confirmations to Josef show records as a short list with plain labels. No internal
+jargon, no em dashes.
 
-When the agent is only CC'd it stores the email as context and stays silent. Auto-replies, bounces, the
-agent's own mail, and anyone trying to change its rules get no reply (the last is forwarded as suspicious).
-Resend retries are deduplicated on the email id; at most 5 replies per thread per hour.
+**Threads.** Each inbound email is fetched in full from Resend (headers and raw message). Replies attach to
+the pending step of a thread by References/In-Reply-To, then by every message id seen or sent, then by sender
+and subject, then by the quoted body, so a "yes" or a batch of details is never read as a new request.
+
+**`/agent` page** (super admin): which services are connected, who may email the agent (editable), escalations
+waiting on Josef, memory counts, and recent threads with what the agent did.
 
 **Local sandbox.** With no `RESEND_API_KEY` the webhook may be unsigned and carry the email inline, replies
 go to `data/agent-outbox.jsonl`, and with no `ANTHROPIC_API_KEY` a small mock stands in for Claude:
 
 ```
 AGENT_ADDRESS=assistant@joineib.ca TFS_WHITELIST_DOMAINS=tfs.ca JOSEF_ADDRESSES=josefm2173@gmail.com npm run dev
-npm run smoke:agent      # 66 checks: the spec's test checklist plus access and mentor edits, in sandbox mode
+npm run smoke:agent      # 70 checks: data questions, edits, forwards, memory, access, style, guards
 ```
 
-**Manual setup (dashboards, in this order).**
-
-1. Resend: enable receiving on the agent's domain (or a subdomain if the root domain already has mail) and add
-   the MX record Resend shows; confirm SPF, DKIM, DMARC pass for sending; turn off open and click tracking;
-   create a webhook for `email.received` pointing at `https://www.joineib.ca/api/agent/inbound` and copy its
-   signing secret into `RESEND_WEBHOOK_SECRET`; the API key must allow sending and reading received emails.
-2. MongoDB Atlas: user `eib-agent-read` (read on `mentors`, `lessons`, `users`, `settings`, `events`,
-   `applications`) and `eib-agent-write` (read and write on `mentors`, `lessons`, `settings`). Put their
-   connection strings in `MONGODB_AGENT_READ_URI` / `MONGODB_AGENT_WRITE_URI`. The agent's own bookkeeping
-   collections (`agent_processed`, `agent_threads`, `agent_escalations`, `agent_faq`) use the app's main
-   `MONGODB_URI`, since neither agent user can write them.
-3. Google Drive: an "EIB Documents" folder shared with TFS; a Google Cloud service account with Drive read
-   access, added to the folder as Viewer; its key JSON (one line) in `GOOGLE_SERVICE_ACCOUNT_JSON` and the
-   folder id (from the folder's URL) in `EIB_DRIVE_FOLDER_ID`. Name files predictably: "Lesson 3 - Run of Show".
-4. Vercel: every `AGENT_*`, `TFS_*`, `JOSEF_ADDRESSES`, `MONGODB_AGENT_*`, `GOOGLE_*`, `EIB_DRIVE_FOLDER_ID`,
-   `ANTHROPIC_API_KEY` and `CRON_SECRET` variable from `.env.example`, then redeploy. Until `AGENT_ADDRESS` and
-   `RESEND_WEBHOOK_SECRET` are set the inbound route answers 401 and nothing runs.
-
-**Open decisions** (from the spec, still Josef's call): root domain or subdomain for the address; whole TFS
-domain or named people only; whether student leaders are whitelisted and see names; whether the TFS account may
-forward school mail outside; written mentor criteria per lesson (the Lesson Editor's mentor brief, which the
-agent can also set by email).
+**Setup** (done 2026-11-06): Resend receiving on `mail.joineib.ca` with the `email.received` webhook; Atlas
+users `eib-agent-read` (find on mentors, lessons, users, applications, settings, events) and
+`eib-agent-write` (mentors, lessons, settings); the "EIB Documents" Drive folder shared with the service
+account; the variables in `.env.example` on Vercel. The agent's own collections (`agent_processed`,
+`agent_threads`, `agent_escalations`, `agent_memory`) use the main `MONGODB_URI`.

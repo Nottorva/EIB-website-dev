@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Pencil, Users, ClipboardList, GraduationCap, FileText, Globe, Bot } from "lucide-react";
+import { Pencil, Users, ClipboardList, GraduationCap, FileText, Globe, Bot, Brain } from "lucide-react";
 import { getAccessState, authMode } from "@/lib/auth";
 import { ROLE_LABEL } from "@/lib/roles";
 
@@ -58,6 +58,13 @@ const TOOLS = [
     icon: Bot,
     roles: ["superAdmin"],
     blurb: "The email agent: who may ask it questions, what is waiting on you, and the answers it has learned.",
+  },
+  {
+    href: "/memory",
+    label: "Long-term memory",
+    icon: Brain,
+    roles: ["superAdmin"],
+    blurb: "What the assistant remembers: one line per topic, from your emails. Read, edit, add, forget.",
   },
   {
     href: "/apply",

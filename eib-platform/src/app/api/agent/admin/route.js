@@ -1,16 +1,15 @@
 // /api/agent/admin (super admin only): what the /agent page shows and edits.
 //   GET            config status, access list, open escalations, FAQ, recent threads
 //   PUT            { grant: "email or domain", name? } | { revoke: "email or domain" }
-//   DELETE ?faq=id removes an FAQ entry
 import { guarded, readJson, HttpError } from "@/lib/auth";
 import { agentConfig } from "@/lib/agent/config";
 import { effectiveAccess, grantAccess, revokeAccess } from "@/lib/agent/access";
-import { listEscalations, listFaq, listThreads } from "@/lib/agent/db";
-import { removeOne } from "@/lib/data/store";
+import { listEscalations, listThreads } from "@/lib/agent/db";
+import { listMemory, isArchived } from "@/lib/agent/memory";
 
 async function snapshot() {
   const cfg = agentConfig();
-  const [access, escalations, faq, threads] = await Promise.all([effectiveAccess(), listEscalations(() => true), listFaq(), listThreads(() => true)]);
+  const [access, escalations, memory, threads] = await Promise.all([effectiveAccess(), listEscalations(() => true), listMemory(), listThreads(() => true)]);
   return {
     config: {
       address: cfg.address || null,
@@ -26,7 +25,7 @@ async function snapshot() {
     },
     access,
     escalations: escalations.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))).slice(0, 50),
-    faq: faq.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))),
+    memory: { total: memory.length, waiting: memory.filter((m) => m.status === "waiting" && !isArchived(m)).length, archived: memory.filter(isArchived).length },
     threads: threads
       .sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)))
       .slice(0, 40)
@@ -47,11 +46,4 @@ export const PUT = guarded(["superAdmin"], async ({ req, user }) => {
     throw new HttpError(e.status || 400, e.message);
   }
   return Response.json({ ...result, ...(await snapshot()) });
-});
-
-export const DELETE = guarded(["superAdmin"], async ({ req }) => {
-  const id = new URL(req.url).searchParams.get("faq");
-  if (!id) throw new HttpError(400, "faq id required.");
-  await removeOne("agent_faq", id);
-  return Response.json(await snapshot());
 });

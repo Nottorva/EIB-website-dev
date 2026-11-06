@@ -142,21 +142,13 @@ export default function AgentAdmin() {
         </div>
       </Section>
 
-      <Section icon={BookOpen} title={`Answers it has learned (${data.faq.length})`}>
-        {!data.faq.length ? <EmptyState>When you answer an escalation, the question and your answer are saved here and reused.</EmptyState> : null}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {data.faq.map((f) => (
-            <div key={f.id} style={{ border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "12px 14px", display: "flex", gap: 10, alignItems: "flex-start" }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 800, color: COLORS.text }}>{f.question}</div>
-                <div style={{ fontSize: 14, color: COLORS.sub, marginTop: 4, whiteSpace: "pre-wrap" }}>{f.answer}</div>
-                <div style={{ fontSize: 12, color: COLORS.faint, marginTop: 6 }}>
-                  asked by {f.askedBy} · {fmtShortDateTime(f.createdAt)}
-                </div>
-              </div>
-              <IconButton icon={Trash2} title="Forget this answer" color={COLORS.red} onClick={() => act(() => api.del(`/api/agent/admin?faq=${encodeURIComponent(f.id)}`))} />
-            </div>
-          ))}
+      <Section icon={BookOpen} title="Memory">
+        <div style={{ fontSize: 14, color: COLORS.text }}>
+          {data.memory.total} topic{data.memory.total === 1 ? "" : "s"} remembered, {data.memory.waiting} waiting on someone, {data.memory.archived} archived.{" "}
+          <a href="/crm?tab=memory" style={{ color: COLORS.indigo, fontWeight: 800 }}>
+            Open the Memory tab
+          </a>{" "}
+          to read, edit or add topics. By email: &ldquo;remember: &hellip;&rdquo;, &ldquo;forget: &hellip;&rdquo;, &ldquo;what do you remember about &hellip;?&rdquo;.
         </div>
       </Section>
 

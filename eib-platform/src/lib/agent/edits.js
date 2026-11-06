@@ -1,11 +1,13 @@
 // The write path (verified Josef only): gather fields over email, show the full record, write only after YES,
-// keep one `agentLastChange` snapshot per record, and undo. No deletes: removal is a status change.
+// and keep one `agentLastChange` snapshot per record for the audit trail. Purely additive: the agent never
+// deletes or archives anything; Josef does that by hand in the CRM.
 
 import { readAll, readSetting, writeInsert, writeUpdate, writeSetting, newId } from "./db";
 import { cohortYear } from "./tools";
 import { mentorSeats } from "../sessionDefaults";
 import { MENTOR_STATUSES } from "../data/mentors";
 import { normalizeLesson } from "../data/lessons";
+import { CRM_URL } from "./style";
 
 const MENTOR_FIELD_HELP = {
   email: "email",
@@ -126,31 +128,66 @@ async function finish(draft) {
   return { draft, status, message: status === "need_fields" ? askMessage(draft) : await confirmMessage(draft) };
 }
 
+// Plain labels for anything shown to Josef. Internal keys never appear in an email.
+const LABEL = {
+  name: "Name",
+  email: "Email",
+  phone: "Phone",
+  linkedin: "LinkedIn",
+  organization: "Organization",
+  title: "Title",
+  status: "Status",
+  lesson: "Lesson",
+  notes: "Notes",
+  years: "Years",
+  publicRole: "Role (shown to students)",
+  bio: "Bio (shown to students)",
+  publicBio: "Bio (shown to students)",
+  preferred: "Preferred contact",
+  publicContact: "Contact students can see",
+  contacts: "Contact",
+  date: "Date",
+  startTime: "Start time",
+  endTime: "End time",
+  room: "Room",
+  mentorLocation: "Mentor location",
+  mentorStartTime: "Mentor start time",
+  mentorEndTime: "Mentor end time",
+  mentorBrief: "What we are looking for in a mentor",
+  opens: "Opens",
+  closes: "Closes",
+};
+const pretty = (k) => LABEL[k] || k;
+const firstOf = (name) => String(name || "").trim().split(/\s+/)[0] || "them";
+
 function askMessage(draft) {
-  const have = Object.entries(draft.fields).map(([k, v]) => `  ${k}: ${v}`).join("\n");
-  const want = draft.asked.map((k) => `  ${MENTOR_FIELD_HELP[k] || k}`).join("\n");
-  return `${draft.note ? draft.note + "\n\n" : ""}Adding mentor ${draft.fields.name}. So far:\n${have}\n\nPlease send the rest (reply with whatever you have; anything unknown can stay blank except the email):\n${want}`;
+  const first = firstOf(draft.fields.name);
+  const have = Object.entries(draft.fields).map(([k, v]) => `${pretty(k)}: ${v}`).join("\n");
+  const want = draft.asked.map((k) => MENTOR_FIELD_HELP[k] || k).join("\n");
+  return `${draft.note ? draft.note + "\n\n" : ""}Happy to add ${draft.fields.name} to the Mentor CRM. Here is what I have so far:\n\n${have}\n\nCould you send me the rest? Reply with whatever you have, in any order; anything you do not know can stay blank except the email:\n\n${want}\n\nOnce I have ${first}'s email I will show you the full record before saving anything.`;
 }
 
 export async function confirmMessage(draft) {
   if (draft.kind === "mentor" && draft.action === "create") {
     const rec = await mentorRecordFromDraft(draft);
-    return `${draft.note ? draft.note + "\n\n" : ""}Here is the mentor record as it will be written:\n${describeMentor(rec)}${draft.fields.lesson && draft.fields.lesson !== "none" ? `\n  assign to lesson ${draft.fields.lesson} for cohort ${await cohortYear()}` : ""}\n\nReply YES to save.`;
+    const first = firstOf(rec.name);
+    return `${draft.note ? draft.note + "\n\n" : ""}Here is ${first}'s record before I save it:\n\n${describeMentor(rec)}${draft.fields.lesson && draft.fields.lesson !== "none" ? `\nLesson: ${draft.fields.lesson} (cohort ${await cohortYear()})` : ""}\n\nReply YES and I will add ${first} to the Mentor CRM, or reply with any changes.`;
   }
   if (draft.kind === "mentor") {
     const current = (await readAll("mentors")).find((m) => m.id === draft.targetId);
     const next = applyMentorPatch(current, draft.fields);
-    return `Update for ${current.name}:\n${diff(describeMentorMap(current), describeMentorMap(next))}${draft.fields.lesson ? `\n  assign to lesson ${draft.fields.lesson} for cohort ${await cohortYear()}` : ""}\n\nReply YES to save.`;
+    const first = firstOf(current.name);
+    return `Here is the change to ${current.name}'s record:\n\n${diff(describeMentorMap(current), describeMentorMap(next))}${draft.fields.lesson ? `\nLesson: assign to lesson ${draft.fields.lesson} (cohort ${await cohortYear()})` : ""}\n\nReply YES and I will update ${first}'s record, or reply with any changes.`;
   }
   if (draft.kind === "applications") {
     const current = (await readSetting("applicationWindow")) || {};
     const next = { ...current, ...draft.fields };
     const show = (w) => ({ opens: fmtWhen(w.opensAt), closes: fmtWhen(w.closesAt) });
     if (next.opensAt && next.closesAt && next.opensAt >= next.closesAt) return `That would close applications before they open (opens ${fmtWhen(next.opensAt)}, closes ${fmtWhen(next.closesAt)}). Give me a close date after the open date.`;
-    return `Update for the application window:\n${diff(show(current), show(next))}\n\nReply YES to save.`;
+    return `Here is the change to the application window:\n\n${diff(show(current), show(next))}\n\nReply YES and I will update it, or reply with any changes.`;
   }
   const current = (await readAll("lessons")).find((l) => l.id === draft.targetId);
-  return `Update for lesson ${draft.targetName}:\n${diff(pick(current, LESSON_FIELDS), pick({ ...current, ...draft.fields }, LESSON_FIELDS))}\n\nReply YES to save.`;
+  return `Here is the change to lesson ${draft.targetName}:\n\n${diff(pick(current, LESSON_FIELDS), pick({ ...current, ...draft.fields }, LESSON_FIELDS))}\n\nReply YES and I will update it, or reply with any changes.`;
 }
 
 const pick = (o, keys) => Object.fromEntries(keys.map((k) => [k, o?.[k] ?? ""]));
@@ -158,8 +195,8 @@ const pick = (o, keys) => Object.fromEntries(keys.map((k) => [k, o?.[k] ?? ""]))
 function diff(before, after) {
   return Object.keys(after)
     .filter((k) => String(before[k] ?? "") !== String(after[k] ?? ""))
-    .map((k) => `  ${k}: ${before[k] || "(blank)"}  ->  ${after[k] || "(blank)"}`)
-    .join("\n") || "  (no change)";
+    .map((k) => `${pretty(k)}: ${before[k] || "(blank)"} becomes ${after[k] || "(blank)"}`)
+    .join("\n") || "(no change)";
 }
 
 function describeMentorMap(m) {
@@ -184,7 +221,7 @@ function applyContactFlags(contacts, f) {
 
 function describeMentor(m) {
   return Object.entries(describeMentorMap(m))
-    .map(([k, v]) => `  ${k}: ${v || "(blank)"}`)
+    .map(([k, v]) => `${pretty(k)}: ${v || "(blank)"}`)
     .join("\n");
 }
 
@@ -241,7 +278,7 @@ export async function commitDraft(draft, sourceMessageId) {
     if (draft.fields.lesson && draft.fields.lesson !== "none") rec.assignedLessons = [await lessonAssignment(draft.fields.lesson, null)];
     rec.agentLastChange = { before: null, after: snapshot(rec), at, sourceMessageId };
     await writeInsert("mentors", rec);
-    return `Saved: ${rec.name} added to the Mentor CRM${rec.assignedLessons.length ? ` and assigned to lesson ${rec.assignedLessons[0].lessonNumber}` : ""}.`;
+    return `Done: ${rec.name} is now in the Mentor CRM${rec.assignedLessons.length ? ` and assigned to lesson ${rec.assignedLessons[0].lessonNumber}` : ""}. You can see the record at ${CRM_URL}?tab=mentors.`;
   }
   if (draft.kind === "mentor") {
     const current = (await readAll("mentors")).find((m) => m.id === draft.targetId);
@@ -253,7 +290,7 @@ export async function commitDraft(draft, sourceMessageId) {
     }
     const patch = { ...diffFields(current, next), agentLastChange: { before: snapshot(current), after: snapshot(next), at, sourceMessageId } };
     await writeUpdate("mentors", current.id, patch);
-    return `Saved: ${current.name} updated.`;
+    return `Done: ${current.name}'s record is updated.`;
   }
   if (draft.kind === "applications") {
     const current = (await readSetting("applicationWindow")) || { opensAt: null, closesAt: null, applicantDomain: "tfs.ca" };
@@ -261,14 +298,14 @@ export async function commitDraft(draft, sourceMessageId) {
     if (next.opensAt && next.closesAt && next.opensAt >= next.closesAt) throw new Error("the close time must be after the open time.");
     await writeSetting("applicationWindow", next);
     await writeSetting("applicationWindowAgentLastChange", { before: current, after: next, at, sourceMessageId });
-    return `Saved: applications open ${fmtWhen(next.opensAt)} and close ${fmtWhen(next.closesAt)}.`;
+    return `Done: applications now open ${fmtWhen(next.opensAt)} and close ${fmtWhen(next.closesAt)}.`;
   }
   const current = (await readAll("lessons")).find((l) => l.id === draft.targetId);
   if (!current) throw new Error("That lesson no longer exists.");
   const next = normalizeLesson({ ...current, ...draft.fields }, current.id);
   const patch = { ...diffFields(current, next), agentLastChange: { before: snapshot(current), after: snapshot(next), at, sourceMessageId } };
   await writeUpdate("lessons", current.id, patch);
-  return `Saved: lesson ${draft.targetName} updated.`;
+  return `Done: lesson ${draft.targetName} is updated.`;
 }
 
 async function lessonAssignment(lessonNumber, excludeMentorId) {
@@ -291,51 +328,4 @@ function diffFields(before, after) {
   const out = {};
   for (const k of Object.keys(after)) if (k !== "id" && JSON.stringify(before[k]) !== JSON.stringify(after[k])) out[k] = after[k];
   return out;
-}
-
-/** Undo: restore `before`; undoing a creation archives the record. Returns { draft, message } for confirmation. */
-export async function undoDraft(targetName) {
-  if (/application/i.test(targetName)) {
-    const last = await readSetting("applicationWindowAgentLastChange");
-    if (!last) return { status: "not_found", message: "I have not changed the application window, so there is nothing to undo." };
-    const draft = { kind: "applications", action: "undo", targetId: "applicationWindow", targetName: "the application window", fields: {}, missing: [], createdAt: new Date().toISOString() };
-    return { status: "ready", draft, message: `Undo for the application window: back to opens ${fmtWhen(last.before?.opensAt)}, closes ${fmtWhen(last.before?.closesAt)} (as it was before my change on ${last.at.slice(0, 10)}).\n\nReply YES to undo.` };
-  }
-  const matches = await findMentors(targetName);
-  const lessons = matches.length ? [] : await findLessons(targetName);
-  const rec = matches[0] || lessons[0];
-  if (!rec) return { status: "not_found", message: `I could not find "${targetName}".` };
-  if (matches.length + lessons.length > 1) return { status: "ambiguous", message: `Which one? ${[...matches, ...lessons].map((r) => r.name || `${r.number}: ${r.title}`).join(", ")}.` };
-  if (!rec.agentLastChange) return { status: "not_found", message: `${rec.name || rec.title} has no change made by me to undo.` };
-  const kind = matches.length ? "mentor" : "lesson";
-  const { before } = rec.agentLastChange;
-  const draft = { kind, action: "undo", targetId: rec.id, targetName: rec.name || `${rec.number}: ${rec.title}`, fields: {}, missing: [], createdAt: new Date().toISOString() };
-  const message = before
-    ? `Undo for ${draft.targetName}: restore the record to how it was on ${rec.agentLastChange.at.slice(0, 10)}:\n${diff(kind === "mentor" ? describeMentorMap(rec) : pick(rec, LESSON_FIELDS), kind === "mentor" ? describeMentorMap(before) : pick(before, LESSON_FIELDS))}\n\nReply YES to undo.`
-    : `Undo for ${draft.targetName}: I created this record, so undoing it archives it (status set to "unresponsive" with a note; the data stays).\n\nReply YES to undo.`;
-  return { status: "ready", draft, message };
-}
-
-export async function commitUndo(draft, sourceMessageId) {
-  if (draft.kind === "applications") {
-    const last = await readSetting("applicationWindowAgentLastChange");
-    if (!last) throw new Error("Nothing to undo.");
-    const current = (await readSetting("applicationWindow")) || {};
-    const restored = { ...current, ...(last.before || { opensAt: null, closesAt: null }) };
-    await writeSetting("applicationWindow", restored);
-    await writeSetting("applicationWindowAgentLastChange", { before: current, after: restored, at: new Date().toISOString(), sourceMessageId, undo: true });
-    return `Undone: applications open ${fmtWhen(restored.opensAt)} and close ${fmtWhen(restored.closesAt)}.`;
-  }
-  const coll = draft.kind === "mentor" ? "mentors" : "lessons";
-  const rec = (await readAll(coll)).find((r) => r.id === draft.targetId);
-  if (!rec?.agentLastChange) throw new Error("Nothing to undo.");
-  const at = new Date().toISOString();
-  const { before } = rec.agentLastChange;
-  let next;
-  if (before) next = { ...before, id: rec.id };
-  else next = { ...rec, status: "unresponsive", notes: `${rec.notes ? rec.notes + "\n" : ""}Archived by EIB Assistant (undo of creation) on ${at.slice(0, 10)}.` };
-  const patch = { ...diffFields(rec, next), agentLastChange: { before: snapshot(rec), after: snapshot(next), at, sourceMessageId, undo: true } };
-  for (const k of Object.keys(rec)) if (!(k in next) && k !== "agentLastChange" && k !== "id") patch[k] = null;
-  await writeUpdate(coll, rec.id, patch);
-  return before ? `Undone: ${draft.targetName} restored.` : `Undone: ${draft.targetName} archived.`;
 }
