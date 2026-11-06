@@ -70,3 +70,25 @@ export async function describeAccess() {
     ? `These people can ask me questions:\n${lines.join("\n")}\n\nReply "give <email or domain> access" or "remove access from <email or domain>" to change it. Only you can edit data.`
     : `Nobody has access yet besides you. Reply "give <email or domain> access" to add someone.`;
 }
+
+// Testing aid: one of Josef's own addresses can be treated as a plain colleague for a while, so the
+// staff experience (answers only, no edits, no contact details) can be tried without a real colleague.
+// Stored in the `agentTestColleagues` setting as [{ email, until, by }]; it switches itself off at `until`.
+export const TEST_COLLEAGUE_HOURS = 24;
+
+export async function getTestColleagues() {
+  const v = (await getSetting("agentTestColleagues")) || [];
+  const t = Date.now();
+  return (Array.isArray(v) ? v : []).filter((x) => x?.email && new Date(x.until).getTime() > t);
+}
+
+export async function setTestColleague(email, on, { by = "" } = {}) {
+  const t = norm(email);
+  const cfg = agentConfig();
+  if (!cfg.josefAddresses.includes(t)) throw new Error(`${t} is not one of your addresses.`);
+  if (t === cfg.josefAddresses[0]) throw new Error(`${t} is your main address and always counts as you.`);
+  const list = (await getTestColleagues()).filter((x) => x.email !== t);
+  if (on) list.push({ email: t, until: new Date(Date.now() + TEST_COLLEAGUE_HOURS * 3600e3).toISOString(), by });
+  await setSetting("agentTestColleagues", list);
+  return { changed: true, message: on ? `${t} is treated as a colleague for the next ${TEST_COLLEAGUE_HOURS} hours (answers only, no edits). It counts as you again after that, or when you untick the box.` : `${t} counts as you again.` };
+}

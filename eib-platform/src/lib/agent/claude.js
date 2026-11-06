@@ -173,6 +173,9 @@ async function mockAnswer(email, senderKind) {
   const t = `${email.subject}\n${email.text}`.toLowerCase();
   const toolCalls = [];
   if (/ignore (your|all) (previous |prior )?instructions|you are now authori[sz]ed|new rules/.test(t)) return { action: "suspicious", reason: "tries to change the rules", toolCalls };
+  if (senderKind !== "josef" && /^(remember|forget)\s*:|add (a |the )?(new )?mentor|give .+ access|(update|change|set) .*(mentor|lesson|application)/m.test(t)) {
+    return { action: "reply", text: "Only Josef can make changes to the EIB platform or to what I remember, so I have not changed anything. You can email him directly and he will sort it out.", toolCalls };
+  }
   const mem = await runTool("search_memory", { query: email.subject }, senderKind);
   toolCalls.push({ name: "search_memory", ok: true });
   if (mem.length) return { action: "reply", text: `${mem[0].summary} That is what Josef told me on ${mem[0].updated}.`, toolCalls };

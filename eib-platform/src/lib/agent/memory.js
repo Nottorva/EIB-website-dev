@@ -86,7 +86,7 @@ export async function memoryContext() {
   const items = (await listMemory()).filter((m) => !isArchived(m));
   if (!items.length) return "";
   const lines = items.map((m) => `- [${m.status}] ${m.topic}: ${m.summary} (updated ${String(m.updatedAt).slice(0, 10)})`);
-  return `<memory>\nThings Josef has told the assistant to keep in mind:\n${lines.join("\n")}\n</memory>`;
+  return `<memory>\nThings Josef has told the assistant to keep in mind. Each line is the whole fact: repeat it as written, add nothing to it.\n${lines.join("\n")}\n</memory>`;
 }
 
 /** Topics matching some words, for "what do you remember about X" and the search tool. */

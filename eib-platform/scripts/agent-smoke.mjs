@@ -1,6 +1,6 @@
 // Regression suite for the EIB Email Agent, against a local dev server in sandbox mode:
 //
-//   AGENT_ADDRESS=assistant@joineib.ca TFS_WHITELIST_DOMAINS=tfs.ca JOSEF_ADDRESSES=josefm2173@gmail.com npm run dev
+//   AGENT_ADDRESS=assistant@joineib.ca TFS_WHITELIST_DOMAINS=tfs.ca JOSEF_ADDRESSES=josefm2173@gmail.com,jmarshall@tfs.ca npm run dev
 //   npm run smoke:agent
 //
 // No Resend key and no Anthropic key: webhooks are posted unsigned with the email inline, replies land in
@@ -298,6 +298,36 @@ async function run() {
   r = await deliver({ ...email({ from: JOSEF, name: "Josef", subject: "Re: Fwd: Venue fee", text: "", inReplyTo: draftMail.messageId, references: [r.mail.message_id, draftMail.messageId] }), text: null, html: htmlYes });
   check("HTML-only YES sends the draft", /^wrote: Sent to/.test(outcome(r)) && lastTo("ray@tfs.ca")?.subject === "Re: Venue fee" && outbox().length === n5 + 2, outcome(r));
   check("no second draft", !/I need your OK/.test(lastTo(JOSEF)?.text || ""));
+
+  head("Test switch on /agent: a second Josef address acting as a colleague");
+  const JOSEF2 = ((process.env.JOSEF_ADDRESSES || "").split(",")[1] || "").trim().toLowerCase();
+  if (!JOSEF2) console.log("skipped: JOSEF_ADDRESSES has a single address");
+  else {
+    const setSwitch = (on) => {
+      const d = db();
+      d.settings = d.settings || {};
+      d.settings.agentTestColleagues = on ? [{ email: JOSEF2, until: new Date(Date.now() + 3600e3).toISOString(), by: "smoke" }] : [];
+      fs.writeFileSync(DB, JSON.stringify(d, null, 2));
+    };
+    setSwitch(true);
+    const memBefore = (db().agent_memory || []).length;
+    r = await deliver(email({ from: JOSEF2, name: "Josef Marshall", subject: "Note", text: "remember: the venue is booked for March 3" }));
+    check("as a colleague, remember is refused politely and not escalated", /^answered/.test(outcome(r)) && /Only Josef can make changes/.test(lastTo(JOSEF2)?.text || ""), outcome(r));
+    check("memory unchanged", (db().agent_memory || []).length === memBefore);
+    r = await deliver(email({ from: JOSEF2, name: "Josef Marshall", subject: "Mentor coverage", text: "Which lessons still need a mentor, and what is the phone number for each confirmed mentor?" }));
+    const m2 = lastTo(JOSEF2);
+    check("as a colleague, answered with no phone numbers", /^answered/.test(outcome(r)) && Boolean(m2) && !/\+?\d[\d\s().-]{7,}\d/.test(m2.text), (m2?.text || "").slice(0, 200));
+    const fwd5 = `reply saying the fee is 50 dollars per student\n\n---------- Forwarded message ---------\nFrom: Josef Marshall <${JOSEF2}>\nDate: Thu, Nov 6, 2026 at 9:40 AM\nSubject: Fee question\nTo: Josef Marshall <${JOSEF}>\n\nHi Josef, what is the fee per student?\n`;
+    r = await deliver({ ...email({ from: JOSEF, name: "Josef", subject: "Fwd: Fee question", text: fwd5 }), text: fwd5 });
+    check("forward: replied to the colleague address", outcome(r) === `forward: replied to ${JOSEF2}`, outcome(r));
+    const sentId = lastTo(JOSEF2)?.messageId;
+    const n6 = outbox().length;
+    r = await deliver(email({ from: JOSEF2, name: "Josef Marshall", subject: "Re: Fee question", text: "Thanks, and is that per term?", inReplyTo: sentId, references: [sentId] }));
+    check("their reply is passed to Josef with a summary, nothing sent to them", /passed to Josef, no reply sent/.test(outcome(r)) && outbox().length === n6 + 1 && /replied to the email I sent/.test(lastTo(JOSEF)?.text || "") && lastTo(JOSEF)?.to?.length === 1, outcome(r));
+    setSwitch(false);
+    r = await deliver(email({ from: JOSEF2, name: "Josef Marshall", subject: "Note", text: "remember: the venue is booked for March 3" }));
+    check("switch off: the address counts as Josef again", /^remember:/.test(outcome(r)), outcome(r));
+  }
 
   head("Agent only CC'd by someone else stays silent; duplicates; auto-replies; rule changes");
   const n3 = outbox().length;

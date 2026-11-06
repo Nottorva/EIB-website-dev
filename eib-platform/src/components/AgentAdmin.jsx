@@ -90,6 +90,18 @@ export default function AgentAdmin() {
         <div style={{ fontSize: 13, color: COLORS.sub, marginTop: 14 }}>
           Only mail that passes authentication from {c.josefAddresses.join(", ")} can change data. Everyone below can ask questions.
         </div>
+        {c.josefAddresses.slice(1).map((addr) => {
+          const on = (data.testColleagues || []).find((t) => t.email === addr);
+          return (
+            <label key={addr} style={{ display: "flex", alignItems: "flex-start", gap: 10, marginTop: 12, padding: "10px 12px", borderRadius: 10, border: `1px solid ${on ? COLORS.amberBorder : COLORS.border}`, background: on ? COLORS.amberSoft : "transparent", cursor: "pointer" }}>
+              <input type="checkbox" checked={Boolean(on)} disabled={busy} onChange={(e) => act(() => api.put("/api/agent/admin", { testColleague: addr, on: e.target.checked }))} style={{ marginTop: 3 }} />
+              <span style={{ fontSize: 13.5, color: COLORS.text }}>
+                <strong>Treat {addr} as a colleague for testing.</strong> While ticked, mail from it gets answers only: no edits, no memory changes, no student contact details, and its replies on a thread the assistant wrote are passed to you.
+                {on ? ` On until ${fmtShortDateTime(on.until)}, then it counts as you again by itself.` : ` It switches itself back after ${data.testColleagueHours} hours.`}
+              </span>
+            </label>
+          );
+        })}
       </Section>
 
       <Section icon={Users} title="Who can email the assistant">

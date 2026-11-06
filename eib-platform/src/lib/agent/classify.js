@@ -7,7 +7,7 @@
 //   unknown    everyone else, including any Josef-lookalike that fails authentication.
 
 import { agentConfig } from "./config";
-import { effectiveAccess } from "./access";
+import { effectiveAccess, getTestColleagues } from "./access";
 
 const pass = (v) => String(v || "").toLowerCase() === "pass";
 
@@ -20,7 +20,9 @@ export async function classifySender(email) {
   const cfg = agentConfig();
   const from = email.from;
   const authed = pass(email.auth.dkim) && pass(email.auth.dmarc);
-  const isJosefAddress = cfg.josefAddresses.includes(from.email);
+  // Test switch on /agent: one of Josef's addresses may be acting as a plain colleague for a while.
+  const actingAsColleague = (await getTestColleagues()).some((t) => t.email === from.email);
+  const isJosefAddress = cfg.josefAddresses.includes(from.email) && !actingAsColleague;
   let signedByOwnDomain = false;
   if (email.dkimDomains.length) {
     signedByOwnDomain = email.dkimDomains.some((d) => d === from.domain || orgDomain(d) === orgDomain(from.domain));
@@ -32,8 +34,8 @@ export async function classifySender(email) {
   if (isJosefAddress) return { kind: "unknown", why: `Josef address but authentication failed (spf ${email.auth.spf}, dkim ${email.auth.dkim}, dmarc ${email.auth.dmarc})`, lookalike: true };
 
   const access = await effectiveAccess();
-  const whitelisted = access.allAddresses.includes(from.email) || access.allDomains.some((d) => from.domain === d || from.domain.endsWith(`.${d}`));
-  if (whitelisted && authed) return { kind: "tfs", why: "on the access list and authenticated" };
+  const whitelisted = actingAsColleague || access.allAddresses.includes(from.email) || access.allDomains.some((d) => from.domain === d || from.domain.endsWith(`.${d}`));
+  if (whitelisted && authed) return { kind: "tfs", why: actingAsColleague ? "one of Josef's addresses, treated as a colleague for testing" : "on the access list and authenticated" };
   if (whitelisted) return { kind: "unknown", why: `on the access list but authentication failed (dkim ${email.auth.dkim}, dmarc ${email.auth.dmarc})` };
   return { kind: "unknown", why: "not on the access list" };
 }

@@ -1,15 +1,15 @@
 // /api/agent/admin (super admin only): what the /agent page shows and edits.
 //   GET            config status, access list, open escalations, FAQ, recent threads
-//   PUT            { grant: "email or domain", name? } | { revoke: "email or domain" }
+//   PUT            { grant: "email or domain", name? } | { revoke: "email or domain" } | { testColleague: "email", on: bool }
 import { guarded, readJson, HttpError } from "@/lib/auth";
 import { agentConfig } from "@/lib/agent/config";
-import { effectiveAccess, grantAccess, revokeAccess } from "@/lib/agent/access";
+import { effectiveAccess, grantAccess, revokeAccess, getTestColleagues, setTestColleague, TEST_COLLEAGUE_HOURS } from "@/lib/agent/access";
 import { listEscalations, listThreads } from "@/lib/agent/db";
 import { listMemory, isArchived } from "@/lib/agent/memory";
 
 async function snapshot() {
   const cfg = agentConfig();
-  const [access, escalations, memory, threads] = await Promise.all([effectiveAccess(), listEscalations(() => true), listMemory(), listThreads(() => true)]);
+  const [access, escalations, memory, threads, testColleagues] = await Promise.all([effectiveAccess(), listEscalations(() => true), listMemory(), listThreads(() => true), getTestColleagues()]);
   return {
     config: {
       address: cfg.address || null,
@@ -24,6 +24,8 @@ async function snapshot() {
       cron: Boolean(cfg.cronSecret),
     },
     access,
+    testColleagues,
+    testColleagueHours: TEST_COLLEAGUE_HOURS,
     escalations: escalations.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt))).slice(0, 50),
     memory: { total: memory.length, waiting: memory.filter((m) => m.status === "waiting" && !isArchived(m)).length, archived: memory.filter(isArchived).length },
     threads: threads
@@ -41,7 +43,8 @@ export const PUT = guarded(["superAdmin"], async ({ req, user }) => {
   try {
     if (body.grant) result = await grantAccess(body.grant, { name: body.name || "", addedBy: user.email });
     else if (body.revoke) result = await revokeAccess(body.revoke);
-    else throw new HttpError(400, "Send { grant } or { revoke }.");
+    else if (body.testColleague) result = await setTestColleague(body.testColleague, Boolean(body.on), { by: user.email });
+    else throw new HttpError(400, "Send { grant }, { revoke } or { testColleague, on }.");
   } catch (e) {
     throw new HttpError(e.status || 400, e.message);
   }
