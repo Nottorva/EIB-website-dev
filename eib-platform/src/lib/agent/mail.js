@@ -177,6 +177,10 @@ function normalize(data, rawHeaders) {
 export function htmlToText(html) {
   return String(html || "")
     .replace(/<style[\s\S]*?<\/style>|<script[\s\S]*?<\/script>/gi, "")
+    // Gmail, Outlook and Apple Mail wrap the quoted earlier message in a marked block: drop it whole.
+    .replace(/<div[^>]*class="[^"]*\b(gmail_quote|moz-cite-prefix|yahoo_quoted)\b[^"]*"[\s\S]*$/i, "")
+    .replace(/<div[^>]*id="(divRplyFwdMsg|appendonsend)"[\s\S]*$/i, "")
+    .replace(/<blockquote[^>]*type="cite"[\s\S]*$/i, "")
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<\/(p|div|li|h\d|tr)>/gi, "\n")
     .replace(/<[^>]+>/g, "")
@@ -194,13 +198,27 @@ export function htmlToText(html) {
 export function stripQuotedReply(text) {
   const lines = String(text || "").replace(/\r\n/g, "\n").split("\n");
   const out = [];
-  for (const line of lines) {
-    if (/^On .+ wrote:$/.test(line.trim()) || /^-{2,}\s*Original Message\s*-{2,}$/i.test(line.trim()) || /^From:\s.+$/.test(line) && out.length > 0 && /^Sent:|^Date:/.test(lines[lines.indexOf(line) + 1] || "")) break;
-    if (/^Le .+ a écrit\s*:$/.test(line.trim())) break;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const t = line.trim();
+    // "On <date> <person> wrote:" even when the quoted text continues on the same line (HTML conversions).
+    if (/^On\b.{0,300}\bwrote:/.test(t) || /^Le\b.{0,300}a écrit\s*:/.test(t)) break;
+    if (/^-{2,}\s*Original Message\s*-{2,}/i.test(t)) break;
+    if (/^From:\s.+/.test(t) && out.length > 0 && /^(Sent|Date):/.test((lines[i + 1] || "").trim())) break;
     if (line.startsWith(">")) continue;
     out.push(line);
   }
   return out.join("\n").trim();
+}
+
+/** The first non-empty line of the sender's own text, for yes/no decisions. */
+export function firstLineOf(text) {
+  return (
+    String(text || "")
+      .split("\n")
+      .map((l) => l.trim())
+      .find(Boolean) || ""
+  );
 }
 
 // ---------------------------------------------------------------------------

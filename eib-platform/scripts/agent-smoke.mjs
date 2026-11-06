@@ -288,6 +288,17 @@ async function run() {
   r = await deliver({ ...email({ from: JOSEF, name: "Josef", subject: "yes", text: quotedYes }), text: quotedYes });
   check("YES sends the draft, not a new forward", /^wrote: Sent to/.test(outcome(r)) && lastTo("ray@tfs.ca")?.subject === "Re: Deposit" && outbox().length === n4 + 2, outcome(r));
 
+  head("YES as Gmail HTML, quote header on the same line as the quoted draft");
+  const fwd4 = `handle this\n\n---------- Forwarded message ---------\nFrom: Ray Lopez <ray@tfs.ca>\nDate: Thu, Nov 6, 2026 at 9:30 AM\nSubject: Venue fee\nTo: Josef Marshall <${JOSEF}>\n\nHi Josef, what will the venue fee be and when do you need it paid by?\n`;
+  r = await deliver({ ...email({ from: JOSEF, name: "Josef", subject: "Fwd: Venue fee", text: fwd4 }), text: fwd4 });
+  check("draft to Josef", /draft sent to Josef for OK/.test(outcome(r)), outcome(r));
+  const draftMail = lastTo(JOSEF);
+  const n5 = outbox().length;
+  const htmlYes = `<div dir="ltr">Yes</div><br><div class="gmail_quote"><div dir="ltr" class="gmail_attr">On Thu, Nov 6, 2026 at 2:27 PM EIB Assistant &lt;${AGENT}&gt; wrote:<br></div><blockquote class="gmail_quote">Hi Josef,<br><br>I need your OK on this one: the reply would commit you to a date.<br><br>Draft to Ray Lopez:<br>---------- Forwarded message ---------<br>From: Ray Lopez &lt;ray@tfs.ca&gt;<br>Subject: Venue fee<br></blockquote></div>`;
+  r = await deliver({ ...email({ from: JOSEF, name: "Josef", subject: "Re: Fwd: Venue fee", text: "", inReplyTo: draftMail.messageId, references: [r.mail.message_id, draftMail.messageId] }), text: null, html: htmlYes });
+  check("HTML-only YES sends the draft", /^wrote: Sent to/.test(outcome(r)) && lastTo("ray@tfs.ca")?.subject === "Re: Venue fee" && outbox().length === n5 + 2, outcome(r));
+  check("no second draft", !/I need your OK/.test(lastTo(JOSEF)?.text || ""));
+
   head("Agent only CC'd by someone else stays silent; duplicates; auto-replies; rule changes");
   const n3 = outbox().length;
   r = await deliver(email({ from: TFS, name: "Elana", to: ["orlaith@tfs.ca"], cc: [AGENT], subject: "FYI", text: "Looping the assistant in. What mentors are we missing?" }));

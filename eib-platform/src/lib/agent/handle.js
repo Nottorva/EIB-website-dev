@@ -6,7 +6,7 @@
 // to Josef. When the agent is not the only recipient it never replies to anyone but Josef.
 
 import { agentConfig, MAX_REPLIES_PER_THREAD_PER_HOUR, THREAD_CONTEXT_MESSAGES, DRAFT_EXPIRY_DAYS } from "./config";
-import { isAutomatedMail, reSubject, sendMail } from "./mail";
+import { isAutomatedMail, reSubject, sendMail, firstLineOf } from "./mail";
 import { classifySender, otherParticipants } from "./classify";
 import { runAnswer, runForward, classifyJosefIntent, relayAnswer, memoryPass, rememberNote, summarizeEmail, timed } from "./claude";
 import { buildDraft, commitDraft, confirmMessage } from "./edits";
@@ -349,7 +349,7 @@ async function handleJosef(email, thread) {
   // A pending step comes first. A YES that lost its thread but quotes "I need your OK on this one" is matched
   // to Josef's most recent forward draft.
   let pending = pendingOf(thread);
-  if (!pending && YES_RE.test(text) && /I need your OK on this one/i.test(email.fullText || "")) {
+  if (!pending && YES_RE.test(firstLineOf(text)) && /I need your OK on this one/i.test(email.fullText || "")) {
     const candidates = (await listThreads((t) => t.draft && t.draft.kind === "forward" && (t.participants || []).includes(email.from.email))).sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
     if (candidates[0]) {
       const other = candidates[0];
@@ -374,8 +374,9 @@ async function handleJosef(email, thread) {
     return "remove/undo request: pointed to the CRM";
   }
 
-  // A pending step is answered before any fresh intent detection.
-  const firstLine = text;
+  // A pending step is answered before any fresh intent detection. Yes and no are read from the first
+  // non-empty line of Josef's own words, never from anything quoted below.
+  const firstLine = firstLineOf(text);
   let intent;
   if (pending && pending.kind === "forward") {
     console.log(`[eib agent] pending forward draft to ${pending.targetName}; reply: ${firstLine.slice(0, 40)}`);
