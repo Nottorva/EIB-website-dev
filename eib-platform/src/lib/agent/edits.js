@@ -9,16 +9,20 @@ import { normalizeLesson } from "../data/lessons";
 
 const MENTOR_FIELD_HELP = {
   email: "email",
-  linkedin: "LinkedIn",
+  phone: "phone (optional)",
+  linkedin: "LinkedIn (optional)",
   organization: "organization",
   title: "title or role",
   lesson: "lesson number to assign (or 'none')",
   status: `status (${MENTOR_STATUSES.join(", ")})`,
-  phone: "phone (optional)",
+  preferred: "preferred contact method (email, phone or LinkedIn)",
+  publicContact: "which contact students may see (email, phone, LinkedIn or none)",
+  bio: "student-facing bio, one or two sentences (optional)",
   notes: "notes (optional)",
 };
 const MENTOR_REQUIRED = ["name", "email"];
-const MENTOR_ASK = ["email", "organization", "title", "linkedin", "lesson", "status"];
+const MENTOR_ASK = ["email", "organization", "title", "linkedin", "lesson", "status", "preferred", "publicContact", "bio"];
+const METHOD_LABEL = { email: "Email", phone: "Phone", linkedin: "LinkedIn" };
 const LESSON_FIELDS = ["date", "startTime", "endTime", "room", "mentorLocation", "mentorStartTime", "mentorEndTime", "mentorBrief", "title"];
 
 const norm = (s) => String(s || "").trim().toLowerCase();
@@ -97,7 +101,8 @@ function clean(fields) {
     const s = String(v ?? "").trim();
     if (!s) continue;
     if (k === "status" && !MENTOR_STATUSES.includes(s.toLowerCase())) continue;
-    out[k] = k === "status" ? s.toLowerCase() : s;
+    if ((k === "preferred" || k === "publicContact") && !/^(email|phone|linkedin|none)$/i.test(s)) continue;
+    out[k] = k === "status" || k === "preferred" || k === "publicContact" ? s.toLowerCase() : s;
   }
   return out;
 }
@@ -161,11 +166,20 @@ function describeMentorMap(m) {
   return {
     name: m.name,
     status: m.status,
-    contacts: (m.contacts || []).map((c) => `${c.method}: ${c.value}`).join("; "),
+    contacts: (m.contacts || []).map((c) => `${c.method}: ${c.value}${c.preferred ? " (preferred)" : ""}${c.public ? " (students can see)" : " (private)"}`).join("; "),
     publicRole: m.publicRole || "",
+    publicBio: m.publicBio || "",
     notes: m.notes || "",
     years: m.years || "",
   };
+}
+
+/** Apply preferred / publicContact choices to a contacts array. */
+function applyContactFlags(contacts, f) {
+  const list = contacts.map((c) => ({ ...c }));
+  if (f.preferred) for (const c of list) c.preferred = c.method.toLowerCase() === f.preferred;
+  if (f.publicContact) for (const c of list) c.public = f.publicContact !== "none" && c.method.toLowerCase() === f.publicContact;
+  return list;
 }
 
 function describeMentor(m) {
@@ -180,19 +194,19 @@ async function mentorRecordFromDraft(draft) {
   if (f.email) contacts.push({ id: newId("contact"), method: "Email", value: f.email, preferred: true, public: true });
   if (f.phone) contacts.push({ id: newId("contact"), method: "Phone", value: f.phone, preferred: false, public: false });
   if (f.linkedin) contacts.push({ id: newId("contact"), method: "LinkedIn", value: f.linkedin, preferred: false, public: false });
-  const role = [f.title, f.organization].filter(Boolean).join(", ");
+  const role = f.publicRole || [f.title, f.organization].filter(Boolean).join(", ");
   return {
     id: newId("mentor"),
     name: f.name,
     status: MENTOR_STATUSES.includes(f.status) ? f.status : "contacted",
-    contacts,
+    contacts: applyContactFlags(contacts, f),
     notes: f.notes || "",
     lastContactedAt: "",
     years: f.years || "",
     tags: [],
     assignedLessons: [],
     publicRole: role,
-    publicBio: "",
+    publicBio: f.bio || "",
   };
 }
 
@@ -211,7 +225,11 @@ function applyMentorPatch(current, f) {
   if (f.linkedin) setContact("LinkedIn", f.linkedin, false);
   if (f.notes) next.notes = f.notes;
   if (f.years) next.years = f.years;
-  if (f.title || f.organization) next.publicRole = [f.title, f.organization].filter(Boolean).join(", ") || current.publicRole;
+  if (f.publicRole) next.publicRole = f.publicRole;
+  else if (f.title || f.organization) next.publicRole = [f.title, f.organization].filter(Boolean).join(", ") || current.publicRole;
+  if (f.bio) next.publicBio = f.bio;
+  next.contacts = applyContactFlags(next.contacts, f);
+  void METHOD_LABEL;
   return next;
 }
 

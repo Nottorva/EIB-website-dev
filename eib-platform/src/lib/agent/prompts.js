@@ -27,10 +27,13 @@ intent:
 - "undo": he asks to undo the last change to a named record.
 - "confirm": the email is a yes (yes, confirmed, go ahead, do it, oui, correct, looks good) to something the assistant proposed.
 - "cancel": he asks to drop the pending change (no, cancel, never mind, forget it).
+- "access_list": he asks who has access to the assistant ("who has agent access?", "who can email you?").
+- "access_add": he gives someone access ("give elana@tfs.ca access", "let everyone at tfs.ca use the agent"). target_name is the email address or domain; fields.name the person's name if given.
+- "access_remove": he removes someone's access. target_name is the email address or domain.
 - "other": anything else.
 
 For "edit", fill the edit object. target_kind is "mentor", "lesson", or "applications". target_name is the mentor's name, the lesson number or title, or "applications". action is "create" or "update". fields holds only values he actually stated, keyed as:
- mentors: name, email, phone, linkedin, organization, title, status (contacted | responsive | unresponsive | unsure | confirmed), lesson (lesson number to assign), notes, years
+ mentors: name, email, phone, linkedin, organization, title, status (contacted | responsive | unresponsive | unsure | confirmed), lesson (lesson number to assign), notes, years, publicRole (the student-facing title line, e.g. "CEO, Terra CO2"), bio (the student-facing bio), preferred (which contact method is preferred: email | phone | linkedin), publicContact (which contact method students may see: email | phone | linkedin | none)
  lessons: date (YYYY-MM-DD), startTime, endTime, room, mentorLocation, mentorStartTime, mentorEndTime, mentorBrief (what kind of mentor the lesson needs), title
  applications: opensAt, closesAt as ISO 8601 date-times in Toronto time (for example "2026-12-01T09:00:00-05:00"); a date with no time opens at 09:00 and closes at 23:59; "now" means the current moment; "none" or "no close" clears that bound
 Today's date is ${new Date().toISOString().slice(0, 10)}.
@@ -40,7 +43,7 @@ Never invent a value. Leave fields out when he did not state them. For a reply t
 export const JOSEF_INTENT_SCHEMA = {
   type: "object",
   properties: {
-    intent: { type: "string", enum: ["question", "edit", "undo", "confirm", "cancel", "other"] },
+    intent: { type: "string", enum: ["question", "edit", "undo", "confirm", "cancel", "access_list", "access_add", "access_remove", "other"] },
     edit: {
       type: "object",
       properties: {
@@ -60,6 +63,10 @@ export const JOSEF_INTENT_SCHEMA = {
             lesson: { type: "string" },
             notes: { type: "string" },
             years: { type: "string" },
+            publicRole: { type: "string" },
+            bio: { type: "string" },
+            preferred: { type: "string" },
+            publicContact: { type: "string" },
             date: { type: "string" },
             startTime: { type: "string" },
             endTime: { type: "string" },

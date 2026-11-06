@@ -141,11 +141,16 @@ function mockIntent(email, pendingDraft) {
   const empty = { target_kind: "", target_name: "", action: "", fields: {}, dont_save_faq: false };
   if (/^(yes|oui|confirmed|go ahead|do it|looks good)\b/.test(t)) return { intent: "confirm", edit: empty };
   if (/^(no|cancel|never mind|forget it)\b/.test(t)) return { intent: "cancel", edit: empty };
+  if (/who (has|can)\b.*(access|email you|use)/i.test(text)) return { intent: "access_list", edit: empty };
+  const give = /(?:give|grant|add)\s+(\S+@\S+|[a-z0-9.-]+\.[a-z]{2,})\s+(?:agent\s+)?access/i.exec(text) || /(?:give|grant)\s+(?:agent\s+)?access\s+to\s+(\S+)/i.exec(text);
+  if (give) return { intent: "access_add", edit: { ...empty, target_name: give[1].replace(/[.,]$/, "") } };
+  const rm = /remove\s+(?:agent\s+)?access\s+(?:from|for)\s+(\S+)/i.exec(text) || /revoke\s+(\S+)/i.exec(text);
+  if (rm) return { intent: "access_remove", edit: { ...empty, target_name: rm[1].replace(/[.,]$/, "") } };
   const undo = /undo the last change to (.+)/i.exec(text);
   if (undo) return { intent: "undo", edit: { ...empty, target_kind: "mentor", target_name: undo[1].trim().replace(/[.!]$/, "") } };
   const fields = {};
   for (const [key, re] of Object.entries({
-    email: /email:?\s*([^\s,]+@[^\s,]+)/i,
+    email: /email(?::| to| is)?\s*([^\s,]+@[^\s,]+)/i,
     phone: /phone:?\s*([+()\d\s-]{7,})/i,
     linkedin: /linkedin:?\s*(\S+)/i,
     organization: /organi[sz]ation:?\s*([^,\n]+)/i,
@@ -153,6 +158,10 @@ function mockIntent(email, pendingDraft) {
     status: /status:?\s*(contacted|responsive|unresponsive|unsure|confirmed)/i,
     lesson: /lesson:?\s*(\d+)/i,
     notes: /notes?:?\s*([^\n]+)/i,
+    publicRole: /(?:public role|student[- ]facing title|role line):?\s*([^\n]+)/i,
+    bio: /bio:?\s*([^\n]+)/i,
+    preferred: /preferred:?\s*(email|phone|linkedin)/i,
+    publicContact: /public(?: contact)?:?\s*(email|phone|linkedin|none)/i,
     date: /date:?\s*(\d{4}-\d{2}-\d{2})/i,
     room: /room:?\s*([^,\n]+)/i,
     mentorBrief: /brief:?\s*([^\n]+)/i,

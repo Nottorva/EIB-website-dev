@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Pencil, Users, ClipboardList, GraduationCap, FileText, Globe } from "lucide-react";
+import { Pencil, Users, ClipboardList, GraduationCap, FileText, Globe, Bot } from "lucide-react";
 import { getAccessState, authMode } from "@/lib/auth";
 import { ROLE_LABEL } from "@/lib/roles";
 
@@ -51,6 +51,13 @@ const TOOLS = [
     icon: Globe,
     roles: ["superAdmin"],
     blurb: "The public site: ticker strip and testimonials. Lessons are published from the Lesson Editor.",
+  },
+  {
+    href: "/agent",
+    label: "EIB Assistant",
+    icon: Bot,
+    roles: ["superAdmin"],
+    blurb: "The email agent: who may ask it questions, what is waiting on you, and the answers it has learned.",
   },
   {
     href: "/apply",

@@ -422,11 +422,19 @@ and DMARC verdicts plus the DKIM signing domain from the raw message), never fro
 - **Escalate.** No answer in the data, or a judgment call. The asker hears "I'm checking with Josef"; Josef
   gets an `[EIB Q-xxxx]` email with what was found; his plain-language reply is relayed into the asker's thread
   and saved to the FAQ (unless he says "don't save this"). One reminder after 3 days, then silence.
-- **Edit.** Verified Josef only. Add or update mentors (email, organization, title, LinkedIn, status, lesson
-  assignment, notes), set a lesson's date, time, room or mentor brief (what kind of mentor it needs), set when
-  applications open and close. The agent gathers missing fields over as many emails as needed, shows the full
-  record, and writes only after a reply of YES. Every record keeps one `agentLastChange` snapshot; "undo the
-  last change to X" restores it (undoing a creation archives the record). No deletes.
+- **Edit.** Verified Josef only. Add or update mentors (email, phone, LinkedIn, organization and title, the
+  student-facing role line and bio, which contact is preferred, which contact students may see, status, lesson
+  assignment with the seat rule checked up front, notes), set a lesson's date, time, room or mentor brief (what
+  kind of mentor it needs), set when applications open and close, and manage who may email the agent ("who has
+  agent access?", "give name@tfs.ca access", "remove access from name@tfs.ca"). The agent gathers missing fields
+  over as many emails as needed, shows the full record, and writes only after a reply of YES. Every record keeps
+  one `agentLastChange` snapshot; "undo the last change to X" restores it (undoing a creation archives the
+  record). No deletes.
+
+**`/agent` page** (super admin, "EIB Assistant" on the hub and "Assistant" in the top bar): which services are
+connected, who may email the agent (the Vercel whitelist plus the list Josef manages, editable there and by
+email; stored in the `agentAccess` setting), escalations waiting on Josef, the FAQ it has learned (entries can
+be forgotten), and recent threads with what the agent did. API: `/api/agent/admin`.
 
 When the agent is only CC'd it stores the email as context and stays silent. Auto-replies, bounces, the
 agent's own mail, and anyone trying to change its rules get no reply (the last is forwarded as suspicious).
@@ -437,7 +445,7 @@ go to `data/agent-outbox.jsonl`, and with no `ANTHROPIC_API_KEY` a small mock st
 
 ```
 AGENT_ADDRESS=assistant@joineib.ca TFS_WHITELIST_DOMAINS=tfs.ca JOSEF_ADDRESSES=josefm2173@gmail.com npm run dev
-npm run smoke:agent      # 53 checks: the spec's test checklist, in sandbox mode
+npm run smoke:agent      # 66 checks: the spec's test checklist plus access and mentor edits, in sandbox mode
 ```
 
 **Manual setup (dashboards, in this order).**

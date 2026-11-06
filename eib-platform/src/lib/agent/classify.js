@@ -3,10 +3,11 @@
 //
 //   josef      From is one of JOSEF_ADDRESSES, DKIM and DMARC pass, and a DKIM signature is from that
 //              address's domain (or DMARC-aligned when the raw signature list is unavailable).
-//   tfs        From domain in TFS_WHITELIST_DOMAINS or address in TFS_WHITELIST_ADDRESSES, DKIM/DMARC pass.
+//   tfs        From domain or address is on the access list (env whitelist plus the stored list), DKIM/DMARC pass.
 //   unknown    everyone else, including any Josef-lookalike that fails authentication.
 
 import { agentConfig } from "./config";
+import { effectiveAccess } from "./access";
 
 const pass = (v) => String(v || "").toLowerCase() === "pass";
 
@@ -15,7 +16,7 @@ function orgDomain(domain) {
   return parts.length > 2 ? parts.slice(-2).join(".") : domain;
 }
 
-export function classifySender(email) {
+export async function classifySender(email) {
   const cfg = agentConfig();
   const from = email.from;
   const authed = pass(email.auth.dkim) && pass(email.auth.dmarc);
@@ -30,10 +31,11 @@ export function classifySender(email) {
   if (isJosefAddress && authed && signedByOwnDomain) return { kind: "josef", why: "address listed, DKIM and DMARC pass, signed by own domain" };
   if (isJosefAddress) return { kind: "unknown", why: `Josef address but authentication failed (spf ${email.auth.spf}, dkim ${email.auth.dkim}, dmarc ${email.auth.dmarc})`, lookalike: true };
 
-  const whitelisted = cfg.whitelistAddresses.includes(from.email) || cfg.whitelistDomains.some((d) => from.domain === d || from.domain.endsWith(`.${d}`));
-  if (whitelisted && authed) return { kind: "tfs", why: "whitelisted and authenticated" };
-  if (whitelisted) return { kind: "unknown", why: `whitelisted address but authentication failed (dkim ${email.auth.dkim}, dmarc ${email.auth.dmarc})` };
-  return { kind: "unknown", why: "not on the whitelist" };
+  const access = await effectiveAccess();
+  const whitelisted = access.allAddresses.includes(from.email) || access.allDomains.some((d) => from.domain === d || from.domain.endsWith(`.${d}`));
+  if (whitelisted && authed) return { kind: "tfs", why: "on the access list and authenticated" };
+  if (whitelisted) return { kind: "unknown", why: `on the access list but authentication failed (dkim ${email.auth.dkim}, dmarc ${email.auth.dmarc})` };
+  return { kind: "unknown", why: "not on the access list" };
 }
 
 /** True when the agent is only in CC (not in To). */

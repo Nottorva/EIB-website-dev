@@ -217,6 +217,41 @@ async function run() {
   const l3 = db().lessons.find((l) => l.number === "3");
   check("brief written with agentLastChange", /seed round/.test(l3?.mentorBrief || "") && Boolean(l3?.agentLastChange), l3?.mentorBrief);
 
+  head("Josef manages who has access, by email");
+  r = await deliver(email({ from: JOSEF, name: "Josef", subject: "access", text: "who has agent access?" }));
+  check("list sent", /access list sent/.test(r.first.result?.outcome), r.first.result?.outcome);
+  check("list names the TFS domain from Vercel", /@tfs\.ca \(set on Vercel\)/.test(lastTo(JOSEF)?.text || ""), lastTo(JOSEF)?.text);
+  r = await deliver(email({ from: JOSEF, name: "Josef", subject: "access", text: "give orlaith@otherschool.org agent access" }));
+  check("grant proposed", /access grant proposed/.test(r.first.result?.outcome), r.first.result?.outcome);
+  const ar = r.mail.message_id;
+  const nBefore = outbox().length;
+  r = await deliver(email({ from: "orlaith@otherschool.org", name: "Orlaith", subject: "how many students?", text: "How many students this year?" }));
+  check("not yet: treated as unknown before YES", /unknown sender/.test(r.first.result?.outcome), r.first.result?.outcome);
+  void nBefore;
+  r = await deliver(email({ from: JOSEF, name: "Josef", subject: "Re: access", text: "yes", inReplyTo: ar, references: [ar] }));
+  check("granted on YES", /now has access/.test(r.first.result?.outcome), r.first.result?.outcome);
+  r = await deliver(email({ from: "orlaith@otherschool.org", name: "Orlaith", subject: "how many students?", text: "How many students this year?" }));
+  check("new person gets an answer", /answered/.test(r.first.result?.outcome), r.first.result?.outcome);
+  r = await deliver(email({ from: JOSEF, name: "Josef", subject: "access", text: "remove access from orlaith@otherschool.org" }));
+  const rr = r.mail.message_id;
+  r = await deliver(email({ from: JOSEF, name: "Josef", subject: "Re: access", text: "yes", inReplyTo: rr, references: [rr] }));
+  check("revoked on YES", /no longer has access/.test(r.first.result?.outcome), r.first.result?.outcome);
+  r = await deliver(email({ from: "orlaith@otherschool.org", name: "Orlaith", subject: "how many students?", text: "How many students this year?" }));
+  check("back to unknown after removal", /unknown sender/.test(r.first.result?.outcome), r.first.result?.outcome);
+
+  head("Mentor update: public role, bio, preferred and public contact");
+  r = await deliver(email({ from: JOSEF, name: "Josef", subject: "Dana", text: "update Dana Whitfield's email to dana@northbridge.vc, public role: Product Lead, Northbridge Ventures, bio: Dana runs product at Northbridge and has mentored three cohorts., preferred: email, public: email" }));
+  check("update drafted", /awaiting YES/.test(r.first.result?.outcome), r.first.result?.outcome);
+  const dr = r.mail.message_id;
+  r = await deliver(email({ from: JOSEF, name: "Josef", subject: "Re: Dana", text: "yes", inReplyTo: dr, references: [dr] }));
+  const dana = db().mentors.find((x) => x.name === "Dana Whitfield");
+  const danaEmail = dana?.contacts?.find((c) => c.method === "Email");
+  const danaPhone = dana?.contacts?.find((c) => c.method === "Phone");
+  check("email updated and preferred", danaEmail?.value === "dana@northbridge.vc" && danaEmail?.preferred === true, JSON.stringify(dana?.contacts));
+  check("phone no longer preferred, still private", danaPhone?.preferred === false && danaPhone?.public === false);
+  check("bio written", /three cohorts/.test(dana?.publicBio || ""), dana?.publicBio);
+  check("agentLastChange has before", Boolean(dana?.agentLastChange?.before));
+
   head("Josef cancels a draft");
   r = await deliver(email({ from: JOSEF, name: "Josef", subject: "another mentor", text: "add a mentor, Temp Person" }));
   const cr = r.mail.message_id;

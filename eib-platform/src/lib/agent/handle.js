@@ -6,7 +6,8 @@ import { isAutomatedMail, reSubject, sendMail } from "./mail";
 import { classifySender, agentOnlyCcd, otherParticipants } from "./classify";
 import { runAnswer, classifyJosefIntent, relayAnswer } from "./claude";
 import { buildDraft, commitDraft, confirmMessage, undoDraft, commitUndo } from "./edits";
-import { getThread, saveThread, createEscalation, findEscalation, updateEscalation, saveFaq, newId } from "./db";
+import { getThread, saveThread, createEscalation, findEscalation, updateEscalation, saveFaq } from "./db";
+import { describeAccess, grantAccess, revokeAccess } from "./access";
 
 const now = () => new Date().toISOString();
 const shortId = () => Math.random().toString(36).slice(2, 7);
@@ -65,23 +66,27 @@ export async function handleEmail(email) {
   const automated = isAutomatedMail(email);
   if (automated) return { ...log, outcome: `ignored: ${automated}` };
 
-  const sender = classifySender(email);
+  const sender = await classifySender(email);
   log.sender = sender.kind;
   const thread = await loadThread(email);
+  thread.lastFrom = email.from.email;
+  thread.lastAt = now();
 
   // CC mode: read quietly, unless verified Josef addresses the assistant explicitly.
   if (agentOnlyCcd(email)) {
     const addressed = sender.kind === "josef" && /\b(assistant|eib assistant)\b[,:]?\s/i.test(email.text || "");
     if (!addressed) {
       thread.mode = thread.mode || "context";
+      thread.lastOutcome = "stored as context (CC only)";
       await saveThread(thread);
-      return { ...log, outcome: "stored as context (CC only)" };
+      return { ...log, outcome: thread.lastOutcome };
     }
   }
 
   if (repliesInLastHour(thread) >= MAX_REPLIES_PER_THREAD_PER_HOUR) {
+    thread.lastOutcome = "rate cap: no reply";
     await saveThread(thread);
-    return { ...log, outcome: "rate cap: no reply" };
+    return { ...log, outcome: thread.lastOutcome };
   }
 
   let outcome;
@@ -89,7 +94,12 @@ export async function handleEmail(email) {
     if (sender.kind === "josef") outcome = await handleJosef(email, thread);
     else if (sender.kind === "tfs") outcome = await handleStaff(email, thread, sender);
     else outcome = await handleUnknown(email, thread, sender);
+  } catch (e) {
+    outcome = `error: ${e.message}`;
+    throw e;
   } finally {
+    thread.lastOutcome = outcome;
+    thread.senderKind = sender.kind;
     await saveThread(thread);
   }
   return { ...log, outcome };
@@ -204,7 +214,12 @@ async function handleJosef(email, thread) {
     }
     const draft = thread.draft;
     try {
-      const done = draft.action === "undo" ? await commitUndo(draft, email.messageId) : await commitDraft(draft, email.messageId);
+      const done =
+        draft.kind === "access"
+          ? (draft.action === "grant" ? await grantAccess(draft.targetId, { name: draft.fields.name, addedBy: email.from.email }) : await revokeAccess(draft.targetId)).message
+          : draft.action === "undo"
+            ? await commitUndo(draft, email.messageId)
+            : await commitDraft(draft, email.messageId);
       thread.draft = null;
       await josefReply(done);
       return `wrote: ${done}`;
@@ -218,6 +233,22 @@ async function handleJosef(email, thread) {
     thread.mode = "edit-cancelled";
     await josefReply("Dropped. Nothing was written.");
     return "draft cancelled";
+  }
+  if (intent.intent === "access_list") {
+    await josefReply(await describeAccess());
+    return "access list sent";
+  }
+  if (intent.intent === "access_add" || intent.intent === "access_remove") {
+    const target = String(intent.edit.target_name || "").trim();
+    if (!target) {
+      await josefReply("Who? Give me an email address or a domain.");
+      return "access: no target";
+    }
+    const draft = { kind: "access", action: intent.intent === "access_add" ? "grant" : "revoke", targetId: target, targetName: target, fields: { name: intent.edit.fields?.name || "" }, missing: [], createdAt: now() };
+    thread.draft = draft;
+    thread.mode = "edit";
+    await josefReply(draft.action === "grant" ? `Give ${target} access to ask me questions${target.includes("@") ? "" : " (everyone at that domain)"}?\n\nReply YES to confirm.` : `Remove ${target}'s access?\n\nReply YES to confirm.`);
+    return `access ${draft.action} proposed, awaiting YES`;
   }
   if (intent.intent === "undo") {
     const r = await undoDraft(intent.edit.target_name);
