@@ -403,3 +403,62 @@ Google sign-in against the JSON file store, or Atlas with the dev role-switch UR
 - Revoking a student's `users` row when they lose "approved" status.
 - Terminus. Its role in the architecture is still unconfirmed.
 - Cloudflare R2 (dropped: links replaced uploads).
+
+## EIB Email Agent
+
+An email assistant at `AGENT_ADDRESS` (for example `assistant@joineib.ca`) that answers routine EIB questions
+from TFS staff, escalates what it cannot answer to Josef, and edits joineib data only when Josef asks. Spec:
+`EIB-Email-Agent-Spec.md` (Nov 6, 2026). Code: `src/lib/agent/`, routes `POST /api/agent/inbound` (Resend
+webhook) and `GET /api/agent/remind` (daily cron, `vercel.json`).
+
+**Three modes, decided by who sent the email.** Identity comes from email authentication (Resend's SPF, DKIM
+and DMARC verdicts plus the DKIM signing domain from the raw message), never from the From line alone.
+
+- **Answer.** A whitelisted TFS sender (`TFS_WHITELIST_DOMAINS` / `TFS_WHITELIST_ADDRESSES`, authenticated)
+  asks a question. Claude reads joineib through fixed tools (lessons, mentors, open mentor slots, cohort, the
+  EIB Documents Drive folder, past answers) and replies. Student names go to TFS staff; contact details,
+  application answers and grades never leave the server by email. Josef is CC'd on every reply that is not
+  addressed only to him.
+- **Escalate.** No answer in the data, or a judgment call. The asker hears "I'm checking with Josef"; Josef
+  gets an `[EIB Q-xxxx]` email with what was found; his plain-language reply is relayed into the asker's thread
+  and saved to the FAQ (unless he says "don't save this"). One reminder after 3 days, then silence.
+- **Edit.** Verified Josef only. Add or update mentors (email, organization, title, LinkedIn, status, lesson
+  assignment, notes), set a lesson's date, time, room or mentor brief (what kind of mentor it needs), set when
+  applications open and close. The agent gathers missing fields over as many emails as needed, shows the full
+  record, and writes only after a reply of YES. Every record keeps one `agentLastChange` snapshot; "undo the
+  last change to X" restores it (undoing a creation archives the record). No deletes.
+
+When the agent is only CC'd it stores the email as context and stays silent. Auto-replies, bounces, the
+agent's own mail, and anyone trying to change its rules get no reply (the last is forwarded as suspicious).
+Resend retries are deduplicated on the email id; at most 5 replies per thread per hour.
+
+**Local sandbox.** With no `RESEND_API_KEY` the webhook may be unsigned and carry the email inline, replies
+go to `data/agent-outbox.jsonl`, and with no `ANTHROPIC_API_KEY` a small mock stands in for Claude:
+
+```
+AGENT_ADDRESS=assistant@joineib.ca TFS_WHITELIST_DOMAINS=tfs.ca JOSEF_ADDRESSES=josefm2173@gmail.com npm run dev
+npm run smoke:agent      # 53 checks: the spec's test checklist, in sandbox mode
+```
+
+**Manual setup (dashboards, in this order).**
+
+1. Resend: enable receiving on the agent's domain (or a subdomain if the root domain already has mail) and add
+   the MX record Resend shows; confirm SPF, DKIM, DMARC pass for sending; turn off open and click tracking;
+   create a webhook for `email.received` pointing at `https://www.joineib.ca/api/agent/inbound` and copy its
+   signing secret into `RESEND_WEBHOOK_SECRET`; the API key must allow sending and reading received emails.
+2. MongoDB Atlas: user `eib-agent-read` (read on `mentors`, `lessons`, `users`, `settings`, `events`,
+   `applications`) and `eib-agent-write` (read and write on `mentors`, `lessons`, `settings`). Put their
+   connection strings in `MONGODB_AGENT_READ_URI` / `MONGODB_AGENT_WRITE_URI`. The agent's own bookkeeping
+   collections (`agent_processed`, `agent_threads`, `agent_escalations`, `agent_faq`) use the app's main
+   `MONGODB_URI`, since neither agent user can write them.
+3. Google Drive: an "EIB Documents" folder shared with TFS; a Google Cloud service account with Drive read
+   access, added to the folder as Viewer; its key JSON (one line) in `GOOGLE_SERVICE_ACCOUNT_JSON` and the
+   folder id (from the folder's URL) in `EIB_DRIVE_FOLDER_ID`. Name files predictably: "Lesson 3 - Run of Show".
+4. Vercel: every `AGENT_*`, `TFS_*`, `JOSEF_ADDRESSES`, `MONGODB_AGENT_*`, `GOOGLE_*`, `EIB_DRIVE_FOLDER_ID`,
+   `ANTHROPIC_API_KEY` and `CRON_SECRET` variable from `.env.example`, then redeploy. Until `AGENT_ADDRESS` and
+   `RESEND_WEBHOOK_SECRET` are set the inbound route answers 401 and nothing runs.
+
+**Open decisions** (from the spec, still Josef's call): root domain or subdomain for the address; whole TFS
+domain or named people only; whether student leaders are whitelisted and see names; whether the TFS account may
+forward school mail outside; written mentor criteria per lesson (the Lesson Editor's mentor brief, which the
+agent can also set by email).
