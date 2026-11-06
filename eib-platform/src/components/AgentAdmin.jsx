@@ -1,10 +1,10 @@
 "use client";
 
 // /agent (super admin): the EIB Email Agent's control panel. Who may email it, what it has been asked,
-// what is waiting on Josef, the FAQ it has learned, and whether each service is connected.
+// the memory counts, recent threads, and whether each service is connected. Escalations are not listed: each one is emailed to Josef.
 
 import React, { useEffect, useState } from "react";
-import { Bot, Plus, Trash2, CircleCheck, Circle, Mail, Inbox, BookOpen, Users } from "lucide-react";
+import { Bot, Plus, Trash2, CircleCheck, Circle, Mail, BookOpen, Users } from "lucide-react";
 import { COLORS, PageTitle, Card, fieldStyle, Notice, Loading, PrimaryButton, IconButton, SectionLabel, EmptyState } from "./ui";
 import { api } from "@/lib/api";
 import { fmtShortDateTime } from "@/lib/format";
@@ -64,7 +64,6 @@ export default function AgentAdmin() {
     }
   };
   const c = data.config;
-  const open = data.escalations.filter((e) => e.status === "open");
 
   return (
     <div style={{ maxWidth: 860, margin: "0 auto", padding: "30px 20px 60px" }}>
@@ -138,20 +137,6 @@ export default function AgentAdmin() {
           </PrimaryButton>
         </form>
         <div style={{ fontSize: 13, color: COLORS.sub, marginTop: 10 }}>By email: &ldquo;who has agent access?&rdquo;, &ldquo;give name@tfs.ca access&rdquo;, &ldquo;remove access from name@tfs.ca&rdquo;.</div>
-      </Section>
-
-      <Section icon={Inbox} title={`Waiting on you (${open.length})`}>
-        {!open.length ? <EmptyState>Nothing open. Escalations show here until you reply to their [EIB Q-id] email.</EmptyState> : null}
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {open.map((e) => (
-            <div key={e.id} style={{ border: `1px solid ${COLORS.amberBorder}`, background: COLORS.amberSoft, borderRadius: 12, padding: "12px 14px" }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: COLORS.amber }}>
-                [EIB Q-{e.shortId}] · {e.askerName || e.askerEmail} · {fmtShortDateTime(e.createdAt)}
-              </div>
-              <div style={{ fontSize: 14, color: COLORS.text, marginTop: 4, whiteSpace: "pre-wrap" }}>{e.question}</div>
-            </div>
-          ))}
-        </div>
       </Section>
 
       <Section icon={BookOpen} title="Memory">

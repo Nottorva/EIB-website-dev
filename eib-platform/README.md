@@ -457,8 +457,7 @@ jargon, no em dashes.
 the pending step of a thread by References/In-Reply-To, then by every message id seen or sent, then by sender
 and subject, then by the quoted body, so a "yes" or a batch of details is never read as a new request.
 
-**`/agent` page** (super admin): which services are connected, who may email the agent (editable), escalations
-waiting on Josef, memory counts, and recent threads with what the agent did. It also has a test switch per
+**`/agent` page** (super admin): which services are connected, who may email the agent (editable), memory counts, and recent threads with what the agent did. It also has a test switch per
 extra `JOSEF_ADDRESSES` entry ("Treat x as a colleague for testing"): while ticked, mail from that address is
 handled as whitelisted staff (answers only, no edits, no memory changes, no contact details); it switches
 itself off after 24 hours. Stored in the `agentTestColleagues` setting.
