@@ -151,12 +151,16 @@ function normalize(data, rawHeaders) {
     .map((s) => s.trim())
     .filter(Boolean);
   const text = String(data.text || "") || htmlToText(data.html || "");
+  // Resend's `to` is the envelope recipient (the agent's own address), not the To line the sender wrote.
+  // The header To and Cc say who the email was really addressed to, which decides CC mode.
+  const headerTo = parseAddressList(headers.to);
+  const headerCc = parseAddressList(headers.cc);
   return {
     id: data.id || data.email_id || "",
     messageId: String(data.message_id || headers["message-id"] || "").trim(),
     from,
-    to: parseAddressList(data.to?.length ? data.to : headers.to),
-    cc: parseAddressList(data.cc?.length ? data.cc : headers.cc),
+    to: headerTo.length ? headerTo : parseAddressList(data.to),
+    cc: headerCc.length ? headerCc : parseAddressList(data.cc),
     subject: String(data.subject || headers.subject || ""),
     text: stripQuotedReply(text),
     fullText: text,

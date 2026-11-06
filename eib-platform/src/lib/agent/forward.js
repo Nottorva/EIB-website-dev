@@ -13,8 +13,22 @@ const MARKERS = [
  * Returns null when the email is not a forward. Otherwise:
  * { instruction, original: { from: {email,name}, subject, body } }
  */
+/** The sender's own text: lines quoted with ">" and anything under "On … wrote:" are removed, but forwarded
+ *  blocks (which Gmail pastes inline, unquoted) are kept. */
+function unquoted(fullText) {
+  const out = [];
+  for (const line of String(fullText || "").replace(/\r\n/g, "\n").split("\n")) {
+    if (/^On .+ wrote:\s*$/.test(line.trim()) || /^Le .+ a écrit\s*:\s*$/.test(line.trim())) break;
+    if (line.startsWith(">")) continue;
+    out.push(line);
+  }
+  return out.join("\n");
+}
+
 export function parseForward(email) {
-  const text = String(email.fullText || "").replace(/\r\n/g, "\n");
+  // Only the sender's new text counts. A reply that quotes an earlier forward (for example a "YES" under a
+  // draft) must never read as a new forward, so the quoted part is left out.
+  const text = unquoted(email.fullText || email.text);
   let idx = -1;
   for (const re of MARKERS) {
     const m = re.exec(text);

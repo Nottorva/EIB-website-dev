@@ -235,6 +235,11 @@ async function run() {
   check("history kept", bill?.history?.length === 1);
   const sentSince = outbox().slice(n0);
   check("only a note to Josef's main address, nothing to the CC'd person", sentSince.length === 1 && sentSince[0].to.length === 1 && sentSince[0].to[0] === JOSEF && !(sentSince[0].cc || []).length && /Memory updated/.test(sentSince[0].subject) && /joineib\.ca\/memory/.test(sentSince[0].text), JSON.stringify(sentSince.map((m) => [m.to, m.cc, m.subject])));
+  // Resend's JSON `to` is the envelope (the agent itself); the header To/Cc decide CC mode.
+  r = await deliver(email({ from: JOSEF, name: "Josef", to: [AGENT], subject: "venue", text: "We are waiting on the library to confirm the EIB Night venue.", headers: { to: "jmarshall@tfs.ca", cc: AGENT } }));
+  check("envelope-to-agent but header CC: memory only, no answer", /group email/.test(outcome(r)) && !/answered|question/.test(outcome(r)), outcome(r));
+  const venueNote = lastTo(JOSEF);
+  check("note names the real recipient", /from your email to jmarshall@tfs\.ca/.test(venueNote?.text || "") && !/to me\b/.test(venueNote?.text || ""), venueNote?.text);
   const n1 = outbox().length;
   r = await deliver(email({ from: TFS, name: "Elana", to: ["jmarshall@tfs.ca"], cc: [AGENT], subject: "Re: billing", text: "Great, thanks Josef! What mentors are we missing?" }));
   check("reply-all from someone else: silent, no memory change", /stored as context/.test(outcome(r)) && outbox().length === n1 && db().agent_memory.length === bill && true || outbox().length === n1, outcome(r));
@@ -273,6 +278,15 @@ async function run() {
   const okRoot = r.mail.message_id;
   r = await deliver(email({ from: JOSEF, name: "Josef", subject: "Re: Fwd: Invoice timing", text: "yes", inReplyTo: okRoot, references: [okRoot] }));
   check("sent on YES to the original sender with Josef in CC", /^wrote: Sent to/.test(outcome(r)) && lastTo("ray@tfs.ca")?.subject === "Re: Invoice timing" && outbox().length === n2 + 2, outcome(r));
+
+  head("YES under a quoted draft (headers lost) still sends the stored draft");
+  const fwd3 = `handle this\n\n---------- Forwarded message ---------\nFrom: Ray Lopez <ray@tfs.ca>\nDate: Thu, Nov 6, 2026 at 9:20 AM\nSubject: Deposit\nTo: Josef Marshall <${JOSEF}>\n\nHi Josef, can you confirm the deposit amount and the date you will pay it?\n`;
+  r = await deliver({ ...email({ from: JOSEF, name: "Josef", subject: "Fwd: Deposit", text: fwd3 }), text: fwd3 });
+  check("draft to Josef", /draft sent to Josef for OK/.test(outcome(r)), outcome(r));
+  const n4 = outbox().length;
+  const quotedYes = `YES\n\nOn Thu, Nov 6, 2026 EIB Assistant <${AGENT}> wrote:\n> Hi Josef,\n>\n> I need your OK on this one: the reply would commit you to a date.\n>\n> Draft to Ray Lopez:\n>\n> ---------- Forwarded message ---------\n> From: Ray Lopez <ray@tfs.ca>\n> Subject: Deposit\n>\n> Thanks for your note.\n`;
+  r = await deliver({ ...email({ from: JOSEF, name: "Josef", subject: "yes", text: quotedYes }), text: quotedYes });
+  check("YES sends the draft, not a new forward", /^wrote: Sent to/.test(outcome(r)) && lastTo("ray@tfs.ca")?.subject === "Re: Deposit" && outbox().length === n4 + 2, outcome(r));
 
   head("Agent only CC'd by someone else stays silent; duplicates; auto-replies; rule changes");
   const n3 = outbox().length;

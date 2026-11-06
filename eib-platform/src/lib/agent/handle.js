@@ -346,10 +346,23 @@ async function handleJosef(email, thread) {
     return `relayed Josef's answer for Q-${q}${saved ? " and remembered it" : ""}`;
   }
 
-  // A forward with an instruction?
-  const fwd = parseForward(email);
-  const pending = pendingOf(thread);
-  if (fwd && !(pending && pending.kind === "forward")) return handleForward(email, thread, fwd);
+  // A pending step comes first. A YES that lost its thread but quotes "I need your OK on this one" is matched
+  // to Josef's most recent forward draft.
+  let pending = pendingOf(thread);
+  if (!pending && YES_RE.test(text) && /I need your OK on this one/i.test(email.fullText || "")) {
+    const candidates = (await listThreads((t) => t.draft && t.draft.kind === "forward" && (t.participants || []).includes(email.from.email))).sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
+    if (candidates[0]) {
+      const other = candidates[0];
+      thread.draft = other.draft;
+      other.draft = null;
+      await saveThread(other);
+      pending = pendingOf(thread);
+      console.log(`[eib agent] YES matched to forward draft from thread ${other.rootId} by quoted body`);
+    }
+  }
+  // A forward with an instruction? (Only the unquoted text is read, so a reply under a draft is never a forward.)
+  const fwd = pending?.kind === "forward" ? null : parseForward(email);
+  if (fwd) return handleForward(email, thread, fwd);
 
   // Explicit memory commands.
   const mem = await memoryCommand(email, thread);
@@ -365,6 +378,7 @@ async function handleJosef(email, thread) {
   const firstLine = text;
   let intent;
   if (pending && pending.kind === "forward") {
+    console.log(`[eib agent] pending forward draft to ${pending.targetName}; reply: ${firstLine.slice(0, 40)}`);
     if (YES_RE.test(firstLine)) intent = { intent: "confirm", edit: EMPTY_EDIT };
     else if (NO_RE.test(firstLine)) intent = { intent: "cancel", edit: EMPTY_EDIT };
     else {
