@@ -155,6 +155,40 @@ async function run() {
   check("record exists with email, public email, role, bio", sarah?.contacts?.[0]?.value === "sarah@example.com" && sarah?.contacts?.[0]?.public === true && /Founder, Acme Labs/.test(sarah?.publicRole || "") && /mentors early teams/.test(sarah?.publicBio || ""), JSON.stringify(sarah));
   check("Josef told with the CRM link", /Done: Sarah Chen is now in the Mentor CRM/.test(lastTo(JOSEF)?.text || "") && /joineib\.ca\/crm/.test(lastTo(JOSEF)?.text || ""));
 
+  head("A brand-new email with the same subject starts a new thread; memory untouched by CRM actions");
+  r = await deliver(email({ from: JOSEF, name: "Josef", subject: "new mentor", text: "add a mentor, Fresh Person" }));
+  check("new thread, asks for fields (no stale draft)", /asked for email/.test(outcome(r)), outcome(r));
+  check("no duplicate warning for a different name", !/already a mentor named/.test(lastTo(JOSEF)?.text || ""));
+  check("no memory topic created by the add flow", !db().agent_memory?.some((m) => /mentor|sarah|fresh/i.test(m.topic)), JSON.stringify(db().agent_memory?.map((m) => m.topic)));
+  r = await deliver(email({ from: JOSEF, name: "Josef", subject: "Re: new mentor", text: "cancel", inReplyTo: r.mail.message_id, references: [r.mail.message_id] }));
+  check("cancelled", /cancelled/.test(outcome(r)), outcome(r));
+
+  head("Rate cap: others are held with a note to Josef; Josef is never capped");
+  {
+    let prev = null;
+    let held = null;
+    for (let i = 0; i < 7; i++) {
+      const mail = email({ from: "orlaith@tfs.ca", name: "Orlaith", subject: i ? "Re: students" : "students", text: `How many students are in the cohort? (${i})`, inReplyTo: prev || undefined, references: prev ? [prev] : [] });
+      const res = await deliver(mail);
+      prev = mail.message_id;
+      if (/rate cap/.test(res.first.result?.outcome || "")) {
+        held = res.first.result.outcome;
+        break;
+      }
+    }
+    check("sixth reply in an hour is held, not dropped silently", /rate cap: held, Josef notified/.test(held || ""), held || "never capped");
+    check("Josef got the hold notice", /held: /.test(lastTo(JOSEF)?.subject || "") && /I held a message from orlaith@tfs\.ca/.test(lastTo(JOSEF)?.text || ""));
+    let josefCapped = false;
+    let jprev = null;
+    for (let i = 0; i < 7; i++) {
+      const mail = email({ from: JOSEF, name: "Josef", subject: i ? "Re: counts" : "counts", text: `How many students? (${i})`, inReplyTo: jprev || undefined, references: jprev ? [jprev] : [] });
+      const res = await deliver(mail);
+      jprev = mail.message_id;
+      if (/rate cap/.test(res.first.result?.outcome || "")) josefCapped = true;
+    }
+    check("Josef is never capped", !josefCapped);
+  }
+
   head("Undo, delete and remove are not done by email");
   r = await deliver(email({ from: JOSEF, name: "Josef", subject: "undo", text: "Undo the last change to Sarah Chen" }));
   check("points to the CRM", /pointed to the CRM/.test(outcome(r)) && /joineib\.ca\/crm/.test(lastTo(JOSEF)?.text || ""), outcome(r));
@@ -200,7 +234,7 @@ async function run() {
   check("existing topic updated to done, not duplicated", bill?.status === "done" && db().agent_memory.filter((x) => /billing/i.test(x.topic)).length === 1, JSON.stringify(db().agent_memory?.map((x) => [x.topic, x.status])));
   check("history kept", bill?.history?.length === 1);
   const sentSince = outbox().slice(n0);
-  check("only a note to Josef, nothing to the CC'd person", sentSince.length === 1 && sentSince[0].to.includes(JOSEF) && !sentSince[0].to.includes("jmarshall@tfs.ca") && /Memory updated/.test(sentSince[0].subject));
+  check("only a note to Josef's main address, nothing to the CC'd person", sentSince.length === 1 && sentSince[0].to.length === 1 && sentSince[0].to[0] === JOSEF && !(sentSince[0].cc || []).length && /Memory updated/.test(sentSince[0].subject) && /joineib\.ca\/memory/.test(sentSince[0].text), JSON.stringify(sentSince.map((m) => [m.to, m.cc, m.subject])));
   const n1 = outbox().length;
   r = await deliver(email({ from: TFS, name: "Elana", to: ["jmarshall@tfs.ca"], cc: [AGENT], subject: "Re: billing", text: "Great, thanks Josef! What mentors are we missing?" }));
   check("reply-all from someone else: silent, no memory change", /stored as context/.test(outcome(r)) && outbox().length === n1 && db().agent_memory.length === bill && true || outbox().length === n1, outcome(r));
@@ -220,25 +254,25 @@ async function run() {
   }
 
   head("Forward + handle this: answerable from data");
-  const fwdBody = `handle this\n\n---------- Forwarded message ---------\nFrom: Ray Lopez <jmarshall@tfs.ca>\nDate: Thu, Nov 6, 2026 at 9:00 AM\nSubject: Quick question\nTo: Josef Marshall <${JOSEF}>\n\nHi Josef, how many students are in the cohort this year?\n`;
+  const fwdBody = `handle this\n\n---------- Forwarded message ---------\nFrom: Ray Lopez <ray@tfs.ca>\nDate: Thu, Nov 6, 2026 at 9:00 AM\nSubject: Quick question\nTo: Josef Marshall <${JOSEF}>\n\nHi Josef, how many students are in the cohort this year?\n`;
   r = await deliver(email({ from: JOSEF, name: "Josef", subject: "Fwd: Quick question", text: "handle this", headers: {}, }));
   // the inline sandbox email uses `text` for the stripped body; give the full body too
   r = await deliver({ ...email({ from: JOSEF, name: "Josef", subject: "Fwd: Quick question", text: fwdBody }), text: fwdBody });
-  check("replied to the original sender", /forward: replied to jmarshall@tfs\.ca/.test(outcome(r)), outcome(r));
-  const fw = lastTo("jmarshall@tfs.ca");
+  check("replied to the original sender", /forward: replied to ray@tfs\.ca/.test(outcome(r)), outcome(r));
+  const fw = lastTo("ray@tfs.ca");
   check("direct reply, Josef in CC, subject Re:, first name", fw?.cc?.includes(JOSEF) && fw?.subject === "Re: Quick question" && /^Hi Ray,/.test(fw?.text || "") && /students/.test(fw?.text || ""), JSON.stringify({ cc: fw?.cc, subject: fw?.subject, head: (fw?.text || "").slice(0, 60) }));
   const fwdThreadId = fw?.messageId;
-  r = await deliver(email({ from: "jmarshall@tfs.ca", name: "Ray Lopez", subject: "Re: Quick question", text: "Thanks! Can I also get the list?", inReplyTo: fwdThreadId, references: [fwdThreadId] }));
+  r = await deliver(email({ from: "ray@tfs.ca", name: "Ray Lopez", subject: "Re: Quick question", text: "Thanks! Can I also get the list?", inReplyTo: fwdThreadId, references: [fwdThreadId] }));
   check("their later reply goes to Josef only", /passed to Josef, no reply sent/.test(outcome(r)) && lastTo(JOSEF)?.text?.includes("replied to the email I sent"), outcome(r));
 
   head("Forward it can't answer: draft comes to Josef, YES sends it");
-  const fwd2 = `reply and sort it out\n\n---------- Forwarded message ---------\nFrom: Ray Lopez <jmarshall@tfs.ca>\nDate: Thu, Nov 6, 2026 at 9:10 AM\nSubject: Invoice timing\nTo: Josef Marshall <${JOSEF}>\n\nHi Josef, when can we expect the invoice and what budget should we plan for?\n`;
+  const fwd2 = `reply and sort it out\n\n---------- Forwarded message ---------\nFrom: Ray Lopez <ray@tfs.ca>\nDate: Thu, Nov 6, 2026 at 9:10 AM\nSubject: Invoice timing\nTo: Josef Marshall <${JOSEF}>\n\nHi Josef, when can we expect the invoice and what budget should we plan for?\n`;
   r = await deliver({ ...email({ from: JOSEF, name: "Josef", subject: "Fwd: Invoice timing", text: fwd2 }), text: fwd2 });
   check("draft sent to Josef for OK", /draft sent to Josef for OK/.test(outcome(r)) && /I need your OK on this one/.test(lastTo(JOSEF)?.text || ""), outcome(r));
   const n2 = outbox().length;
   const okRoot = r.mail.message_id;
   r = await deliver(email({ from: JOSEF, name: "Josef", subject: "Re: Fwd: Invoice timing", text: "yes", inReplyTo: okRoot, references: [okRoot] }));
-  check("sent on YES to the original sender with Josef in CC", /^wrote: Sent to/.test(outcome(r)) && lastTo("jmarshall@tfs.ca")?.subject === "Re: Invoice timing" && outbox().length === n2 + 2, outcome(r));
+  check("sent on YES to the original sender with Josef in CC", /^wrote: Sent to/.test(outcome(r)) && lastTo("ray@tfs.ca")?.subject === "Re: Invoice timing" && outbox().length === n2 + 2, outcome(r));
 
   head("Agent only CC'd by someone else stays silent; duplicates; auto-replies; rule changes");
   const n3 = outbox().length;
@@ -266,6 +300,16 @@ async function run() {
   const lr = r.mail.message_id;
   r = await deliver(email({ from: JOSEF, name: "Josef", subject: "Re: lesson 3 mentor", text: "yes", inReplyTo: lr, references: [lr] }));
   check("brief written", /seed round/.test(db().lessons.find((l) => l.number === "3")?.mentorBrief || ""));
+
+  head("Every email: Josef on it, full sign-off and disclosure, plain text");
+  const everything = outbox();
+  const missingJosef = everything.filter((m) => !m.to.includes(JOSEF) && !(m.cc || []).includes(JOSEF));
+  check("Josef is in To or CC of every email", missingJosef.length === 0, JSON.stringify(missingJosef.map((m) => [m.to, m.cc, m.subject])));
+  const dupJosef = everything.filter((m) => m.to.includes(JOSEF) && (m.cc || []).includes(JOSEF));
+  check("never duplicated between To and CC", dupJosef.length === 0);
+  const badSignoff = everything.filter((m) => !/Best,\nEIB Assistant, on behalf of Josef Marshall\n--\nEIB Assistant is an AI assistant working for Josef Marshall\. You can reply to Josef directly anytime\.$/.test(m.text.trim()));
+  check("every email ends with the sign-off and the disclosure line", badSignoff.length === 0, JSON.stringify(badSignoff.map((m) => [m.subject, m.text.slice(-120)])));
+  check("no markdown asterisks or headings in any email", !everything.some((m) => /\*\*|^#{1,6}\s/m.test(m.text)));
 
   head("No internal jargon anywhere");
   const all = outbox().map((m) => m.text).join("\n");

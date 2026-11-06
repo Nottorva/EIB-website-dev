@@ -4,6 +4,7 @@
 import { agentConfig } from "./config";
 
 export const CRM_URL = "https://www.joineib.ca/crm";
+export const MEMORY_URL = "https://www.joineib.ca/memory";
 
 /** First name from a display name, a CRM record, or a signature line. Null when only an address is known. */
 export function firstNameOf({ name = "", email = "" } = {}) {
@@ -26,19 +27,38 @@ export function scrubDashes(s) {
     .replace(/,\s*,/g, ",");
 }
 
-/** A complete email body for a person outside: greeting, paragraphs, sign-off, disclosure. */
-export function compose({ firstName, body }) {
-  const { josefName } = agentConfig();
-  const greeting = firstName ? `Hi ${firstName},` : "Hi there,";
-  const text = scrubDashes(String(body || "").trim());
-  return `${greeting}\n\n${text}\n\nBest,\nEIB Assistant, on behalf of ${josefName}\n\n--\nEIB Assistant is an AI assistant working for ${josefName}. You can reply to Josef directly anytime.`;
+/** Emails are plain text: any markdown the model slipped in is turned into plain words. */
+export function stripMarkdown(s) {
+  return String(s ?? "")
+    .replace(/```[\s\S]*?```/g, (m) => m.replace(/```\w*\n?/g, ""))
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/(^|\s)\*([^*\n]+)\*(?=\s|$|[.,;:!?])/g, "$1$2")
+    .replace(/(^|\s)_([^_\n]+)_(?=\s|$|[.,;:!?])/g, "$1$2")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^\s*[-*+]\s+/gm, "- ")
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, "$1: $2");
 }
 
-/** A shorter note to Josef himself. */
+function signOff() {
+  const { josefName } = agentConfig();
+  return `Best,\nEIB Assistant, on behalf of ${josefName}\n--\nEIB Assistant is an AI assistant working for ${josefName}. You can reply to Josef directly anytime.`;
+}
+
+const clean = (body) => stripMarkdown(scrubDashes(String(body || "").trim()));
+
+/** A complete email body for a person outside: greeting, paragraphs, sign-off, disclosure. */
+export function compose({ firstName, body }) {
+  const greeting = firstName ? `Hi ${firstName},` : "Hi there,";
+  return `${greeting}\n\n${clean(body)}\n\n${signOff()}`;
+}
+
+/** A note to Josef himself: same sign-off and disclosure, shorter body. */
 export function composeForJosef(body) {
   const { josefName } = agentConfig();
   const first = firstNameOf({ name: josefName }) || "Josef";
-  return `Hi ${first},\n\n${scrubDashes(String(body || "").trim())}\n\nBest,\nEIB Assistant`;
+  return `Hi ${first},\n\n${clean(body)}\n\n${signOff()}`;
 }
 
 /** Model output sometimes arrives with its own greeting or sign-off; strip them so compose() adds one set. */

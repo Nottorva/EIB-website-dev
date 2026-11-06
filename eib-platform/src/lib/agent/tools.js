@@ -42,11 +42,14 @@ export const FORWARD_TERMINAL_TOOLS = [
 
 export const TERMINAL_NAMES = new Set([...TERMINAL_TOOLS, ...FORWARD_TERMINAL_TOOLS].map((t) => t.name));
 
+// Lesson dates are free text typed in the editor ("Dec 8, 2026"). They are calendar days, not moments, so
+// they are parsed as noon (whatever the server's clock) and compared as Toronto calendar days: no day shift.
 const parseDate = (v) => {
   const s = String(v || "").trim();
   if (!s) return null;
-  const d = /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(`${s}T12:00:00-05:00`) : new Date(s);
-  return Number.isNaN(d.getTime()) ? null : d;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return new Date(`${s}T12:00:00-05:00`);
+  const t = Date.parse(s);
+  return Number.isNaN(t) ? null : new Date(t + 12 * 3600 * 1000);
 };
 const today = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Toronto" });
 
@@ -76,10 +79,11 @@ export async function runTool(name, input, senderKind) {
       const rows = (await lessons()).map((l) => {
         const d = parseDate(l.date);
         const iso = d ? d.toLocaleDateString("en-CA", { timeZone: "America/Toronto" }) : null;
-        return { number: l.number, title: l.title, date: l.date || "not set", isoDate: iso, time: l.startTime && l.endTime ? `${l.startTime} to ${l.endTime}` : "not set", room: l.room || "not set", when: !iso ? "no date set" : iso < t ? "past" : iso === t ? "today" : iso <= in7 ? "within the next 7 days" : "later" };
+        const weekday = d ? d.toLocaleDateString("en-CA", { weekday: "long", timeZone: "America/Toronto" }) : "";
+        return { number: l.number, title: l.title, date: l.date || "not set", weekday, time: l.startTime && l.endTime ? `${l.startTime} to ${l.endTime}` : "not set", room: l.room || "not set", when: !iso ? "no date set" : iso < t ? "past" : iso === t ? "today" : iso <= in7 ? "within the next 7 days" : "later", sortKey: iso };
       });
-      rows.sort((a, b) => String(a.isoDate || "9999").localeCompare(String(b.isoDate || "9999")));
-      return { today: t, nextSevenDaysEnd: in7, lessons: rows, nextWeek: rows.filter((r) => r.when === "within the next 7 days" || r.when === "today") };
+      rows.sort((a, b) => String(a.sortKey || "9999").localeCompare(String(b.sortKey || "9999")));
+      return { today: t, nextSevenDaysEnd: in7, note: "Quote the `date` text exactly as given; sortKey is for ordering only.", lessons: rows.map(({ sortKey, ...r }) => r), nextWeek: rows.filter((r) => r.when === "within the next 7 days" || r.when === "today").map(({ sortKey, ...r }) => r) };
     }
     case "get_mentors": {
       const year = await cohortYear();

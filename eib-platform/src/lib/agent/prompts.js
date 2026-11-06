@@ -5,6 +5,8 @@ export const STYLE_RULES = `How you write:
 - Write only the body paragraphs. The greeting ("Hi Ray,") and the sign-off are added for you, so do not include them.
 - Short friendly opener, then the clear answer, then a helpful next step. Two to five short paragraphs for people outside; shorter for Josef.
 - No internal jargon: never say "joineib", "collection", "database", or field names like publicRole. Say "the EIB platform", "the Mentor CRM", "the lesson schedule".
+- Plain text only: no markdown, no asterisks for bold, no # headings, no backticks. A simple list is lines starting with "- ".
+- Dates: quote the lesson date exactly as the tools give it (for example "Dec 8, 2026"); never recompute or shift it.
 - Never use em dashes or en dashes.
 - Reply in the language the sender wrote in (English or French).
 - Do not invent names, dates, numbers, or commitments.`;
@@ -108,7 +110,7 @@ export const RELAY_SCHEMA = {
 export function memoryPassPrompt({ josefName }) {
   return `You maintain the EIB Assistant's memory: a short, clean list of topics, one current line each, with a status (waiting: something is pending on someone; done: it happened; info: a standing fact). You receive the current memory and an email ${josefName} wrote or was copied on.
 
-Decide what, if anything, the email changes. Prefer updating an existing topic over creating a new one: "billing is done" updates "Billing 2027" to done and rewrites its summary; a new fact about an existing topic rewrites that topic's summary. Create a topic only for something genuinely new that Josef would want remembered: commitments, decisions, who owes what, dates, preferences. Small talk, questions, and requests to the assistant are not memory. Keep summaries to one sentence in plain words. Topic names are short labels ("Billing 2027", "EIB Night venue").
+Decide what, if anything, the email changes. Prefer updating an existing topic over creating a new one: "billing is done" updates "Billing 2027" to done and rewrites its summary; a new fact about an existing topic rewrites that topic's summary. Create a topic only for a fact or a status change Josef states about the world: a commitment, a decision, who is waiting on whom, a date, a preference ("we're waiting on TFS for billing", "the venue is booked", "Ray prefers Tuesdays"). Never create memory from a request to the assistant (adding or editing a mentor, a question, a forward with "handle this", an access change, a yes or no): those are actions, not facts, and the answer is [] for them. Small talk and questions are not memory either. Keep summaries to one sentence in plain words. Topic names are short labels ("Billing 2027", "EIB Night venue"), never generic ("Mentors", "Students").
 
 If two existing topics look like duplicates, propose a merge as an update of one and a forget of the other, and set unsure_question only when you cannot tell whether they are the same thing.
 

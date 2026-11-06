@@ -205,6 +205,12 @@ export function stripQuotedReply(text) {
 export async function sendMail({ to, cc = [], subject, text, inReplyTo, references = [] }) {
   const cfg = agentConfig();
   const from = `${cfg.displayName} <${cfg.address}>`;
+  // Josef is on every email the agent sends, unless he is already in To or CC. Never duplicated.
+  const toList = [].concat(to).map((e) => String(e).toLowerCase());
+  const josef = cfg.josefAddresses[0];
+  cc = [...new Set([].concat(cc).map((e) => String(e).toLowerCase()).filter((e) => e && e !== cfg.address && !toList.includes(e)))];
+  if (josef && !toList.includes(josef) && !cc.includes(josef)) cc.push(josef);
+  to = toList;
   const headers = {};
   if (inReplyTo) {
     headers["In-Reply-To"] = inReplyTo;

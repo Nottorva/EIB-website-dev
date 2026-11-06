@@ -14,7 +14,7 @@ import { parseForward } from "./forward";
 import { listMemory, isArchived, memoryContext, upsertMemory, forgetMemory, searchMemory, describeMemory } from "./memory";
 import { getThread, listThreads, saveThread, createEscalation, findEscalation, updateEscalation } from "./db";
 import { describeAccess, grantAccess, revokeAccess } from "./access";
-import { compose, composeForJosef, bareBody, firstNameOf, scrubDashes, CRM_URL } from "./style";
+import { compose, composeForJosef, bareBody, firstNameOf, scrubDashes, CRM_URL, MEMORY_URL } from "./style";
 
 const now = () => new Date().toISOString();
 const shortId = () => Math.random().toString(36).slice(2, 7);
@@ -45,14 +45,18 @@ async function findThread(email) {
     const hit = all.find((t) => (t.messages || []).some((m) => ids.includes(m.messageId)) || (t.sent || []).some((s) => ids.includes(s.messageId) || (s.resendId && ids.some((id) => id.includes(s.resendId)))));
     if (hit) return { thread: hit, how: "message id" };
   }
+  // The fallbacks below are for replies whose headers went missing. A brand-new email (no In-Reply-To, no
+  // References, no "Re:" subject, no quoted reply) always starts a new thread.
+  const body = String(email.fullText || "").replace(/\s+/g, " ");
+  const looksLikeReply = ids.length > 0 || /^\s*(re|tr|aw)\s*:/i.test(email.subject || "") || body.includes("EIB Assistant");
+  if (!looksLikeReply) return { thread: null, how: "new" };
   const subject = normSubject(email.subject);
   const cutoff = Date.now() - 14 * 86400_000;
   const recentFromSender = all.filter((t) => Date.parse(t.updatedAt || 0) > cutoff && (t.participants || []).includes(email.from.email)).sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
   if (subject) {
     const same = recentFromSender.find((t) => normSubject(t.subject) === subject);
-    if (same) return { thread: same, how: "sender and subject" };
+    if (same) return { thread: same, how: "sender and subject (reply with missing headers)" };
   }
-  const body = String(email.fullText || "").replace(/\s+/g, " ");
   if (body.includes("EIB Assistant")) {
     for (const t of recentFromSender) {
       const lastSent = (t.sent || [])[t.sent.length - 1];
@@ -119,7 +123,8 @@ async function send(thread, email, { to, cc = [], subject, text, firstName, toJo
 }
 
 const replyToJosef = (thread, email, text) => send(thread, email, { to: [email.from.email], text, toJosef: true });
-const noteToJosef = (subject, text) => sendMail({ to: agentConfig().josefAddresses, subject, text: composeForJosef(text) });
+/** Notes go to Josef's primary address only (memory notes, holds, errors, forwards). */
+const noteToJosef = (subject, text) => sendMail({ to: [agentConfig().josefAddresses[0]], subject, text: composeForJosef(text) });
 
 /** Everyone else on the original email plus Josef: he is CC'd on every reply not addressed only to him. */
 function ccForAsker(email) {
@@ -167,8 +172,10 @@ export async function handleEmail(email) {
       } else {
         outcome = await memoryOnly(email, "group email");
       }
-    } else if (repliesInLastHour(thread) >= MAX_REPLIES_PER_THREAD_PER_HOUR) {
-      outcome = "rate cap: no reply";
+    } else if (sender.kind !== "josef" && !pendingOf(thread) && repliesInLastHour(thread) >= MAX_REPLIES_PER_THREAD_PER_HOUR) {
+      // Josef is never capped, and nothing inside an in-progress flow is dropped. Others are held, never silently.
+      await noteToJosef(`[EIB agent] held: ${email.subject}`, `I held a message from ${email.from.email} (${email.subject}) because of the rate limit (${MAX_REPLIES_PER_THREAD_PER_HOUR} replies in one thread within an hour). Their message:\n\n${(email.text || email.fullText).slice(0, 2000)}`);
+      outcome = "rate cap: held, Josef notified";
     } else if (sender.kind === "josef") {
       outcome = await handleJosef(email, thread);
     } else if (sender.kind === "tfs") {
@@ -211,7 +218,7 @@ async function runMemoryPass(email, { notify }) {
   if (r.unsure_question) await noteToJosef(`Memory question: ${email.subject}`, `${r.unsure_question}\n\nReply with "remember: ..." or "forget: ..." to settle it.`);
   if (!lines.length) return "";
   const what = lines.join("; ");
-  if (notify) await noteToJosef(`Memory updated: ${email.subject}`, `Memory updated: ${what} (from your email to ${email.to.map((a) => a.email).filter((e) => e !== agentConfig().address).join(", ") || "me"}).\n\nYou can review it at ${CRM_URL}?tab=memory.`);
+  if (notify) await noteToJosef(`Memory updated: ${email.subject}`, `Memory updated: ${what} (from your email to ${email.to.map((a) => a.email).filter((e) => e !== agentConfig().address).join(", ") || "me"}).\n\nYou can review it at ${MEMORY_URL}.`);
   return what;
 }
 
@@ -233,13 +240,13 @@ async function memoryCommand(email, thread) {
   const forget = /^forget\s*:\s*([\s\S]+)/i.exec(text);
   if (forget) {
     const gone = await forgetMemory(forget[1].trim());
-    await replyToJosef(thread, email, gone ? `Done. I have forgotten ${gone.topic}.` : `I could not find anything matching "${forget[1].trim()}" to forget. You can see everything I remember at ${CRM_URL}?tab=memory.`);
+    await replyToJosef(thread, email, gone ? `Done. I have forgotten ${gone.topic}.` : `I could not find anything matching "${forget[1].trim()}" to forget. You can see everything I remember at ${MEMORY_URL}.`);
     return gone ? `forget: ${gone.topic}` : "forget: nothing matched";
   }
   const what = /what do you (remember|know)(?:\s+about\s+(.+?))?\s*\??$/i.exec(text);
   if (what) {
     const items = what[2] ? await searchMemory(what[2]) : (await listMemory()).filter((m) => !isArchived(m));
-    await replyToJosef(thread, email, items.length ? `Here is what I have${what[2] ? ` on ${what[2].trim()}` : ""}:\n\n${describeMemory(items)}\n\nYou can edit any of it at ${CRM_URL}?tab=memory.` : `I have nothing on that yet. Tell me with "remember: ..." and I will keep it.`);
+    await replyToJosef(thread, email, items.length ? `Here is what I have${what[2] ? ` on ${what[2].trim()}` : ""}:\n\n${describeMemory(items)}\n\nYou can edit any of it at ${MEMORY_URL}.` : `I have nothing on that yet. Tell me with "remember: ..." and I will keep it.`);
     return "memory listed";
   }
   return null;
@@ -342,11 +349,7 @@ async function handleJosef(email, thread) {
   // A forward with an instruction?
   const fwd = parseForward(email);
   const pending = pendingOf(thread);
-  if (fwd && !(pending && pending.kind === "forward")) {
-    const outcome = await handleForward(email, thread, fwd);
-    await runMemoryPass(email, { notify: true }).catch((e) => console.error(`[eib agent] memory pass: ${e.message}`));
-    return outcome;
-  }
+  if (fwd && !(pending && pending.kind === "forward")) return handleForward(email, thread, fwd);
 
   // Explicit memory commands.
   const mem = await memoryCommand(email, thread);
@@ -454,8 +457,9 @@ async function handleJosef(email, thread) {
     }
   }
 
-  // Memory pass after the request itself, except on yes/no and housekeeping.
-  if (!["confirm", "cancel", "access_list"].includes(intent.intent)) {
+  // Memory pass only when Josef stated something rather than asked for an action: edits, questions, access
+  // changes, and yes/no never create memory by themselves.
+  if (intent.intent === "other" && !pending) {
     const what = await runMemoryPass(email, { notify: true }).catch((e) => {
       console.error(`[eib agent] memory pass: ${e.message}`);
       return "";
@@ -474,8 +478,8 @@ async function handleForward(email, thread, fwd, changes = "") {
     await replyToJosef(thread, email, "I could not read who the original email was from, so I did not send anything. Could you forward it again as a plain forward?");
     return "forward: original sender unreadable";
   }
-  if (cfg.josefAddresses.includes(fwd.original.from.email) || fwd.original.from.email === cfg.address) {
-    await replyToJosef(thread, email, "That forward is from you or from me, so there is nobody to reply to. Tell me what you would like done instead.");
+  if (fwd.original.from.email === cfg.address) {
+    await replyToJosef(thread, email, "That forward is one of my own emails, so there is nobody to reply to. Tell me what you would like done instead.");
     return "forward: nobody to reply to";
   }
   const r = await runForward({ instruction: fwd.instruction, original: fwd.original, memory: await memoryContext(), extra: changes });
