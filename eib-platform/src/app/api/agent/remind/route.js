@@ -4,6 +4,7 @@
 import { agentConfig, ESCALATION_REMINDER_DAYS, SIGNATURE } from "@/lib/agent/config";
 import { listEscalations, updateEscalation } from "@/lib/agent/db";
 import { sendMail } from "@/lib/agent/mail";
+import { purgeStaleMemory, DELETE_AFTER_DAYS } from "@/lib/agent/memory";
 
 export const dynamic = "force-dynamic";
 
@@ -26,5 +27,8 @@ export async function GET(req) {
     await updateEscalation(e.id, { reminderSentAt: new Date().toISOString() });
     sent += 1;
   }
-  return Response.json({ ok: true, reminded: sent });
+  // Memory housekeeping: topics nobody has used for a year are deleted.
+  const purged = await purgeStaleMemory();
+  if (purged.length) console.log(`[eib agent] memory: deleted ${purged.length} topic(s) unused for ${DELETE_AFTER_DAYS} days: ${purged.map((m) => m.topic).join("; ")}`);
+  return Response.json({ ok: true, reminded: sent, memoryDeleted: purged.map((m) => m.topic) });
 }

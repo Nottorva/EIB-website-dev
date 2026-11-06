@@ -440,7 +440,9 @@ verdicts plus the DKIM signing domain from the raw message), never from the From
   a one-line "Memory updated" note when something changed, nothing otherwise; reply-alls from other people are
   stored silently. All current memory is context for every reply. Website: `/memory` ("Long-term memory" on
   the hub, "Memory" in the top bar) and the same list as the Mentor CRM's Memory tab: grouped by status,
-  inline edits, add, delete, history; topics done for 60 days collapse into Archived. The old `agent_faq`
+  inline edits, add, delete, history; topics done for 60 days collapse into Archived, and a topic nobody has
+  used for 365 days is deleted by the daily cron (every create, update, edit, or answer that draws on it
+  refreshes its "last used" time). The old `agent_faq`
   collection is folded into memory: answers Josef gives to escalations are saved as "info" topics.
 - **Everyone else** gets a one-line acknowledgement and a forward to Josef. Auto-replies, bounces and the
   agent's own mail are ignored; emails that try to change its rules are forwarded as suspicious; Resend retries

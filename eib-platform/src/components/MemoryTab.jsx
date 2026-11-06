@@ -50,7 +50,7 @@ function Row({ item, onPatch, onDelete }) {
       </div>
       <textarea value={summary} onChange={(e) => setSummary(e.target.value)} onBlur={() => commit("summary", summary.trim())} rows={2} aria-label="Summary" style={{ ...fieldStyle, marginTop: 8, padding: "8px 10px", resize: "vertical" }} />
       <div style={{ fontSize: 12, color: COLORS.faint, marginTop: 6 }}>
-        Updated {fmtShortDateTime(item.updatedAt)} by {item.updatedBy === "web" ? "you, on the website" : "email"}
+        Updated {fmtShortDateTime(item.updatedAt)} by {item.updatedBy === "web" ? "you, on the website" : "email"} · last used {fmtShortDateTime(item.lastUsedAt)}
         {item.sourceEmailId ? (
           <>
             {" · "}
@@ -116,7 +116,7 @@ export default function MemoryTab() {
           <Brain size={15} /> What the assistant remembers
         </SectionLabel>
         <div style={{ fontSize: 13.5, color: COLORS.sub, marginTop: 6, lineHeight: 1.5 }}>
-          One line per topic. The assistant updates these from your emails (or when you write &ldquo;remember: &hellip;&rdquo; and &ldquo;forget: &hellip;&rdquo;) and uses them in every reply. Edit anything inline; changes save when you click away.
+          One line per topic. The assistant updates these from your emails (or when you write &ldquo;remember: &hellip;&rdquo; and &ldquo;forget: &hellip;&rdquo;) and uses them in every reply. Edit anything inline; changes save when you click away. A topic nobody has used for {data.deleteAfterDays} days is deleted; every update, edit, or answer that draws on it starts the clock again.
         </div>
         <form
           onSubmit={(e) => {

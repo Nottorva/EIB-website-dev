@@ -7,6 +7,9 @@ import { findAll, findOne, insert, updateOne, removeOne, newId } from "../data/s
 export const MEMORY_STATUSES = ["waiting", "done", "info"];
 /** Topics done this long ago move to the archived section and leave the agent's context. */
 export const ARCHIVE_AFTER_DAYS = 60;
+/** A topic nobody has touched for this long is deleted (the daily cron does it). Every create, update, edit,
+ *  and every answer that draws on the topic refreshes its lastUsedAt. */
+export const DELETE_AFTER_DAYS = 365;
 
 const now = () => new Date().toISOString();
 const norm = (s) => String(s || "").trim().toLowerCase().replace(/\s+/g, " ");
@@ -34,10 +37,10 @@ export async function upsertMemory({ topic, status, summary, source, sourceEmail
   const existing = (matchTopic && (await findTopic(matchTopic))) || (await findTopic(topic));
   if (existing) {
     const history = [...(existing.history || []), { summary: existing.summary, status: existing.status, at: existing.updatedAt, source: existing.updatedBy }].slice(-20);
-    const updated = await updateOne("agent_memory", existing.id, { topic: topic?.trim() || existing.topic, status: cleanStatus, summary: String(summary || "").trim(), updatedAt: now(), updatedBy: source, sourceEmailId, history });
+    const updated = await updateOne("agent_memory", existing.id, { topic: topic?.trim() || existing.topic, status: cleanStatus, summary: String(summary || "").trim(), updatedAt: now(), lastUsedAt: now(), updatedBy: source, sourceEmailId, history });
     return { item: updated, created: false, before: existing };
   }
-  const item = await insert("agent_memory", { id: newId("mem"), topic: String(topic || "").trim(), status: cleanStatus, summary: String(summary || "").trim(), createdAt: now(), updatedAt: now(), updatedBy: source, sourceEmailId, history: [] });
+  const item = await insert("agent_memory", { id: newId("mem"), topic: String(topic || "").trim(), status: cleanStatus, summary: String(summary || "").trim(), createdAt: now(), updatedAt: now(), lastUsedAt: now(), updatedBy: source, sourceEmailId, history: [] });
   return { item, created: true, before: null };
 }
 
@@ -56,7 +59,22 @@ export async function patchMemory(id, patch) {
   if (patch.topic !== undefined) fields.topic = String(patch.topic).trim();
   if (patch.status !== undefined && MEMORY_STATUSES.includes(patch.status)) fields.status = patch.status;
   if (patch.summary !== undefined) fields.summary = String(patch.summary).trim();
-  return updateOne("agent_memory", id, { ...fields, updatedAt: now(), updatedBy: "web", history });
+  return updateOne("agent_memory", id, { ...fields, updatedAt: now(), lastUsedAt: now(), updatedBy: "web", history });
+}
+
+/** The topic was drawn on for an answer: its year-long timer starts again. */
+export async function touchMemory(items) {
+  for (const m of items) await updateOne("agent_memory", m.id, { lastUsedAt: now() });
+}
+
+export const lastUsed = (m) => m.lastUsedAt || m.updatedAt || m.createdAt;
+
+/** Delete topics untouched for DELETE_AFTER_DAYS. Returns the deleted topics. */
+export async function purgeStaleMemory(days = DELETE_AFTER_DAYS) {
+  const cutoff = Date.now() - days * 86400_000;
+  const stale = (await listMemory()).filter((m) => Date.parse(lastUsed(m) || 0) < cutoff);
+  for (const m of stale) await removeOne("agent_memory", m.id);
+  return stale;
 }
 
 export async function deleteMemory(id) {
@@ -76,11 +94,13 @@ export async function searchMemory(query) {
   const words = norm(query).split(/\W+/).filter((w) => w.length > 2);
   const items = (await listMemory()).filter((m) => !isArchived(m));
   if (!words.length) return items;
-  return items
+  const hits = items
     .map((m) => ({ m, score: words.reduce((n, w) => n + (norm(`${m.topic} ${m.summary}`).includes(w) ? 1 : 0), 0) }))
     .filter((x) => x.score > 0)
     .sort((a, b) => b.score - a.score)
     .map((x) => x.m);
+  await touchMemory(hits.slice(0, 8));
+  return hits;
 }
 
 export function describeMemory(items) {

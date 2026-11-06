@@ -207,6 +207,18 @@ async function run() {
   r = await deliver(email({ from: JOSEF, name: "Josef", subject: "forget", text: "forget: Billing 2027" }));
   check("forgotten", /^forget: Billing 2027/.test(outcome(r)) && !db().agent_memory?.some((x) => /billing 2027/i.test(x.topic)), outcome(r));
 
+  head("Memory expires after a year without use; use refreshes the clock");
+  {
+    const raw = db();
+    const old = (d) => new Date(Date.now() - d * 86400_000).toISOString();
+    raw.agent_memory = [...(raw.agent_memory || []), { id: "mem_stale", topic: "Old venue 2024", status: "info", summary: "EIB Night 2024 was at the library.", createdAt: old(400), updatedAt: old(400), lastUsedAt: old(400), updatedBy: "email", history: [] }, { id: "mem_fresh", topic: "Parking rule", status: "info", summary: "Parents use the east lot.", createdAt: old(400), updatedAt: old(400), lastUsedAt: old(400), updatedBy: "email", history: [] }];
+    fs.writeFileSync(DB, JSON.stringify(raw, null, 2));
+    r = await deliver(email({ from: TFS, name: "Elana", subject: "parking rule", text: "What is the parking rule?" }));
+    check("an answer that draws on a topic refreshes it", Date.parse(db().agent_memory.find((m) => m.id === "mem_fresh")?.lastUsedAt) > Date.now() - 60_000, outcome(r));
+    const cron = await fetch(`${BASE}/api/agent/remind`).then((x) => x.json());
+    check("the daily cron deletes the topic unused for a year, keeps the refreshed one", cron.memoryDeleted?.includes("Old venue 2024") && !cron.memoryDeleted?.includes("Parking rule") && !db().agent_memory.some((m) => m.id === "mem_stale") && db().agent_memory.some((m) => m.id === "mem_fresh"), JSON.stringify(cron));
+  }
+
   head("Forward + handle this: answerable from data");
   const fwdBody = `handle this\n\n---------- Forwarded message ---------\nFrom: Ray Lopez <jmarshall@tfs.ca>\nDate: Thu, Nov 6, 2026 at 9:00 AM\nSubject: Quick question\nTo: Josef Marshall <${JOSEF}>\n\nHi Josef, how many students are in the cohort this year?\n`;
   r = await deliver(email({ from: JOSEF, name: "Josef", subject: "Fwd: Quick question", text: "handle this", headers: {}, }));

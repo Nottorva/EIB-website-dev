@@ -4,11 +4,11 @@
 //   PATCH  { id, topic?, status?, summary? }
 //   DELETE ?id=
 import { guarded, readJson, HttpError } from "@/lib/auth";
-import { listMemory, isArchived, upsertMemory, patchMemory, deleteMemory, MEMORY_STATUSES, ARCHIVE_AFTER_DAYS } from "@/lib/agent/memory";
+import { listMemory, isArchived, upsertMemory, patchMemory, deleteMemory, lastUsed, MEMORY_STATUSES, ARCHIVE_AFTER_DAYS, DELETE_AFTER_DAYS } from "@/lib/agent/memory";
 
 async function all() {
   const items = await listMemory();
-  return { items: items.map((m) => ({ ...m, archived: isArchived(m) })), statuses: MEMORY_STATUSES, archiveAfterDays: ARCHIVE_AFTER_DAYS };
+  return { items: items.map((m) => ({ ...m, archived: isArchived(m), lastUsedAt: lastUsed(m) })), statuses: MEMORY_STATUSES, archiveAfterDays: ARCHIVE_AFTER_DAYS, deleteAfterDays: DELETE_AFTER_DAYS };
 }
 
 export const GET = guarded(["superAdmin"], async () => Response.json(await all()));
