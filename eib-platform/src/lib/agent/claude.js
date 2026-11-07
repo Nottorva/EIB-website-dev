@@ -126,7 +126,7 @@ export async function runPlan({ request, senderKind, senderName, threadContext, 
   const cfg = agentConfig();
   const editable = (await editableFiles().catch(() => [])).map((f) => f.name);
   const user = [threadContext ? `<thread_so_far>\n${threadContext}\n</thread_so_far>` : "", `<request from="${senderName || "the sender"}">\n${request}\n</request>`, quotedBlock(email)].filter(Boolean).join("\n\n");
-  if (!client()) return mockPlan({ request, senderKind });
+  if (!client()) return mockPlan({ request });
   return toolLoop({
     label: "claude plan",
     system: planSystemPrompt({ josefName: cfg.josefName, senderName, senderKind, notes, editable, programYear: await programYear().catch(() => "") }),
@@ -256,15 +256,17 @@ async function mockForward({ instruction, original }) {
 }
 
 /** The sandbox planner: enough to exercise tickets end to end against the fake folder. */
-async function mockPlan({ request, senderKind }) {
+async function mockPlan({ request }) {
   const text = String(request || "");
-  const t = text.toLowerCase();
   const steps = [];
   const notes = [];
   const done = (out) => ({ ...out, references: [], toolCalls: [] });
 
   // "EIB Night moves to Nov 24" / "we're moving Cougar's Den to November 24th"
-  const move = /(eib night|cougar'?s den)[^.\n]*?\b(?:to|on)\s+((?:nov(?:ember)?|dec(?:ember)?|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?)\s+\d{1,2})(?:st|nd|rd|th)?/i.exec(text);
+  // The event named in the request, with the last date mentioned (a correction supersedes the first one).
+  const named = /(eib night|cougar'?s den)/i.exec(text);
+  const dates = [...text.matchAll(/\b(?:to|on|meant|make it|make that)\s+((?:nov(?:ember)?|dec(?:ember)?|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?)\s+\d{1,2})(?:st|nd|rd|th)?/gi)];
+  const move = named && dates.length ? [null, named[1], dates[dates.length - 1][1]] : null;
   if (move) {
     const title = move[1].replace(/'?s/i, "'s").replace(/\b\w/g, (c) => c.toUpperCase());
     const newDate = move[2].replace(/\b\w/g, (c) => c.toUpperCase());
@@ -336,13 +338,12 @@ async function mockPlan({ request, senderKind }) {
     return done({ action: "propose_changes", summary: `${d.action === "create" ? "Add" : "Update"} ${d.kind} ${d.targetName}`, steps, notes: r.draft.note || "" });
   }
   return done({ action: "cannot_plan", reason: "I could not work out what to change from that request." });
-  void senderKind;
 }
 
 function mockIntent(email, pendingDraft) {
   const text = (email.text || "").trim();
   const t = text.toLowerCase();
-  const empty = { target_kind: "", target_name: "", action: "", fields: {}, dont_save_faq: false };
+  const empty = { target_kind: "", target_name: "", action: "", fields: {} };
   if (/^(yes|oui|confirmed|go ahead|do it|looks good|approve)\b/.test(t)) return { intent: "confirm", edit: empty };
   if (/^(no|cancel|never mind|forget it|reject)\b/.test(t)) return { intent: "cancel", edit: empty };
   if (/who (has|can)\b.*(access|email you|use)/i.test(text)) return { intent: "access_list", edit: empty };

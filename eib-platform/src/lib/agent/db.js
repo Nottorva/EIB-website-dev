@@ -144,7 +144,7 @@ export async function updateEscalation(id, patch) {
 
 // Change tickets: proposed edits waiting for Josef's approval on /changes.
 export async function createChange(doc) {
-  return store.insert("agent_changes", { id: store.newId("chg"), status: "proposed", createdAt: now(), updatedAt: now(), ...doc });
+  return store.insert("agent_changes", { id: store.newId("chg"), createdAt: now(), updatedAt: now(), status: "proposed", ...doc });
 }
 
 export async function getChange(id) {

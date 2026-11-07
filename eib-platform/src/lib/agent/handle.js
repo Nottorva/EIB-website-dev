@@ -6,7 +6,7 @@
 // Everyone else gets a one-line acknowledgement and a forward to Josef. When the agent is not the only
 // recipient it stays silent. Facts come from the EIB platform and the EIB Documents folder, nothing else.
 
-import { agentConfig, MAX_REPLIES_PER_THREAD_PER_HOUR, THREAD_CONTEXT_MESSAGES, DRAFT_EXPIRY_DAYS } from "./config";
+import { agentConfig, MAX_REPLIES_PER_THREAD_PER_HOUR, THREAD_CONTEXT_MESSAGES, DRAFT_EXPIRY_DAYS, CHANGE_EXPIRY_DAYS } from "./config";
 import { isAutomatedMail, reSubject, sendMail, firstLineOf } from "./mail";
 import { classifySender, otherParticipants } from "./classify";
 import { runAnswer, runForward, runPlan, classifyJosefIntent, relayAnswer, summarizeEmail, timed } from "./claude";
@@ -14,12 +14,12 @@ import { parseForward, unquoted } from "./forward";
 import { readmeContext } from "./drive";
 import { getThread, listThreads, saveThread, createEscalation, findEscalation, updateEscalation } from "./db";
 import { describeAccess, grantAccess, revokeAccess } from "./access";
-import { createTicket, ticketEmailText, ticketLabel, ticketUrl, ticketReferences, applyTicket, rejectTicket, notifyDecision, getChange, describeSteps } from "./changes";
-import { compose, composeForJosef, bareBody, firstNameOf, scrubDashes, CRM_URL } from "./style";
+import { createTicket, ticketEmailText, ticketUrl, ticketReferences, applyTicket, rejectTicket, notifyDecision, getChange, updateChange, describeSteps } from "./changes";
+import { compose, composeForJosef, bareBody, firstNameOf, CRM_URL } from "./style";
 
 const now = () => new Date().toISOString();
 const shortId = () => Math.random().toString(36).slice(2, 7);
-const EMPTY_EDIT = { target_kind: "", target_name: "", action: "", fields: {}, dont_save_faq: false };
+const EMPTY_EDIT = { target_kind: "", target_name: "", action: "", fields: {} };
 
 // ---------------------------------------------------------------------------
 // Threads
@@ -108,12 +108,16 @@ function pendingOf(thread) {
 
 function setPending(thread, draft, awaiting) {
   thread.draft = { ...draft, awaiting, expiresAt: new Date(Date.now() + DRAFT_EXPIRY_DAYS * 86400_000).toISOString() };
-  thread.mode = draft.kind === "change" ? "change" : draft.kind === "plan" ? "plan" : "edit";
+  thread.mode = draft.kind === "change" ? "change" : draft.kind === "plan" || draft.kind === "proposal" ? "plan" : "edit";
 }
 
 const YES_RE = /^\s*(yes|y|yep|yeah|yup|confirmed?|approved?|go ahead|do it|send( it)?|save( it)?|apply( it)?|looks good|correct|ok(ay)?|oui|d'accord)\b[\s.!]*$/i;
 const NO_RE = /^\s*(no|nope|cancel|reject(ed)?|never mind|nevermind|forget it|stop|don'?t|non|annule[rz]?)\b[\s.!]*$/i;
 const REMOVE_RE = /\b(undo|delete|remove|archive|erase|get rid of)\b/i;
+// A requester confirming a proposal: any plain affirmative opener ("yup all good", "perfect, thanks", "that's right").
+const AFFIRM_RE = /^\s*(yes|y|yep|yeah|yup|ya|ok(ay)?|sure|correct|confirmed?|right|perfect|great|good|all good|looks good|sounds good|that'?s (right|correct|it)|go ahead|do it|approved?|oui|d'accord)\b/i;
+// ...unless the same email also asks for something different.
+const CORRECTION_RE = /\b(but|except|actually|instead|not the|rather|change|should be|make it|make that|also|one more|and also|however|wrong|mistake|correction)\b/i;
 const CHANGE_VERB = /\b(add|create|update|change|set|assign|move|moving|moved|reschedule|remove|give|grant|revoke|make|mark|edit|rename|open|close|confirm|confirmed|approve|approved|book|cancel)\b/i;
 
 // ---------------------------------------------------------------------------
@@ -255,6 +259,20 @@ async function handleStaff(email, thread, sender) {
     await send(thread, email, { to: [email.from.email], cc: ccForAsker(email), firstName: firstNameOf(email.from), text: "Thanks. Your earlier request is still with Josef for approval; I will let you know as soon as he has decided. If this is a different request, send it as a new email." });
     return "ticket pending: requester told to wait";
   }
+  // A proposal waiting for the requester: an affirmative logs it for Josef, a no withdraws it, anything else
+  // is a correction and the proposal is written again.
+  if (pending?.kind === "proposal" && pending.requester === email.from.email) {
+    const first = firstLineOf(text);
+    if (AFFIRM_RE.test(first) && !CORRECTION_RE.test(text)) return logProposal(email, thread, pending);
+    if (NO_RE.test(first)) {
+      await updateChange(pending.changeId, { status: "withdrawn", decidedAt: now(), decidedBy: email.from.email });
+      thread.draft = null;
+      await send(thread, email, { to: [email.from.email], cc: ccForAsker(email), firstName: firstNameOf(email.from), text: "No problem, I have dropped that. Nothing was logged." });
+      return "proposal withdrawn by requester";
+    }
+    await updateChange(pending.changeId, { status: "superseded", decidedAt: now(), decidedBy: email.from.email });
+    return startPlan(email, thread, sender, `${pending.request}\n\nCorrections from ${email.from.name || email.from.email}: ${text}`);
+  }
   // Details for a change the assistant asked about earlier in this thread.
   if (pending?.kind === "plan" && pending.requester === email.from.email && !NO_RE.test(firstLineOf(text))) {
     return startPlan(email, thread, sender, `${pending.request}\n\nMore details from ${email.from.name || email.from.email}: ${text}`);
@@ -327,7 +345,6 @@ async function escalate(email, thread, sender, result) {
 // ---------------------------------------------------------------------------
 /** Plan a change for the sender (Josef or staff) and open a ticket, ask for details, or hand it to Josef. */
 async function startPlan(email, thread, sender, request) {
-  const cfg = agentConfig();
   const isJosef = sender.kind === "josef";
   const first = firstNameOf(email.from);
   const r = await runPlan({ request, senderKind: sender.kind, senderName: email.from.name || email.from.email, threadContext: threadContext(thread), notes: await notesFor(), email });
@@ -350,7 +367,7 @@ async function startPlan(email, thread, sender, request) {
   }
 
   const requester = { email: email.from.email, name: email.from.name, kind: sender.kind, messageId: email.messageId, references: email.references, subject: email.subject };
-  const { ticket, usable } = await createTicket({ plan: r, requester, threadRootId: thread.rootId });
+  const { ticket, usable } = await createTicket({ plan: r, requester, threadRootId: thread.rootId, status: isJosef ? "proposed" : "draft" });
   thread.draft = null;
   if (!usable) {
     const problems = ticket.steps.map((s) => `- ${s.description}: ${s.problem}`).join("\n");
@@ -365,17 +382,35 @@ async function startPlan(email, thread, sender, request) {
 
   // The approval email to Josef is a reply in the requester's thread (Josef is CC'd on the requester's copy),
   // so Gmail keeps the whole exchange together. His YES/NO in that thread decides the ticket.
-  const text = ticketEmailText(ticket);
   if (isJosef) {
-    await replyToJosef(thread, email, text, ticketReferences(ticket));
-  } else {
-    const subject = reSubject(email.subject);
-    const sent = await sendMail({ to: cfg.josefAddresses.slice(0, 1), subject, text: composeForJosef(text, ticketReferences(ticket)), inReplyTo: email.messageId, references: email.references });
-    thread.sent = [...(thread.sent || []), { at: now(), to: cfg.josefAddresses.slice(0, 1), cc: [], messageId: sent.messageId, resendId: sent.id, text: text.slice(0, 2000) }];
-    if (!thread.participants.includes(cfg.josefAddresses[0])) thread.participants = [...thread.participants, cfg.josefAddresses[0]];
-    await replyBack(`Thanks, I have written this up for Josef to approve: ${ticket.summary}.\n\n${describeSteps(ticket)}\n\nI will let you know as soon as he has decided.`, ticketReferences(ticket));
+    await replyToJosef(thread, email, ticketEmailText(ticket), ticketReferences(ticket));
+    setPending(thread, { kind: "change", changeId: ticket.id, createdAt: now() }, "confirm");
+    return `plan: ticket C-${ticket.shortId} proposed (${usable} step${usable === 1 ? "" : "s"}), awaiting approval`;
   }
+  // A colleague first confirms the proposal; only then is it logged for Josef.
+  await replyBack(`Thanks, here is what I understood: ${ticket.summary}.\n\n${describeSteps(ticket)}${ticket.notes ? `\n\nOne thing to note: ${ticket.notes}` : ""}\n\nPlease reply with any corrections, or confirm this is correct (a simple yes will do) and I will log it for Josef.`, ticketReferences(ticket));
+  setPending(thread, { kind: "proposal", changeId: ticket.id, request, requester: email.from.email, createdAt: now() }, "confirm");
+  return `plan: proposal C-${ticket.shortId} sent to the requester (${usable} step${usable === 1 ? "" : "s"}), awaiting their confirmation`;
+}
+
+/** The requester confirmed: the draft becomes a ticket for Josef, in the same thread. */
+async function logProposal(email, thread, pending) {
+  const cfg = agentConfig();
+  const ticket = await getChange(pending.changeId);
+  if (!ticket || ticket.status !== "draft") {
+    thread.draft = null;
+    await send(thread, email, { to: [email.from.email], cc: ccForAsker(email), firstName: firstNameOf(email.from), text: "That proposal is no longer open. If you still want the change, send it again as a new email and I will write it up afresh." });
+    return "proposal: no longer open";
+  }
+  const updated = await updateChange(ticket.id, { status: "proposed", confirmedAt: now(), expiresAt: new Date(Date.now() + CHANGE_EXPIRY_DAYS * 86400_000).toISOString() });
+  const text = ticketEmailText(updated);
+  const subject = reSubject(email.subject);
+  const sent = await sendMail({ to: cfg.josefAddresses.slice(0, 1), subject, text: composeForJosef(text, ticketReferences(updated)), inReplyTo: email.messageId, references: email.references });
+  thread.sent = [...(thread.sent || []), { at: now(), to: cfg.josefAddresses.slice(0, 1), cc: [], messageId: sent.messageId, resendId: sent.id, text: text.slice(0, 2000) }];
+  if (!thread.participants.includes(cfg.josefAddresses[0])) thread.participants = [...thread.participants, cfg.josefAddresses[0]];
+  await send(thread, email, { to: [email.from.email], cc: ccForAsker(email), firstName: firstNameOf(email.from), text: `Thank you${firstNameOf(email.from) ? ` ${firstNameOf(email.from)}` : ""}, your changes have been logged. Josef will review them and I will let you know once they are made.` });
   setPending(thread, { kind: "change", changeId: ticket.id, createdAt: now() }, "confirm");
+  const usable = (updated.steps || []).filter((s) => s.status === "ready").length;
   return `plan: ticket C-${ticket.shortId} proposed (${usable} step${usable === 1 ? "" : "s"}), awaiting approval`;
 }
 
@@ -587,4 +622,3 @@ async function sendForwardReply(thread, fwd, text, references = []) {
   return `Sent to ${fwd.original.from.name || to} (${to}) with you in CC, subject "${subject}". If they reply, I will pass it straight to you.`;
 }
 
-export { scrubDashes };

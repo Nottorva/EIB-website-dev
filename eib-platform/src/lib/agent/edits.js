@@ -25,7 +25,6 @@ const MENTOR_FIELD_HELP = {
 };
 const MENTOR_REQUIRED = ["name", "email"];
 const MENTOR_ASK = ["email", "organization", "title", "linkedin", "lesson", "status", "preferred", "publicContact", "bio"];
-const METHOD_LABEL = { email: "Email", phone: "Phone", linkedin: "LinkedIn" };
 const LESSON_FIELDS = ["date", "startTime", "endTime", "room", "mentorLocation", "mentorStartTime", "mentorEndTime", "mentorBrief", "title"];
 const EVENT_FIELDS = ["title", "date", "startTime", "endTime", "location", "note"];
 
@@ -51,7 +50,7 @@ export async function findEvents(title) {
   return all.filter((e) => key(e).includes(n) || n.includes(key(e)));
 }
 
-export async function findLessons(ref) {
+async function findLessons(ref) {
   const all = await readAll("lessons");
   const r = norm(ref);
   const num = /^(?:lesson\s*)?(\d+(?:\.\d+)?)\b/.exec(r)?.[1];
@@ -151,7 +150,7 @@ async function finish(draft) {
   }
   if (draft.kind === "mentor" && draft.action === "create") {
     for (const k of MENTOR_REQUIRED) if (!draft.fields[k]) draft.missing.push(k);
-    draft.asked = MENTOR_ASK.filter((k) => !draft.fields[k] && !(draft.declined || []).includes(k));
+    draft.asked = MENTOR_ASK.filter((k) => !draft.fields[k]);
   }
   const status = draft.missing.length ? "need_fields" : "ready";
   return { draft, status, message: status === "need_fields" ? askMessage(draft) : await confirmMessage(draft) };
@@ -198,7 +197,7 @@ function askMessage(draft) {
   return `${draft.note ? draft.note + "\n\n" : ""}Happy to add ${draft.fields.name} to the Mentor CRM. Here is what I have so far:\n\n${have}\n\nCould you send me the rest? Reply with whatever you have, in any order; anything you do not know can stay blank except the email:\n\n${want}\n\nOnce I have ${first}'s email I will show you the full record before saving anything.`;
 }
 
-export async function confirmMessage(draft) {
+async function confirmMessage(draft) {
   if (draft.kind === "mentor" && draft.action === "create") {
     const rec = await mentorRecordFromDraft(draft);
     const first = firstOf(rec.name);
@@ -340,7 +339,6 @@ function applyMentorPatch(current, f) {
   else if (f.title || f.organization) next.publicRole = [f.title, f.organization].filter(Boolean).join(", ") || current.publicRole;
   if (f.bio) next.publicBio = f.bio;
   next.contacts = applyContactFlags(next.contacts, f);
-  void METHOD_LABEL;
   return next;
 }
 
@@ -408,8 +406,9 @@ async function lessonAssignment(lessonNumber, excludeMentorId) {
 }
 
 const snapshot = (doc) => {
-  const { agentLastChange, ...rest } = doc;
-  return JSON.parse(JSON.stringify(rest));
+  const rest = JSON.parse(JSON.stringify(doc));
+  delete rest.agentLastChange;
+  return rest;
 };
 
 function diffFields(before, after) {

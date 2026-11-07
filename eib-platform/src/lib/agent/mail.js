@@ -41,7 +41,7 @@ export function parseAddress(s) {
   return { email, name, domain: email.split("@")[1] || "" };
 }
 
-export function parseAddressList(v) {
+function parseAddressList(v) {
   if (!v) return [];
   const items = Array.isArray(v) ? v : String(v).split(",");
   return items.map(parseAddress).filter((a) => a.email.includes("@"));
@@ -50,7 +50,7 @@ export function parseAddressList(v) {
 // ---------------------------------------------------------------------------
 // Raw message headers (for DKIM signing domains and threading when the JSON lacks them)
 // ---------------------------------------------------------------------------
-export function parseRawHeaders(raw) {
+function parseRawHeaders(raw) {
   const text = String(raw || "").replace(/\r\n/g, "\n");
   const end = text.indexOf("\n\n");
   const block = end === -1 ? text : text.slice(0, end);
@@ -76,7 +76,7 @@ export function dkimDomains(rawHeaders) {
   return sigs.map((s) => /(?:^|;)\s*d=([^;\s]+)/i.exec(s)?.[1]?.toLowerCase()).filter(Boolean);
 }
 
-export function firstHeader(h, name) {
+function firstHeader(h, name) {
   const v = h?.[name.toLowerCase()];
   return Array.isArray(v) ? v[0] || "" : v || "";
 }
@@ -176,7 +176,7 @@ function normalize(data, rawHeaders) {
   };
 }
 
-export function htmlToText(html, { keepQuotes = false } = {}) {
+function htmlToText(html, { keepQuotes = false } = {}) {
   let h = String(html || "").replace(/<style[\s\S]*?<\/style>|<script[\s\S]*?<\/script>/gi, "");
   // Gmail, Outlook and Apple Mail wrap the quoted earlier message in a marked block: drop it whole, unless
   // the caller wants the whole chain (for context and thread matching).
@@ -202,7 +202,7 @@ export function htmlToText(html, { keepQuotes = false } = {}) {
 }
 
 /** The sender's new words only: cut at the first quoted-reply marker. */
-export function stripQuotedReply(text) {
+function stripQuotedReply(text) {
   const lines = String(text || "").replace(/\r\n/g, "\n").split("\n");
   const out = [];
   for (let i = 0; i < lines.length; i++) {
@@ -219,7 +219,7 @@ export function stripQuotedReply(text) {
 }
 
 /** The quoted earlier messages under the sender's own words (everything from the first quote marker on). */
-export function quotedPart(text) {
+function quotedPart(text) {
   const lines = String(text || "").replace(/\r\n/g, "\n").split("\n");
   for (let i = 0; i < lines.length; i++) {
     const t = lines[i].trim();
@@ -255,7 +255,7 @@ const escapeHtml = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
  * The HTML twin of a plain-text email: same words, paragraphs kept, URLs clickable, and "References:" lines
  * ("- Title: https://...") shown as links with the title as the link text.
  */
-export function textToHtml(text) {
+function textToHtml(text) {
   const paragraphs = String(text || "").replace(/\r\n/g, "\n").split(/\n{2,}/);
   const html = paragraphs
     .map((p) => {

@@ -30,7 +30,7 @@ export function scrubDashes(s) {
 }
 
 /** Emails are plain text: any markdown the model slipped in is turned into plain words. */
-export function stripMarkdown(s) {
+function stripMarkdown(s) {
   return String(s ?? "")
     .replace(/```[\s\S]*?```/g, (m) => m.replace(/```\w*\n?/g, ""))
     .replace(/`([^`]+)`/g, "$1")
@@ -51,7 +51,7 @@ function signOff() {
 const clean = (body) => stripMarkdown(scrubDashes(String(body || "").trim()));
 
 /** "References:" lines: the documents and platform pages an answer drew on. mail.js turns these into links. */
-export function referencesBlock(references) {
+function referencesBlock(references) {
   const refs = (references || []).filter((r) => r && r.title && r.url);
   if (!refs.length) return "";
   return `References:\n${refs.map((r) => `- ${r.title}: ${r.url}`).join("\n")}`;

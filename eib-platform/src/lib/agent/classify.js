@@ -40,14 +40,6 @@ export async function classifySender(email) {
   return { kind: "unknown", why: "not on the access list" };
 }
 
-/** True when the agent is only in CC (not in To). */
-export function agentOnlyCcd(email) {
-  const me = agentConfig().address;
-  const inTo = email.to.some((a) => a.email === me);
-  const inCc = email.cc.some((a) => a.email === me);
-  return !inTo && inCc;
-}
-
 /** The people on the thread besides the agent and Josef, for replies. */
 export function otherParticipants(email) {
   const cfg = agentConfig();

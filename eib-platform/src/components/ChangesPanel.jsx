@@ -15,6 +15,9 @@ const STATUS = {
   "partly applied": { label: "Partly applied", color: COLORS.amber, bg: COLORS.amberSoft, border: COLORS.amberBorder },
   failed: { label: "Could not apply", color: COLORS.red, bg: "#fff1f1", border: "#f5c2c2" },
   rejected: { label: "Rejected", color: COLORS.faint, bg: "#f6f7f9", border: COLORS.border },
+  draft: { label: "Awaiting the requester's confirmation", color: COLORS.sub, bg: "#f6f7f9", border: COLORS.border },
+  withdrawn: { label: "Withdrawn by the requester", color: COLORS.faint, bg: "#f6f7f9", border: COLORS.border },
+  superseded: { label: "Replaced by a corrected proposal", color: COLORS.faint, bg: "#f6f7f9", border: COLORS.border },
   expired: { label: "Expired", color: COLORS.faint, bg: "#f6f7f9", border: COLORS.border },
 };
 

@@ -18,7 +18,7 @@ const kindOfRecord = { mentor: "mentor", lesson: "lesson", event: "event", appli
  * Check every proposed step against the live data and store the ticket.
  * Returns { ticket, usable } where usable is the number of steps that can actually be applied.
  */
-export async function createTicket({ plan, requester, threadRootId }) {
+export async function createTicket({ plan, requester, threadRootId, status = "proposed" }) {
   const steps = [];
   let n = 0;
   for (const raw of plan.steps || []) {
@@ -46,6 +46,7 @@ export async function createTicket({ plan, requester, threadRootId }) {
   }
   const usable = steps.filter((s) => s.status === "ready").length;
   const ticket = await createChange({
+    status,
     shortId: shortId(),
     summary: String(plan.summary || "Change request").slice(0, 120),
     notes: String(plan.notes || "").trim(),
@@ -146,7 +147,7 @@ export async function rejectTicket(ticketOrId, { by = "", reason = "" } = {}) {
 
 /** Proposed tickets nobody decided on in time. */
 export async function expireTickets() {
-  const due = await listChanges((c) => c.status === "proposed" && c.expiresAt && Date.parse(c.expiresAt) < Date.now());
+  const due = await listChanges((c) => (c.status === "proposed" || c.status === "draft") && c.expiresAt && Date.parse(c.expiresAt) < Date.now());
   for (const c of due) await updateChange(c.id, { status: "expired" });
   return due;
 }
@@ -186,4 +187,4 @@ export async function notifyDecision(ticket, { viaEmail = false, josefThread = n
   }
 }
 
-export { getChange, listChanges };
+export { getChange, listChanges, updateChange };

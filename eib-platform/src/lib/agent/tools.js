@@ -13,7 +13,7 @@ const STATUS_LABEL = { confirmed: "confirmed", responsive: "pending (responsive)
 const obj = (properties = {}, required = []) => ({ type: "object", properties, required, additionalProperties: false });
 
 /** Where each platform tool's facts live, as a title the model cites and a page the email links to. */
-export const PLATFORM_SOURCES = {
+const PLATFORM_SOURCES = {
   lessons: { title: "Lesson schedule (EIB platform)", url: `${SITE_URL}/editor` },
   mentors: { title: "Mentor CRM (EIB platform)", url: `${SITE_URL}/crm` },
   students: { title: "Student Manager (EIB platform)", url: `${SITE_URL}/manager` },

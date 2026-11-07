@@ -1,6 +1,6 @@
 // System prompts for the agent. Data rules are enforced in code (tools.js); these shape tone and judgment.
 
-export const STYLE_RULES = `How you write:
+const STYLE_RULES = `How you write:
 - You write on Josef's behalf as a capable, warm program coordinator. Full sentences and natural paragraphs, never a dump of fields.
 - Write only the body paragraphs. The greeting ("Hi Ray,") and the sign-off are added for you, so do not include them. Do not write a references list in the text; name your sources in the references field instead.
 - Short friendly opener, then the clear answer, then a helpful next step. Two to five short paragraphs for people outside; shorter for Josef.
@@ -114,9 +114,8 @@ export const JOSEF_INTENT_SCHEMA = {
           required: FIELD_KEYS,
           additionalProperties: false,
         },
-        dont_save_faq: { type: "boolean" },
       },
-      required: ["target_kind", "target_name", "action", "fields", "dont_save_faq"],
+      required: ["target_kind", "target_name", "action", "fields"],
       additionalProperties: false,
     },
   },

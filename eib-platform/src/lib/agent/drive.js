@@ -153,7 +153,7 @@ function parseDocBody(doc) {
 }
 
 /** Plain-text rendering with table and row markers the model can refer to ("table 1, row 3, column 2"). */
-export function renderBlocks(blocks) {
+function renderBlocks(blocks) {
   const out = [];
   for (const b of blocks || []) {
     if (b.type === "paragraph") out.push(b.text);
@@ -196,7 +196,7 @@ async function readExport(file, kind) {
 }
 
 /** Contents of one file, cached by id + modifiedTime. Unreadable kinds (PDF, Word) come back with readable: false. */
-export async function readFile(file) {
+async function readFile(file) {
   if (useFake()) {
     const f = (await fakeFiles()).find((x) => x.id === file.id);
     if (!f) throw new Error(`No such document: ${file.name}`);
@@ -301,7 +301,7 @@ export async function searchDocuments(query, { includeArchive = false } = {}) {
 }
 
 /** Find one file by title (exact, then loose). */
-export async function findFile(title) {
+async function findFile(title) {
   const files = await listFiles();
   const t = norm(title);
   const exact = files.find((f) => norm(f.name) === t);
@@ -332,16 +332,16 @@ export async function programYear() {
   return `${y}-${y + 1}`;
 }
 
-export const startYearOf = (programYearText) => Number(/(20\d{2})/.exec(String(programYearText || ""))?.[1] || new Date().getFullYear());
+const startYearOf = (programYearText) => Number(/(20\d{2})/.exec(String(programYearText || ""))?.[1] || new Date().getFullYear());
 
 /** Four-digit years in a title ("Session schedule 2025-2026" -> [2025, 2026]). */
-export function yearsInTitle(name) {
+function yearsInTitle(name) {
   return [...String(name || "").matchAll(/\b(20\d{2})\b/g)].map((m) => Number(m[1]));
 }
 
 /** Archive: the title's year (the first year of a range) is before the program's start year. "2025-2026" is
  *  archive when the program year is 2026-2027; "2026" and "2026-2027" are current; no year means current. */
-export function isArchivedTitle(name, startYear) {
+function isArchivedTitle(name, startYear) {
   const ys = yearsInTitle(name);
   return ys.length > 0 && Math.min(...ys) < startYear;
 }

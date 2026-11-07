@@ -8,7 +8,7 @@ import { agentConfig } from "./config";
 
 const norm = (s) => String(s || "").trim().toLowerCase().replace(/^@/, "");
 
-export async function getAccess() {
+async function getAccess() {
   const v = (await getSetting("agentAccess")) || {};
   return { addresses: Array.isArray(v.addresses) ? v.addresses : [] };
 }
