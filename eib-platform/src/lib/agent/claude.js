@@ -46,7 +46,11 @@ async function toolLoop({ label, system, user, terminal, senderKind, onFallback,
   const messages = [{ role: "user", content: user }];
   const toolCalls = [];
   const sources = [];
-  const finish = (out) => ({ ...out, references: resolveReferences(out.references, sources), toolCalls });
+  const finish = (out) => {
+    let references = resolveReferences(out.references, sources);
+    if (!references.length && out.action === "need_details") references = resolveReferences(sources.map((s) => s.title), sources);
+    return { ...out, references, toolCalls };
+  };
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     const res = await timed(`${label} round ${round + 1}`, () => c.messages.create({ model: cfg.model, max_tokens: 8000, system, messages, tools, output_config: { effort } }));
     const uses = res.content.filter((b) => b.type === "tool_use");

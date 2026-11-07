@@ -14,7 +14,7 @@ import { parseForward, unquoted } from "./forward";
 import { readmeContext } from "./drive";
 import { getThread, listThreads, saveThread, createEscalation, findEscalation, updateEscalation } from "./db";
 import { describeAccess, grantAccess, revokeAccess } from "./access";
-import { createTicket, ticketEmailText, ticketLabel, ticketUrl, applyTicket, rejectTicket, notifyDecision, getChange, describeSteps } from "./changes";
+import { createTicket, ticketEmailText, ticketLabel, ticketUrl, ticketReferences, applyTicket, rejectTicket, notifyDecision, getChange, describeSteps } from "./changes";
 import { compose, composeForJosef, bareBody, firstNameOf, scrubDashes, CRM_URL } from "./style";
 
 const now = () => new Date().toISOString();
@@ -320,11 +320,11 @@ async function startPlan(email, thread, sender, request) {
   const isJosef = sender.kind === "josef";
   const first = firstNameOf(email.from);
   const r = await runPlan({ request, senderKind: sender.kind, senderName: email.from.name || email.from.email, threadContext: threadContext(thread), notes: await notesFor(), email });
-  const replyBack = (text) => (isJosef ? replyToJosef(thread, email, text) : send(thread, email, { to: [email.from.email], cc: ccForAsker(email), firstName: first, text }));
+  const replyBack = (text, sources = []) => (isJosef ? replyToJosef(thread, email, text, sources) : send(thread, email, { to: [email.from.email], cc: ccForAsker(email), firstName: first, text, sources }));
 
   if (r.action === "need_details") {
     setPending(thread, { kind: "plan", request, requester: email.from.email, createdAt: now() }, "details");
-    await replyBack(r.question);
+    await replyBack(r.question, r.references || []);
     return "plan: asked for details";
   }
   if (r.action !== "propose_changes" || !(r.steps || []).length) {
@@ -356,12 +356,12 @@ async function startPlan(email, thread, sender, request) {
   const subject = `${ticketLabel(ticket)} ${ticket.summary}`;
   const text = ticketEmailText(ticket);
   if (isJosef) {
-    await replyToJosef(thread, email, text, [], subject);
+    await replyToJosef(thread, email, text, ticketReferences(ticket), subject);
     setPending(thread, { kind: "change", changeId: ticket.id, createdAt: now() }, "confirm");
   } else {
-    const sent = await sendMail({ to: cfg.josefAddresses.slice(0, 1), subject, text: composeForJosef(text) });
+    const sent = await sendMail({ to: cfg.josefAddresses.slice(0, 1), subject, text: composeForJosef(text, ticketReferences(ticket)) });
     await saveThread({ rootId: sent.messageId, subject, participants: [...cfg.josefAddresses], mode: "change", messages: [], sent: [{ at: now(), to: cfg.josefAddresses.slice(0, 1), messageId: sent.messageId, resendId: sent.id, text: text.slice(0, 2000) }], draft: { kind: "change", changeId: ticket.id, createdAt: now(), awaiting: "confirm", expiresAt: ticket.expiresAt }, lastOutcome: `ticket C-${ticket.shortId} proposed` });
-    await replyBack(`Thanks, I have written this up for Josef to approve: ${ticket.summary}.\n\n${describeSteps(ticket)}\n\nI will let you know as soon as he has decided.`);
+    await replyBack(`Thanks, I have written this up for Josef to approve: ${ticket.summary}.\n\n${describeSteps(ticket)}\n\nI will let you know as soon as he has decided.`, ticketReferences(ticket));
   }
   return `plan: ticket C-${ticket.shortId} proposed (${usable} step${usable === 1 ? "" : "s"}), awaiting approval`;
 }

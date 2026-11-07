@@ -316,6 +316,7 @@ async function run() {
   check("the 2025-2026 schedule is left alone", !t?.steps?.some((s) => /2025-2026/.test(s.document || s.description || "")), JSON.stringify(t?.steps?.map((s) => s.document)));
   const tkMail = [...outbox()].reverse().find((x) => /\[EIB change C-/.test(x.subject));
   check("Josef got the ticket email, main address only, with before/after and the link", tkMail?.to?.length === 1 && tkMail.to[0] === JOSEF && /Before: Nov 17\nAfter: November 24/.test(tkMail.text) && /changes#C-/.test(tkMail.text), tkMail?.text);
+  check("the ticket email links the documents it touches", /References:\n(- .+\n)*- Session schedule \(test\): https:\/\/docs\.google\.com\/document\/d\/fake-schedule/.test(tkMail?.text || "") && /<a href="https:\/\/docs\.google\.com\/document\/d\/fake-runofshow">EIB Night run of show<\/a>/.test(tkMail?.html || ""), (tkMail?.text || "").slice(-400));
   check("requester told it is with Josef, Josef in CC", /written this up for Josef to approve/.test(lastTo(COLLEAGUE)?.text || "") && lastTo(COLLEAGUE)?.cc?.includes(JOSEF), lastTo(COLLEAGUE)?.text);
   check("nothing changed yet", db().events.find((e) => e.title === "EIB Night")?.date === "Oct 16, 2026" && cell("Session schedule (test)", 4, 2) === "Nov 17");
   nb = outbox().length;

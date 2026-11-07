@@ -74,6 +74,19 @@ export function describeSteps(ticket) {
 export const ticketLabel = (ticket) => `[EIB change C-${ticket.shortId}]`;
 export const ticketUrl = (ticket) => `${CHANGES_URL}#C-${ticket.shortId}`;
 
+/** The documents a ticket touches, for the References list of its emails. */
+export function ticketReferences(ticket) {
+  const out = [];
+  const seen = new Set();
+  for (const s of ticket.steps || []) {
+    if (s.kind === "document" && s.document && s.link && !seen.has(s.link)) {
+      seen.add(s.link);
+      out.push({ title: s.document, url: s.link });
+    }
+  }
+  return out;
+}
+
 /** The email that asks Josef to approve. */
 export function ticketEmailText(ticket) {
   const who = ticket.requester?.kind === "josef" ? "You asked" : `${ticket.requester?.name || ticket.requester?.email || "Someone"} (${ticket.requester?.email}) asked`;
@@ -159,7 +172,7 @@ export async function notifyDecision(ticket, { viaEmail = false, josefThread = n
   // Josef (the approval email thread when there is one, else a fresh note)
   if (!viaEmail || !requesterIsJosef) {
     const body = ticket.status === "rejected" ? `Rejected: ${ticket.summary}.${ticket.rejectReason ? ` Reason: ${ticket.rejectReason}` : ""}${requesterIsJosef ? "" : ` I have told ${req.name || req.email}.`}` : `${headline}: ${ticket.summary}.\n\n${resultLines(ticket)}${requesterIsJosef ? "" : `\n\nI have told ${req.name || req.email}.`}\n\nThe ticket: ${ticketUrl(ticket)}`;
-    await sendMail({ to: [josef], subject, text: composeForJosef(body), inReplyTo: josefThread?.messageId });
+    await sendMail({ to: [josef], subject, text: composeForJosef(body, ticketReferences(ticket)), inReplyTo: josefThread?.messageId });
   }
   // The requester, in their own thread
   if (!requesterIsJosef && req.email) {
@@ -170,7 +183,7 @@ export async function notifyDecision(ticket, { viaEmail = false, josefThread = n
         : applied
           ? `Josef approved your request (${ticket.summary}) and it is done:\n\n${resultLines(ticket)}`
           : `Josef approved your request (${ticket.summary}), but I could not apply it:\n\n${resultLines(ticket)}\n\nJosef has the details and will sort it out.`;
-    await sendMail({ to: [req.email], cc: [josef], subject: reSubject(req.subject || ticket.summary), text: compose({ firstName: first, body }), inReplyTo: req.messageId, references: req.references || [] });
+    await sendMail({ to: [req.email], cc: [josef], subject: reSubject(req.subject || ticket.summary), text: compose({ firstName: first, body, references: applied ? ticketReferences(ticket) : [] }), inReplyTo: req.messageId, references: req.references || [] });
   }
 }
 

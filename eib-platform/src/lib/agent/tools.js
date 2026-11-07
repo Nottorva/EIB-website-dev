@@ -98,8 +98,8 @@ export const PLAN_TERMINAL_TOOLS = [
       ["summary", "steps", "notes"],
     ),
   },
-  { name: "need_details", description: "You cannot plan the change without more information from the sender. Ask for it in one short message.", input_schema: obj({ question: { type: "string" } }, ["question"]) },
-  { name: "cannot_plan", description: "This is not something you can change (not a record or a document you have), or it needs Josef's judgment. The email goes to Josef as is.", input_schema: obj({ reason: { type: "string" } }, ["reason"]) },
+  { name: "need_details", description: "You cannot plan the change without more information from the sender. Ask for it in one short message. Name the documents and platform pages you checked in references so the email links to them.", input_schema: obj({ question: { type: "string" }, references: referencesProp }, ["question", "references"]) },
+  { name: "cannot_plan", description: "This is not something you can change (not a record or a document you have), or it needs Josef's judgment. The email goes to Josef as is.", input_schema: obj({ reason: { type: "string" }, references: referencesProp }, ["reason", "references"]) },
 ];
 
 export const TERMINAL_NAMES = new Set([...TERMINAL_TOOLS, ...FORWARD_TERMINAL_TOOLS, ...PLAN_TERMINAL_TOOLS].map((t) => t.name));
