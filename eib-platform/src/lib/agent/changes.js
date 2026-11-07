@@ -168,9 +168,11 @@ export async function notifyDecision(ticket, { viaEmail = false, josefThread = n
   const headline = ticket.status === "applied" ? "Applied" : ticket.status === "partly applied" ? "Partly applied" : ticket.status === "failed" ? "Could not apply" : "Rejected";
   const subject = `${ticketLabel(ticket)} ${headline}: ${ticket.summary}`;
 
-  // Josef (the approval email thread when there is one, else a fresh note)
-  if (!viaEmail || !requesterIsJosef) {
-    const body = ticket.status === "rejected" ? `Rejected: ${ticket.summary}.${ticket.rejectReason ? ` Reason: ${ticket.rejectReason}` : ""}${requesterIsJosef ? "" : ` I have told ${req.name || req.email}.`}` : `${headline}: ${ticket.summary}.\n\n${resultLines(ticket)}${requesterIsJosef ? "" : `\n\nI have told ${req.name || req.email}.`}\n\nThe ticket: ${ticketUrl(ticket)}`;
+  // Josef hears back only when he decided by email (a confirmation in that thread). A decision made on the
+  // website needs no email: the page already shows the outcome. His own tickets decided by email are
+  // answered by the email handler itself.
+  if (viaEmail && !requesterIsJosef) {
+    const body = ticket.status === "rejected" ? `Rejected: ${ticket.summary}. I have told ${req.name || req.email}.` : `${headline}: ${ticket.summary}.\n\n${resultLines(ticket)}\n\nI have told ${req.name || req.email}.\n\nThe ticket: ${ticketUrl(ticket)}`;
     await sendMail({ to: [josef], subject, text: composeForJosef(body, ticketReferences(ticket)), inReplyTo: josefThread?.messageId });
   }
   // The requester, in their own thread
