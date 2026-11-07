@@ -1,6 +1,6 @@
 // Regression suite for the EIB Email Agent, against a local dev server in sandbox mode:
 //
-//   AGENT_ADDRESS=assistant@joineib.ca TFS_WHITELIST_DOMAINS=tfs.ca JOSEF_ADDRESSES=josefm2173@gmail.com,jmarshall@tfs.ca npm run dev
+//   AGENT_ADDRESS=assistant@joineib.ca TFS_WHITELIST_ADDRESSES=elana@tfs.ca,orlaith@tfs.ca,maryclaire@tfs.ca JOSEF_ADDRESSES=josefm2173@gmail.com,jmarshall@tfs.ca npm run dev
 //   npm run smoke:agent
 //
 // No Resend key and no Anthropic key: webhooks are posted unsigned with the email inline, replies land in
@@ -388,7 +388,11 @@ async function run() {
 
   head("Josef manages access by YES; the application window and a lesson brief go through tickets");
   r = await deliver(email({ from: JOSEF, name: "Josef", subject: "access", text: "who has agent access?" }));
-  check("list sent", /access list sent/.test(outcome(r)) && /@tfs\.ca \(set on Vercel\)/.test(lastTo(JOSEF)?.text || ""), outcome(r));
+  check("list sent, per person", /access list sent/.test(outcome(r)) && /elana@tfs\.ca \(set on Vercel\)/.test(lastTo(JOSEF)?.text || "") && !/everyone at/.test(lastTo(JOSEF)?.text || ""), lastTo(JOSEF)?.text);
+  r = await deliver(email({ from: JOSEF, name: "Josef", subject: "access", text: "give otherschool.org agent access" }));
+  check("a whole domain is refused with an explanation, no YES step", /access: domain refused/.test(outcome(r)) && /per person/.test(lastTo(JOSEF)?.text || ""), outcome(r));
+  r = await deliver(email({ from: "stranger@tfs.ca", name: "Stranger", subject: "students", text: "How many students are in the cohort?" }));
+  check("an unlisted address at a listed domain is a stranger", /unknown sender/.test(outcome(r)), outcome(r));
   r = await deliver(email({ from: JOSEF, name: "Josef", subject: "access", text: "give orlaith@otherschool.org agent access" }));
   const ar = r.mail.message_id;
   r = await deliver(email({ from: JOSEF, name: "Josef", subject: "Re: access", text: "yes", inReplyTo: ar, references: [ar] }));

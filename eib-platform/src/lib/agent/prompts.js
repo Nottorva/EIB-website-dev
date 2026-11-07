@@ -80,8 +80,8 @@ intent:
 - "confirm": the email is a yes (yes, confirmed, go ahead, do it, approve, oui, correct, looks good) to something the assistant proposed.
 - "cancel": they ask to drop the pending change (no, cancel, never mind, forget it, reject).
 - "access_list": they ask who has access to the assistant ("who has agent access?", "who can email you?").
-- "access_add": they give someone access ("give elana@tfs.ca access", "let everyone at tfs.ca use the agent"). target_name is the email address or domain; fields.name the person's name if given.
-- "access_remove": they remove someone's access. target_name is the email address or domain.
+- "access_add": they give someone access ("give elana@tfs.ca access"). target_name is the email address (or the domain they named, which the assistant will decline: access is per person); fields.name the person's name if given.
+- "access_remove": they remove someone's access. target_name is the email address (or the domain they named).
 - "other": anything else.
 
 For "edit", fill the edit object. target_kind is "mentor", "lesson", "event", or "applications". target_name is the mentor's name, the lesson number or title, the event title, or "applications". action is "create" or "update". fields holds only values actually stated, keyed as:
@@ -91,7 +91,7 @@ For "edit", fill the edit object. target_kind is "mentor", "lesson", "event", or
  applications: opensAt, closesAt as ISO 8601 date-times in Toronto time (for example "2026-12-01T09:00:00-05:00"); a date with no time opens at 09:00 and closes at 23:59; "now" means the current moment; "none" or "no close" clears that bound
 Today's date is ${new Date().toISOString().slice(0, 10)}.
 The email may quote earlier messages under "On ... wrote:" or in a <quoted_earlier_messages> block. Read them: a short reply ("try looking again now", "here is his email: x@y.com", "yes do that") means what the quoted assistant message asked about. When the quoted assistant message asked for details for a change (a mentor's email, a date, a lesson), the reply is intent "edit" with action "update_draft" and whatever fields it gives, even if the reply itself gives none.
-Never invent a value. Every field is present in the JSON: put "" in any field not stated. For a reply that supplies more details for an in-progress change, use intent "edit" with action "update_draft" and the fields given. For intents other than edit, target_kind, target_name and action are "" (except access_add and access_remove, which carry the address or domain in target_name).`;
+Never invent a value. Every field is present in the JSON: put "" in any field not stated. For a reply that supplies more details for an in-progress change, use intent "edit" with action "update_draft" and the fields given. For intents other than edit, target_kind, target_name and action are "" (except access_add and access_remove, which carry the address in target_name).`;
 }
 
 const FIELD_KEYS = ["name", "email", "phone", "linkedin", "organization", "title", "status", "lesson", "notes", "years", "publicRole", "bio", "preferred", "publicContact", "date", "startTime", "endTime", "room", "mentorLocation", "mentorStartTime", "mentorEndTime", "mentorBrief", "location", "note", "opensAt", "closesAt"];

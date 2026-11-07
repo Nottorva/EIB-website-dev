@@ -107,19 +107,13 @@ export default function AgentAdmin() {
 
       <Section icon={Users} title="Who can email the assistant">
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {data.access.envDomains.map((d) => (
-            <Row key={`ed-${d}`} label={`Everyone at @${d}`} sub="set on Vercel (TFS_WHITELIST_DOMAINS)" />
-          ))}
           {data.access.envAddresses.map((e) => (
             <Row key={`ea-${e}`} label={e} sub="set on Vercel (TFS_WHITELIST_ADDRESSES)" />
-          ))}
-          {data.access.domains.map((d) => (
-            <Row key={`d-${d.domain}`} label={`Everyone at @${d.domain}`} sub={`added ${fmtShortDateTime(d.addedAt)}`} onRemove={() => act(() => api.put("/api/agent/admin", { revoke: d.domain }))} />
           ))}
           {data.access.addresses.map((a) => (
             <Row key={`a-${a.email}`} label={a.name ? `${a.name} · ${a.email}` : a.email} sub={`added ${fmtShortDateTime(a.addedAt)}${a.addedBy ? ` by ${a.addedBy}` : ""}`} onRemove={() => act(() => api.put("/api/agent/admin", { revoke: a.email }))} />
           ))}
-          {!data.access.allDomains.length && !data.access.allAddresses.length ? <EmptyState>Nobody yet. Add an address or a whole domain.</EmptyState> : null}
+          {!data.access.allAddresses.length ? <EmptyState>Nobody yet. Add each person's email address.</EmptyState> : null}
         </div>
         <form
           onSubmit={(e) => {
@@ -132,13 +126,13 @@ export default function AgentAdmin() {
           }}
           style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}
         >
-          <input value={grant} onChange={(e) => setGrant(e.target.value)} placeholder="email address or domain (tfs.ca)" aria-label="Email address or domain" style={{ ...fieldStyle, flex: 2, minWidth: 220, padding: "10px 14px" }} />
+          <input value={grant} onChange={(e) => setGrant(e.target.value)} placeholder="email address" aria-label="Email address" style={{ ...fieldStyle, flex: 2, minWidth: 220, padding: "10px 14px" }} />
           <input value={grantName} onChange={(e) => setGrantName(e.target.value)} placeholder="name (optional)" aria-label="Name" style={{ ...fieldStyle, flex: 1, minWidth: 140, padding: "10px 14px" }} />
           <PrimaryButton type="submit" icon={Plus} disabled={busy || !grant.trim()}>
             Give access
           </PrimaryButton>
         </form>
-        <div style={{ fontSize: 13, color: COLORS.sub, marginTop: 10 }}>By email: &ldquo;who has agent access?&rdquo;, &ldquo;give name@tfs.ca access&rdquo;, &ldquo;remove access from name@tfs.ca&rdquo;.</div>
+        <div style={{ fontSize: 13, color: COLORS.sub, marginTop: 10 }}>Access is per person, never a whole domain. By email: &ldquo;who has agent access?&rdquo;, &ldquo;give name@tfs.ca access&rdquo;, &ldquo;remove access from name@tfs.ca&rdquo;.</div>
       </Section>
 
       <Section icon={FolderOpen} title="Documents it reads and edits">

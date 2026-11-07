@@ -509,8 +509,12 @@ async function handleJosef(email, thread) {
       await replyToJosef(thread, email, "Who should that be? Give me an email address or a domain.");
       return "access: no target";
     }
+    if (!target.includes("@")) {
+      await replyToJosef(thread, email, intent.intent === "access_add" ? `Access is given per person, never to a whole domain, so I cannot open it to everyone at ${target}. Tell me each person's email address and I will add them one by one.` : (await revokeAccess(target)).message);
+      return "access: domain refused";
+    }
     setPending(thread, { kind: "access", action: intent.intent === "access_add" ? "grant" : "revoke", targetId: target, targetName: target, fields: { name: intent.edit.fields?.name || "" }, missing: [], createdAt: now() }, "confirm");
-    await replyToJosef(thread, email, intent.intent === "access_add" ? `Shall I give ${target} access to ask me questions${target.includes("@") ? "" : " (everyone at that domain)"}? Reply YES to confirm.` : `Shall I remove ${target}'s access? Reply YES to confirm.`);
+    await replyToJosef(thread, email, intent.intent === "access_add" ? `Shall I give ${target} access to ask me questions? Reply YES to confirm.` : `Shall I remove ${target}'s access? Reply YES to confirm.`);
     return `access ${intent.intent === "access_add" ? "grant" : "revoke"} proposed, awaiting YES`;
   }
   // A reply that continues a change the assistant asked about, found only through the quoted chain (the thread

@@ -13,7 +13,6 @@ export const agentConfig = () => ({
   // Josef's own addresses: the only senders who may edit. Defaults to the super admin's address.
   josefAddresses: list(process.env.JOSEF_ADDRESSES || process.env.SUPER_ADMIN_EMAIL || "josefm2173@gmail.com"),
   josefName: process.env.SUPER_ADMIN_NAME || "Josef Marshall",
-  whitelistDomains: list(process.env.TFS_WHITELIST_DOMAINS),
   whitelistAddresses: list(process.env.TFS_WHITELIST_ADDRESSES),
   resendKey: process.env.RESEND_API_KEY || "",
   webhookSecret: process.env.RESEND_WEBHOOK_SECRET || "",

@@ -3,7 +3,7 @@
 //
 //   josef      From is one of JOSEF_ADDRESSES, DKIM and DMARC pass, and a DKIM signature is from that
 //              address's domain (or DMARC-aligned when the raw signature list is unavailable).
-//   tfs        From domain or address is on the access list (env whitelist plus the stored list), DKIM/DMARC pass.
+//   tfs        From address is on the access list (env whitelist plus the stored list), DKIM/DMARC pass. Never a whole domain.
 //   unknown    everyone else, including any Josef-lookalike that fails authentication.
 
 import { agentConfig } from "./config";
@@ -34,7 +34,7 @@ export async function classifySender(email) {
   if (isJosefAddress) return { kind: "unknown", why: `Josef address but authentication failed (spf ${email.auth.spf}, dkim ${email.auth.dkim}, dmarc ${email.auth.dmarc})`, lookalike: true };
 
   const access = await effectiveAccess();
-  const whitelisted = actingAsColleague || access.allAddresses.includes(from.email) || access.allDomains.some((d) => from.domain === d || from.domain.endsWith(`.${d}`));
+  const whitelisted = actingAsColleague || access.allAddresses.includes(from.email);
   if (whitelisted && authed) return { kind: "tfs", why: actingAsColleague ? "one of Josef's addresses, treated as a colleague for testing" : "on the access list and authenticated" };
   if (whitelisted) return { kind: "unknown", why: `on the access list but authentication failed (dkim ${email.auth.dkim}, dmarc ${email.auth.dmarc})` };
   return { kind: "unknown", why: "not on the access list" };

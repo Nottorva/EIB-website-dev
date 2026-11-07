@@ -425,7 +425,7 @@ verdicts plus the DKIM signing domain from the raw message), never from the From
   that document. Every reply ends with a "References:" list of the documents and platform pages it drew on,
   with links (the plain-text email carries `Title: url` lines; the HTML twin, built by `textToHtml`, makes
   them links).
-- **Whitelisted TFS staff** (the Vercel whitelist plus the list Josef manages) get answers: student count and
+- **Whitelisted TFS staff** (individual addresses only, never a whole domain: `TFS_WHITELIST_ADDRESSES` on Vercel plus the list Josef manages by email or on `/agent`) get answers: student count and
   agreement status by name, the lesson schedule, when each mentor comes to class, mentor coverage,
   applications, events, and anything in the documents. Student names go to staff; emails and phone numbers go
   to Josef only. Anything neither the platform nor the documents answer, or any judgment call, is escalated to
@@ -483,7 +483,7 @@ go to `data/agent-outbox.jsonl`, with no `ANTHROPIC_API_KEY` a small mock stands
 service account `data/fake-drive.json` stands in for the folder (seeded with test documents):
 
 ```
-AGENT_ADDRESS=assistant@joineib.ca TFS_WHITELIST_DOMAINS=tfs.ca JOSEF_ADDRESSES=josefm2173@gmail.com,jmarshall@tfs.ca npm run dev
+AGENT_ADDRESS=assistant@joineib.ca TFS_WHITELIST_ADDRESSES=elana@tfs.ca,orlaith@tfs.ca,maryclaire@tfs.ca JOSEF_ADDRESSES=josefm2173@gmail.com,jmarshall@tfs.ca npm run dev
 npm run smoke:agent      # 121 checks: data questions, documents, references, tickets, forwards, access, style, guards
 ```
 
