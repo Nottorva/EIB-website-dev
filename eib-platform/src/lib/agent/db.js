@@ -1,10 +1,10 @@
 // The agent's data access. Three doors, on purpose:
 //
-//   bookkeeping  agent_processed, agent_threads, agent_escalations, agent_memory
+//   bookkeeping  agent_processed, agent_threads, agent_escalations, agent_changes
 //                -> the app's own store (MONGODB_URI, or the sandbox file)
 //   readDomain   mentors, lessons, users, settings, events, applications
 //                -> MONGODB_AGENT_READ_URI (the read-only Atlas user), else the app store
-//   writeDomain  mentors and lessons only
+//   writeDomain  mentors, lessons, events, and the application window setting
 //                -> MONGODB_AGENT_WRITE_URI (the write user), else the app store
 //
 // Only the edit path (verified Josef) ever calls writeDomain.
@@ -64,7 +64,7 @@ export async function readSetting(key) {
 // ---------------------------------------------------------------------------
 // Domain writes (write user; mentors, lessons, and the application window setting; never deletes)
 // ---------------------------------------------------------------------------
-const WRITABLE = new Set(["mentors", "lessons"]);
+const WRITABLE = new Set(["mentors", "lessons", "events"]);
 const WRITABLE_SETTINGS = new Set(["applicationWindow", "applicationWindowAgentLastChange"]);
 
 export async function writeSetting(key, value) {
@@ -140,6 +140,23 @@ export async function listEscalations(predicate) {
 
 export async function updateEscalation(id, patch) {
   return store.updateOne("agent_escalations", id, patch);
+}
+
+// Change tickets: proposed edits waiting for Josef's approval on /changes.
+export async function createChange(doc) {
+  return store.insert("agent_changes", { id: store.newId("chg"), status: "proposed", createdAt: now(), updatedAt: now(), ...doc });
+}
+
+export async function getChange(id) {
+  return store.findOne("agent_changes", (c) => c.id === id || c.shortId === id);
+}
+
+export async function listChanges(predicate) {
+  return store.findAll("agent_changes", predicate);
+}
+
+export async function updateChange(id, patch) {
+  return store.updateOne("agent_changes", id, { ...patch, updatedAt: now() });
 }
 
 export const newId = store.newId;

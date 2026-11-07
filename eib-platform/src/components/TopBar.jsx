@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, Pencil, Users, ClipboardList, GraduationCap, FileText, Globe, Bot, Brain } from "lucide-react";
+import { BookOpen, Pencil, Users, ClipboardList, GraduationCap, FileText, Globe, Bot, ClipboardCheck } from "lucide-react";
 import { COLORS } from "./ui";
 import { GoogleSignInButton, GoogleSignOutButton } from "./GoogleButtons";
 
@@ -15,7 +15,7 @@ const NAV = [
   { href: "/lessons", label: "Lessons", icon: GraduationCap, roles: ["superAdmin", "studentLeader", "student"] },
   { href: "/website", label: "Website", icon: Globe, roles: ["superAdmin"] },
   { href: "/agent", label: "Assistant", icon: Bot, roles: ["superAdmin"] },
-  { href: "/memory", label: "Memory", icon: Brain, roles: ["superAdmin"] },
+  { href: "/changes", label: "Changes", icon: ClipboardCheck, roles: ["superAdmin"] },
 ];
 
 function Identity({ user, identity, authMode, pathname }) {

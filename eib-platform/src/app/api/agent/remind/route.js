@@ -1,10 +1,11 @@
 // GET /api/agent/remind: once a day (Vercel Cron, see vercel.json). Escalations open for 3 days get one
-// reminder to Josef, then nothing more. Protected by CRON_SECRET (Vercel sends it as a bearer token).
+// reminder to Josef, then nothing more; change tickets nobody decided on expire. Protected by CRON_SECRET
+// (Vercel sends it as a bearer token).
 
 import { agentConfig, ESCALATION_REMINDER_DAYS, SIGNATURE } from "@/lib/agent/config";
 import { listEscalations, updateEscalation } from "@/lib/agent/db";
 import { sendMail } from "@/lib/agent/mail";
-import { purgeStaleMemory, DELETE_AFTER_DAYS } from "@/lib/agent/memory";
+import { expireTickets } from "@/lib/agent/changes";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,7 @@ export async function GET(req) {
   let sent = 0;
   for (const e of due) {
     await sendMail({
-      to: cfg.josefAddresses,
+      to: cfg.josefAddresses.slice(0, 1),
       subject: `Reminder: ${e.josefSubject}`,
       text: `${e.askerName || e.askerEmail} is still waiting on this one (asked ${e.createdAt.slice(0, 10)}):\n\n${e.question}\n\nReply to the original [EIB Q-${e.shortId}] email and I will pass it on. This is the only reminder I will send.\n\n--\n${SIGNATURE(cfg.josefName)}`,
       inReplyTo: e.josefMessageId,
@@ -27,8 +28,7 @@ export async function GET(req) {
     await updateEscalation(e.id, { reminderSentAt: new Date().toISOString() });
     sent += 1;
   }
-  // Memory housekeeping: topics nobody has used for a year are deleted.
-  const purged = await purgeStaleMemory();
-  if (purged.length) console.log(`[eib agent] memory: deleted ${purged.length} topic(s) unused for ${DELETE_AFTER_DAYS} days: ${purged.map((m) => m.topic).join("; ")}`);
-  return Response.json({ ok: true, reminded: sent, memoryDeleted: purged.map((m) => m.topic) });
+  const expired = await expireTickets();
+  if (expired.length) console.log(`[eib agent] changes: ${expired.length} ticket(s) expired: ${expired.map((c) => c.shortId).join(", ")}`);
+  return Response.json({ ok: true, reminded: sent, expiredTickets: expired.map((c) => c.shortId) });
 }

@@ -1,10 +1,11 @@
 "use client";
 
 // /agent (super admin): the EIB Email Agent's control panel. Who may email it, what it has been asked,
-// the memory counts, recent threads, and whether each service is connected. Escalations are not listed: each one is emailed to Josef.
+// the documents it may edit, ticket counts, recent threads, and whether each service is connected. Escalations
+// are not listed: each one is emailed to Josef.
 
 import React, { useEffect, useState } from "react";
-import { Bot, Plus, Trash2, CircleCheck, Circle, Mail, BookOpen, Users } from "lucide-react";
+import { Bot, Plus, Trash2, CircleCheck, Circle, Mail, FolderOpen, ClipboardCheck, Users } from "lucide-react";
 import { COLORS, PageTitle, Card, fieldStyle, Notice, Loading, PrimaryButton, IconButton, SectionLabel, EmptyState } from "./ui";
 import { api } from "@/lib/api";
 import { fmtShortDateTime } from "@/lib/format";
@@ -39,6 +40,7 @@ export default function AgentAdmin() {
   const [error, setError] = useState(null);
   const [grant, setGrant] = useState("");
   const [grantName, setGrantName] = useState("");
+  const [filter, setFilter] = useState(null);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState(null);
 
@@ -95,7 +97,7 @@ export default function AgentAdmin() {
             <label key={addr} style={{ display: "flex", alignItems: "flex-start", gap: 10, marginTop: 12, padding: "10px 12px", borderRadius: 10, border: `1px solid ${on ? COLORS.amberBorder : COLORS.border}`, background: on ? COLORS.amberSoft : "transparent", cursor: "pointer" }}>
               <input type="checkbox" checked={Boolean(on)} disabled={busy} onChange={(e) => act(() => api.put("/api/agent/admin", { testColleague: addr, on: e.target.checked }))} style={{ marginTop: 3 }} />
               <span style={{ fontSize: 13.5, color: COLORS.text }}>
-                <strong>Treat {addr} as a colleague for testing.</strong> While ticked, mail from it gets answers only: no edits, no memory changes, no student contact details, and its replies on a thread the assistant wrote are passed to you.
+                <strong>Treat {addr} as a colleague for testing.</strong> While ticked, mail from it is handled like a colleague's: answers without student contact details, change requests become tickets for you, and its replies on a thread the assistant wrote are passed to you.
                 {on ? ` On until ${fmtShortDateTime(on.until)}, then it counts as you again by itself.` : ` It switches itself back after ${data.testColleagueHours} hours.`}
               </span>
             </label>
@@ -139,13 +141,47 @@ export default function AgentAdmin() {
         <div style={{ fontSize: 13, color: COLORS.sub, marginTop: 10 }}>By email: &ldquo;who has agent access?&rdquo;, &ldquo;give name@tfs.ca access&rdquo;, &ldquo;remove access from name@tfs.ca&rdquo;.</div>
       </Section>
 
-      <Section icon={BookOpen} title="Memory">
+      <Section icon={FolderOpen} title="Documents it reads and edits">
+        <div style={{ fontSize: 14, color: COLORS.text, lineHeight: 1.6 }}>
+          {data.docs.configured ? (
+            <>
+              The assistant reads the titles and contents of every file in the{" "}
+              <a href={data.docs.folderUrl} target="_blank" rel="noreferrer" style={{ color: COLORS.indigo, fontWeight: 800 }}>
+                EIB Documents folder
+              </a>{" "}
+              ({data.docs.fileCount} file{data.docs.fileCount === 1 ? "" : "s"}{data.docs.listedAt ? `, listed ${fmtShortDateTime(data.docs.listedAt)}` : ""}). A document whose title says &ldquo;Read me&rdquo; or &ldquo;Additional information&rdquo; is treated as your standing notes and house rules
+              {data.docs.readme.length ? `: ${data.docs.readme.join(", ")}` : " (none yet: add one to the folder)"}.
+            </>
+          ) : (
+            <>The documents folder is not connected yet (GOOGLE_SERVICE_ACCOUNT_JSON and EIB_DRIVE_FOLDER_ID).</>
+          )}
+        </div>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            act(() => api.put("/api/agent/admin", { docEditFilter: filter ?? data.docs.editFilter })).then(() => setFilter(null));
+          }}
+          style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap", alignItems: "center" }}
+        >
+          <span style={{ fontSize: 13.5, color: COLORS.sub }}>Only edit documents whose title contains:</span>
+          <input value={filter ?? data.docs.editFilter} onChange={(e) => setFilter(e.target.value)} placeholder="any document" aria-label="Edit filter words" style={{ ...fieldStyle, flex: 1, minWidth: 160, padding: "8px 12px" }} />
+          <PrimaryButton type="submit" disabled={busy || filter === null || filter === data.docs.editFilter}>
+            Save
+          </PrimaryButton>
+        </form>
+        <div style={{ fontSize: 13, color: COLORS.sub, marginTop: 8 }}>
+          Words separated by commas; leave it empty to allow every Google Doc and Sheet in the folder.{" "}
+          {data.docs.configured ? `Editable right now: ${data.docs.editable.length ? data.docs.editable.join("; ") : "nothing"}.` : ""}
+        </div>
+      </Section>
+
+      <Section icon={ClipboardCheck} title="Proposed changes">
         <div style={{ fontSize: 14, color: COLORS.text }}>
-          {data.memory.total} topic{data.memory.total === 1 ? "" : "s"} remembered, {data.memory.waiting} waiting on someone, {data.memory.archived} archived.{" "}
-          <a href="/crm?tab=memory" style={{ color: COLORS.indigo, fontWeight: 800 }}>
-            Open the Memory tab
-          </a>{" "}
-          to read, edit or add topics. By email: &ldquo;remember: &hellip;&rdquo;, &ldquo;forget: &hellip;&rdquo;, &ldquo;what do you remember about &hellip;?&rdquo;.
+          {data.changes.proposed} ticket{data.changes.proposed === 1 ? "" : "s"} waiting for your approval, {data.changes.total} in all.{" "}
+          <a href="/changes" style={{ color: COLORS.indigo, fontWeight: 800 }}>
+            Open the changes page
+          </a>
+          . Anyone with access can ask for a change by email; it becomes a ticket you approve there or by replying YES.
         </div>
       </Section>
 

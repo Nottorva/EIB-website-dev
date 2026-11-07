@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Pencil, Users, ClipboardList, GraduationCap, FileText, Globe, Bot, Brain } from "lucide-react";
+import { Pencil, Users, ClipboardList, GraduationCap, FileText, Globe, Bot, ClipboardCheck } from "lucide-react";
 import { getAccessState, authMode } from "@/lib/auth";
 import { ROLE_LABEL } from "@/lib/roles";
 
@@ -57,14 +57,14 @@ const TOOLS = [
     label: "EIB Assistant",
     icon: Bot,
     roles: ["superAdmin"],
-    blurb: "The email agent: who may ask it questions, what is waiting on you, and the answers it has learned.",
+    blurb: "The email agent: connections, who may email it, the documents it may edit, and recent threads.",
   },
   {
-    href: "/memory",
-    label: "Long-term memory",
-    icon: Brain,
+    href: "/changes",
+    label: "Proposed changes",
+    icon: ClipboardCheck,
     roles: ["superAdmin"],
-    blurb: "What the assistant remembers: one line per topic, from your emails. Read, edit, add, forget.",
+    blurb: "Tickets the assistant wrote up from change requests. Approve to apply them to the platform and the documents.",
   },
   {
     href: "/apply",

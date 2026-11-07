@@ -1,6 +1,7 @@
-// The write path (verified Josef only): gather fields over email, show the full record, write only after YES,
-// and keep one `agentLastChange` snapshot per record for the audit trail. Purely additive: the agent never
-// deletes or archives anything; Josef does that by hand in the CRM.
+// The write path: a draft (mentor, lesson, event, or the application window) is built from an intent or a
+// ticket step, previewed as before/after lines, and written only after Josef approves. One `agentLastChange`
+// snapshot per record for the audit trail. Purely additive: the agent never deletes or archives anything;
+// Josef does that by hand in the CRM.
 
 import { readAll, readSetting, writeInsert, writeUpdate, writeSetting, newId } from "./db";
 import { cohortYear } from "./tools";
@@ -26,6 +27,7 @@ const MENTOR_REQUIRED = ["name", "email"];
 const MENTOR_ASK = ["email", "organization", "title", "linkedin", "lesson", "status", "preferred", "publicContact", "bio"];
 const METHOD_LABEL = { email: "Email", phone: "Phone", linkedin: "LinkedIn" };
 const LESSON_FIELDS = ["date", "startTime", "endTime", "room", "mentorLocation", "mentorStartTime", "mentorEndTime", "mentorBrief", "title"];
+const EVENT_FIELDS = ["title", "date", "startTime", "endTime", "location", "note"];
 
 const norm = (s) => String(s || "").trim().toLowerCase();
 
@@ -39,12 +41,23 @@ export async function findMentors(name) {
   return all.filter((m) => norm(m.name).includes(n) || n.includes(norm(m.name)));
 }
 
+export async function findEvents(title) {
+  const all = await readAll("events");
+  const n = norm(title).replace(/[^a-z0-9 ]/g, "");
+  if (!n) return [];
+  const key = (e) => norm(e.title).replace(/[^a-z0-9 ]/g, "");
+  const exact = all.filter((e) => key(e) === n);
+  if (exact.length) return exact;
+  return all.filter((e) => key(e).includes(n) || n.includes(key(e)));
+}
+
 export async function findLessons(ref) {
   const all = await readAll("lessons");
   const r = norm(ref);
-  const byNumber = all.filter((l) => String(l.number) === r.replace(/^lesson\s*/, ""));
+  const num = /^(?:lesson\s*)?(\d+(?:\.\d+)?)\b/.exec(r)?.[1];
+  const byNumber = num ? all.filter((l) => String(l.number) === num) : [];
   if (byNumber.length) return byNumber;
-  return all.filter((l) => norm(l.title).includes(r));
+  return all.filter((l) => norm(l.title).includes(r) || r.includes(norm(l.title)));
 }
 
 /** Start or extend a draft. Returns { draft, status: "need_fields" | "ready" | "ambiguous" | "not_found", message }. */
@@ -74,6 +87,22 @@ export async function buildDraft({ edit, existingDraft }) {
     if (!Object.keys(fields).length) return { status: "not_found", message: `What should change on lesson ${matches[0].number}? I can set: ${LESSON_FIELDS.join(", ")}.` };
     return finish({ kind: "lesson", action: "update", targetId: matches[0].id, targetName: `${matches[0].number}: ${matches[0].title}`, fields, createdAt: new Date().toISOString() });
   }
+  if (edit.target_kind === "event") {
+    const fields = {};
+    for (const k of EVENT_FIELDS) if (edit.fields[k]) fields[k] = String(edit.fields[k]).trim();
+    if (edit.action === "create") {
+      const title = fields.title || edit.target_name;
+      if (!title) return { status: "not_found", message: "What is the event called?" };
+      return finish({ kind: "event", action: "create", targetId: null, targetName: title, fields: { ...fields, title }, createdAt: new Date().toISOString() });
+    }
+    const matches = await findEvents(edit.target_name || fields.title);
+    if (!matches.length) return { status: "not_found", message: `I could not find an event called "${edit.target_name}" in the Mentor CRM.` };
+    if (matches.length > 1) return { status: "ambiguous", message: `Which event? ${matches.map((e) => `${e.title}${e.date ? ` (${e.date})` : ""}`).join(", ")}.` };
+    const changes = { ...fields };
+    if (norm(changes.title) === norm(matches[0].title)) delete changes.title;
+    if (!Object.keys(changes).length) return { status: "not_found", message: `What should change on ${matches[0].title}? I can set: ${EVENT_FIELDS.join(", ")}.` };
+    return finish({ kind: "event", action: "update", targetId: matches[0].id, targetName: matches[0].title, fields: changes, createdAt: new Date().toISOString() });
+  }
   if (edit.target_kind === "applications") {
     const fields = {};
     for (const k of ["opensAt", "closesAt"]) if (edit.fields[k]) fields[k] = parseWhen(edit.fields[k], k);
@@ -82,7 +111,7 @@ export async function buildDraft({ edit, existingDraft }) {
     if (bad) return { status: "not_found", message: `I could not read the ${bad[0] === "opensAt" ? "open" : "close"} date. Please give it as a date, for example 2026-12-01.` };
     return finish({ kind: "applications", action: "update", targetId: "applicationWindow", targetName: "the application window", fields, createdAt: new Date().toISOString() });
   }
-  return { status: "not_found", message: "I can edit mentors, lessons, and the application open and close dates." };
+  return { status: "not_found", message: "I can edit mentors, lessons, events, and the application open and close dates." };
 }
 
 /** "2026-12-01", "2026-12-01T09:00:00-05:00", "now", "none" -> ISO string, null (clear), or undefined (unreadable). */
@@ -154,6 +183,8 @@ const LABEL = {
   mentorStartTime: "Mentor start time",
   mentorEndTime: "Mentor end time",
   mentorBrief: "What we are looking for in a mentor",
+  location: "Location",
+  note: "Note",
   opens: "Opens",
   closes: "Closes",
 };
@@ -179,6 +210,11 @@ export async function confirmMessage(draft) {
     const first = firstOf(current.name);
     return `Here is the change to ${current.name}'s record:\n\n${diff(describeMentorMap(current), describeMentorMap(next))}${draft.fields.lesson ? `\nLesson: assign to lesson ${draft.fields.lesson} (cohort ${await cohortYear()})` : ""}\n\nReply YES and I will update ${first}'s record, or reply with any changes.`;
   }
+  if (draft.kind === "event") {
+    if (draft.action === "create") return `Here is the event before I save it:\n\n${Object.entries(draft.fields).map(([k, v]) => `${pretty(k)}: ${v}`).join("\n")}\n\nReply YES and I will add it to the Mentor CRM, or reply with any changes.`;
+    const current = (await readAll("events")).find((e) => e.id === draft.targetId);
+    return `Here is the change to ${current.title}:\n\n${diff(pick(current, Object.keys(draft.fields)), draft.fields)}\n\nReply YES and I will update it, or reply with any changes.`;
+  }
   if (draft.kind === "applications") {
     const current = (await readSetting("applicationWindow")) || {};
     const next = { ...current, ...draft.fields };
@@ -191,6 +227,44 @@ export async function confirmMessage(draft) {
 }
 
 const pick = (o, keys) => Object.fromEntries(keys.map((k) => [k, o?.[k] ?? ""]));
+
+const joinLines = (map) =>
+  Object.entries(map)
+    .filter(([, v]) => String(v ?? "") !== "")
+    .map(([k, v]) => `${pretty(k)}: ${v}`)
+    .join("; ");
+
+/** Before/after text for a ready draft, for change tickets. */
+export async function previewDraft(draft) {
+  if (draft.kind === "mentor" && draft.action === "create") {
+    const rec = await mentorRecordFromDraft(draft);
+    return { title: `New mentor ${rec.name}`, before: "", after: `${joinLines(describeMentorMap(rec))}${draft.fields.lesson && draft.fields.lesson !== "none" ? `; Lesson: ${draft.fields.lesson}` : ""}` };
+  }
+  if (draft.kind === "mentor") {
+    const current = (await readAll("mentors")).find((m) => m.id === draft.targetId);
+    const next = applyMentorPatch(current, draft.fields);
+    const b = describeMentorMap(current);
+    const a = describeMentorMap(next);
+    const changed = Object.keys(a).filter((k) => String(b[k] ?? "") !== String(a[k] ?? ""));
+    const lesson = draft.fields.lesson && draft.fields.lesson !== "none" ? `; Lesson: assign to lesson ${draft.fields.lesson}` : "";
+    return { title: `Mentor ${current.name}`, before: joinLines(pick(b, changed)) || "(as is)", after: `${joinLines(pick(a, changed))}${lesson}`.replace(/^; /, "") || "(no change)" };
+  }
+  if (draft.kind === "event" && draft.action === "create") return { title: `New event ${draft.fields.title}`, before: "", after: joinLines(draft.fields) };
+  if (draft.kind === "event") {
+    const current = (await readAll("events")).find((e) => e.id === draft.targetId);
+    const keys = Object.keys(draft.fields);
+    return { title: `Event ${current.title}`, before: joinLines(pick(current, keys)) || "(blank)", after: joinLines(draft.fields) };
+  }
+  if (draft.kind === "applications") {
+    const current = (await readSetting("applicationWindow")) || {};
+    const next = { ...current, ...draft.fields };
+    const show = (w) => ({ opens: fmtWhen(w.opensAt), closes: fmtWhen(w.closesAt) });
+    return { title: "Application window", before: joinLines(show(current)), after: joinLines(show(next)) };
+  }
+  const current = (await readAll("lessons")).find((l) => l.id === draft.targetId);
+  const keys = Object.keys(draft.fields);
+  return { title: `Lesson ${draft.targetName}`, before: joinLines(pick(current, keys)) || "(blank)", after: joinLines(draft.fields) };
+}
 
 function diff(before, after) {
   return Object.keys(after)
@@ -291,6 +365,20 @@ export async function commitDraft(draft, sourceMessageId) {
     const patch = { ...diffFields(current, next), agentLastChange: { before: snapshot(current), after: snapshot(next), at, sourceMessageId } };
     await writeUpdate("mentors", current.id, patch);
     return `Done: ${current.name}'s record is updated.`;
+  }
+  if (draft.kind === "event" && draft.action === "create") {
+    const rec = { id: newId("event"), title: draft.fields.title, date: draft.fields.date || "", startTime: draft.fields.startTime || "", endTime: draft.fields.endTime || "", location: draft.fields.location || "", note: draft.fields.note || "", anchor: "start", rank: 0, mentorIds: [] };
+    rec.agentLastChange = { before: null, after: snapshot(rec), at, sourceMessageId };
+    await writeInsert("events", rec);
+    return `Done: the event ${rec.title} is now in the Mentor CRM${rec.date ? ` on ${rec.date}` : ""}.`;
+  }
+  if (draft.kind === "event") {
+    const current = (await readAll("events")).find((e) => e.id === draft.targetId);
+    if (!current) throw new Error("That event no longer exists.");
+    const next = { ...current, ...draft.fields };
+    const patch = { ...diffFields(current, next), agentLastChange: { before: snapshot(current), after: snapshot(next), at, sourceMessageId } };
+    await writeUpdate("events", current.id, patch);
+    return `Done: ${current.title} is updated${draft.fields.date ? ` (now ${draft.fields.date})` : ""}.`;
   }
   if (draft.kind === "applications") {
     const current = (await readSetting("applicationWindow")) || { opensAt: null, closesAt: null, applicantDomain: "tfs.ca" };

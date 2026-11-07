@@ -1,10 +1,12 @@
-// How every email the agent writes is put together: a first-name greeting, the body paragraphs, a sign-off
-// on Josef's behalf, and the AI disclosure in the footer. The model writes paragraphs; this file wraps them.
+// How every email the agent writes is put together: a first-name greeting, the body paragraphs, the
+// references it drew on, a sign-off on Josef's behalf, and the AI disclosure in the footer. The model writes
+// paragraphs; this file wraps them. Plain text here; mail.js turns the same text into the HTML version.
 
 import { agentConfig } from "./config";
 
-export const CRM_URL = "https://www.joineib.ca/crm";
-export const MEMORY_URL = "https://www.joineib.ca/memory";
+export const SITE_URL = "https://www.joineib.ca";
+export const CRM_URL = `${SITE_URL}/crm`;
+export const CHANGES_URL = `${SITE_URL}/changes`;
 
 /** First name from a display name, a CRM record, or a signature line. Null when only an address is known. */
 export function firstNameOf({ name = "", email = "" } = {}) {
@@ -48,17 +50,26 @@ function signOff() {
 
 const clean = (body) => stripMarkdown(scrubDashes(String(body || "").trim()));
 
-/** A complete email body for a person outside: greeting, paragraphs, sign-off, disclosure. */
-export function compose({ firstName, body }) {
+/** "References:" lines: the documents and platform pages an answer drew on. mail.js turns these into links. */
+export function referencesBlock(references) {
+  const refs = (references || []).filter((r) => r && r.title && r.url);
+  if (!refs.length) return "";
+  return `References:\n${refs.map((r) => `- ${r.title}: ${r.url}`).join("\n")}`;
+}
+
+/** A complete email body for a person outside: greeting, paragraphs, references, sign-off, disclosure. */
+export function compose({ firstName, body, references = [] }) {
   const greeting = firstName ? `Hi ${firstName},` : "Hi there,";
-  return `${greeting}\n\n${clean(body)}\n\n${signOff()}`;
+  const refs = referencesBlock(references);
+  return `${greeting}\n\n${clean(body)}${refs ? `\n\n${refs}` : ""}\n\n${signOff()}`;
 }
 
 /** A note to Josef himself: same sign-off and disclosure, shorter body. */
-export function composeForJosef(body) {
+export function composeForJosef(body, references = []) {
   const { josefName } = agentConfig();
   const first = firstNameOf({ name: josefName }) || "Josef";
-  return `Hi ${first},\n\n${clean(body)}\n\n${signOff()}`;
+  const refs = referencesBlock(references);
+  return `Hi ${first},\n\n${clean(body)}${refs ? `\n\n${refs}` : ""}\n\n${signOff()}`;
 }
 
 /** Model output sometimes arrives with its own greeting or sign-off; strip them so compose() adds one set. */
@@ -67,5 +78,6 @@ export function bareBody(text) {
   t = t.replace(/^(hi|hello|hey|dear|bonjour)\b[^\n]*\n+/i, "");
   t = t.replace(/\n+(best|regards|kind regards|thanks|thank you|cheers|cordialement|merci)[,!.]?\s*\n[\s\S]*$/i, "");
   t = t.replace(/\n+--\s*\n[\s\S]*$/, "");
+  t = t.replace(/\n+references?\s*:\s*\n[\s\S]*$/i, "");
   return t.trim();
 }

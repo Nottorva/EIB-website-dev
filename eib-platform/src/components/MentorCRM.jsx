@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Plus, Trash2, Mail, Phone, MessageCircle, Star, X, Eye, BookOpen, UserCheck, Lock, UserPlus, Users, CalendarDays, Brain } from "lucide-react";
-import MemoryTab from "./MemoryTab";
+import { ArrowLeft, Plus, Trash2, Mail, Phone, MessageCircle, Star, X, Eye, BookOpen, UserCheck, Lock, UserPlus, Users, CalendarDays } from "lucide-react";
 import SessionsTab, { ownersOfLesson } from "./SessionsTab";
 import { mentorSeats } from "@/lib/sessionDefaults";
 import { CalendarDays as EventIcon } from "lucide-react";
@@ -413,7 +412,6 @@ export default function MentorCRM({ user }) {
   useEffect(() => {
     const wanted = new URLSearchParams(window.location.search).get("tab");
     if (wanted === "mentors") setTab("mentors");
-    if (wanted === "memory" && user?.role === "superAdmin") setTab("memory");
   }, []);
   // The Mentor CRM link in the top bar always comes back to the sessions list.
   useEffect(() => {
@@ -608,14 +606,11 @@ export default function MentorCRM({ user }) {
           options={[
             { id: "sessions", label: "Sessions", icon: CalendarDays },
             { id: "mentors", label: "Mentors", icon: Users },
-            ...(user?.role === "superAdmin" ? [{ id: "memory", label: "Memory", icon: Brain }] : []),
           ]}
         />
       </div>
 
-      {tab === "memory" ? (
-        <MemoryTab />
-      ) : !mentors ? (
+      {!mentors ? (
         <Loading />
       ) : tab === "sessions" ? (
         <SessionsTab

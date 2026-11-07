@@ -1,20 +1,21 @@
 // The orchestrator: one received email in, zero or more emails out. Called by the inbound route after the
 // webhook has been verified and deduplicated.
 //
-// Who sent it decides everything. Verified Josef can ask, edit, forward with an instruction, and change memory.
-// Whitelisted TFS staff get answers or escalations. Everyone else gets a one-line acknowledgement and a forward
-// to Josef. When the agent is not the only recipient it never replies to anyone but Josef.
+// Who sent it decides everything. Verified Josef can ask, request changes, forward with an instruction, and
+// approve tickets. Whitelisted TFS staff get answers, or their change requests become tickets for Josef.
+// Everyone else gets a one-line acknowledgement and a forward to Josef. When the agent is not the only
+// recipient it stays silent. Facts come from the EIB platform and the EIB Documents folder, nothing else.
 
 import { agentConfig, MAX_REPLIES_PER_THREAD_PER_HOUR, THREAD_CONTEXT_MESSAGES, DRAFT_EXPIRY_DAYS } from "./config";
 import { isAutomatedMail, reSubject, sendMail, firstLineOf } from "./mail";
 import { classifySender, otherParticipants } from "./classify";
-import { runAnswer, runForward, classifyJosefIntent, relayAnswer, memoryPass, rememberNote, summarizeEmail, timed } from "./claude";
-import { buildDraft, commitDraft, confirmMessage } from "./edits";
+import { runAnswer, runForward, runPlan, classifyJosefIntent, relayAnswer, summarizeEmail, timed } from "./claude";
 import { parseForward, unquoted } from "./forward";
-import { listMemory, isArchived, memoryContext, upsertMemory, forgetMemory, searchMemory, describeMemory } from "./memory";
+import { readmeContext } from "./drive";
 import { getThread, listThreads, saveThread, createEscalation, findEscalation, updateEscalation } from "./db";
 import { describeAccess, grantAccess, revokeAccess } from "./access";
-import { compose, composeForJosef, bareBody, firstNameOf, scrubDashes, CRM_URL, MEMORY_URL } from "./style";
+import { createTicket, ticketEmailText, ticketLabel, ticketUrl, applyTicket, rejectTicket, notifyDecision, getChange, describeSteps } from "./changes";
+import { compose, composeForJosef, bareBody, firstNameOf, scrubDashes, CRM_URL } from "./style";
 
 const now = () => new Date().toISOString();
 const shortId = () => Math.random().toString(36).slice(2, 7);
@@ -103,30 +104,30 @@ function pendingOf(thread) {
 
 function setPending(thread, draft, awaiting) {
   thread.draft = { ...draft, awaiting, expiresAt: new Date(Date.now() + DRAFT_EXPIRY_DAYS * 86400_000).toISOString() };
-  thread.mode = "edit";
+  thread.mode = draft.kind === "change" ? "change" : draft.kind === "plan" ? "plan" : "edit";
 }
 
-const YES_RE = /^\s*(yes|y|yep|yeah|yup|confirmed?|go ahead|do it|send( it)?|save( it)?|looks good|correct|ok(ay)?|oui|d'accord)\b[\s.!]*$/i;
-const NO_RE = /^\s*(no|nope|cancel|never mind|nevermind|forget it|stop|don'?t|non|annule[rz]?)\b[\s.!]*$/i;
+const YES_RE = /^\s*(yes|y|yep|yeah|yup|confirmed?|approved?|go ahead|do it|send( it)?|save( it)?|apply( it)?|looks good|correct|ok(ay)?|oui|d'accord)\b[\s.!]*$/i;
+const NO_RE = /^\s*(no|nope|cancel|reject(ed)?|never mind|nevermind|forget it|stop|don'?t|non|annule[rz]?)\b[\s.!]*$/i;
 const REMOVE_RE = /\b(undo|delete|remove|archive|erase|get rid of)\b/i;
+const CHANGE_VERB = /\b(add|create|update|change|set|assign|move|moving|moved|reschedule|remove|give|grant|revoke|make|mark|edit|rename|open|close|confirm|confirmed|approve|approved|book|cancel)\b/i;
 
 // ---------------------------------------------------------------------------
 // Sending, with the house style
 // ---------------------------------------------------------------------------
-async function send(thread, email, { to, cc = [], subject, text, firstName, toJosef = false, inReplyTo, references }) {
+async function send(thread, email, { to, cc = [], subject, text, firstName, toJosef = false, inReplyTo, references, sources = [] }) {
   const cfg = agentConfig();
-  const body = toJosef ? composeForJosef(text) : compose({ firstName, body: text });
+  const body = toJosef ? composeForJosef(text, sources) : compose({ firstName, body: text, references: sources });
   const ccList = [...new Set((cc || []).filter((e) => e && e !== cfg.address && !to.includes(e)))];
   const r = await sendMail({ to, cc: ccList, subject: subject || reSubject(email.subject), text: body, inReplyTo: inReplyTo ?? email.messageId, references: references ?? email.references });
   if (thread) thread.sent = [...(thread.sent || []), { at: now(), to, cc: ccList, messageId: r.messageId, resendId: r.id, text: String(text).slice(0, 2000) }];
   return r;
 }
 
-const replyToJosef = (thread, email, text) => send(thread, email, { to: [email.from.email], text, toJosef: true });
-/** Notes go to Josef's primary address only (memory notes, holds, errors, forwards). */
+const replyToJosef = (thread, email, text, sources = [], subject) => send(thread, email, { to: [email.from.email], text, toJosef: true, sources, subject });
+/** Notes go to Josef's primary address only (holds, errors, forwards). */
 const noteToJosef = (subject, text) => sendMail({ to: [agentConfig().josefAddresses[0]], subject, text: composeForJosef(text) });
 
-/** Everyone else on the original email plus Josef: he is CC'd on every reply not addressed only to him. */
 /** The first sentence of a summary, on one line. */
 function oneSentence(s) {
   const t = String(s || "").replace(/\s+/g, " ").trim();
@@ -140,10 +141,11 @@ function plainForJosef(s) {
   if (!t) return "";
   const kept = t
     .split(/(?<=[.!?])\s+/)
-    .filter((sent) => !/\btools?\b|\bfunction\b|\bschema\b|\b(search|get)_[a-z_]+\b|\bI (have|had) no (tool|way|function)\b|\bmemory (tool|system)\b/i.test(sent));
+    .filter((sent) => !/\btools?\b|\bfunction\b|\bschema\b|\b(search|get|read)_[a-z_]+\b|\bI (have|had) no (tool|way|function)\b/i.test(sent));
   return kept.join(" ").trim();
 }
 
+/** Everyone else on the original email plus Josef: he is CC'd on every reply not addressed only to him. */
 function ccForAsker(email) {
   const cfg = agentConfig();
   return [...otherParticipants(email).filter((e) => e !== email.from.email), ...cfg.josefAddresses.slice(0, 1)];
@@ -156,6 +158,12 @@ function groupMail(email) {
   const others = [...email.to, ...email.cc].filter((a) => a.email !== me);
   return !inTo || others.length > 0;
 }
+
+const notesFor = () =>
+  readmeContext().catch((e) => {
+    console.error(`[eib agent] folder notes: ${e.message}`);
+    return "";
+  });
 
 // ---------------------------------------------------------------------------
 // Entry
@@ -184,12 +192,9 @@ export async function handleEmail(email) {
       await noteToJosef(`Re: ${thread.subject || email.subject}`, `${email.from.name || email.from.email} replied to the email I sent on your behalf.\n\nIn short: ${oneSentence(summary)}\n\nTheir message:\n${theirs.slice(0, 3000)}\n\nI have not replied to them; this one is yours.`);
       outcome = "forward-reply thread: passed to Josef, no reply sent";
     } else if (groupMail(email)) {
-      if (sender.kind !== "josef") {
-        thread.mode = thread.mode || "context";
-        outcome = "stored as context (group email from someone else)";
-      } else {
-        outcome = await memoryOnly(email, "group email");
-      }
+      // CC'd, BCC'd, or one of several recipients: the agent listens and says nothing.
+      thread.mode = thread.mode || "context";
+      outcome = `stored as context (group email${sender.kind === "josef" ? " from Josef" : ""})`;
     } else if (sender.kind !== "josef" && !pendingOf(thread) && repliesInLastHour(thread) >= MAX_REPLIES_PER_THREAD_PER_HOUR) {
       // Josef is never capped, and nothing inside an in-progress flow is dropped. Others are held, never silently.
       await noteToJosef(`[EIB agent] held: ${email.subject}`, `I held a message from ${email.from.email} (${email.subject}) because of the rate limit (${MAX_REPLIES_PER_THREAD_PER_HOUR} replies in one thread within an hour). Their message:\n\n${(email.text || email.fullText).slice(0, 2000)}`);
@@ -217,60 +222,6 @@ export async function handleEmail(email) {
 }
 
 // ---------------------------------------------------------------------------
-// Memory
-// ---------------------------------------------------------------------------
-/** The memory pass on an email Josef wrote. Returns a one-line description of changes, or "". */
-async function runMemoryPass(email, { notify }) {
-  const items = (await listMemory()).filter((m) => !isArchived(m));
-  const r = await memoryPass({ email, memoryItems: items });
-  const lines = [];
-  for (const ch of r.changes || []) {
-    if (ch.action === "forget") {
-      const gone = await forgetMemory(ch.match_topic || ch.topic);
-      if (gone) lines.push(`${gone.topic} forgotten`);
-      continue;
-    }
-    const { item, created } = await upsertMemory({ topic: ch.topic, status: ch.status, summary: ch.summary, source: "email", sourceEmailId: email.id, matchTopic: ch.action === "update" ? ch.match_topic : "" });
-    lines.push(`${item.topic} -> ${item.status}${created ? " (new)" : ""}`);
-  }
-  if (r.unsure_question) await noteToJosef(`Memory question: ${email.subject}`, `${r.unsure_question}\n\nReply with "remember: ..." or "forget: ..." to settle it.`);
-  if (!lines.length) return "";
-  const what = lines.join("; ");
-  if (notify) await noteToJosef(`Memory updated: ${email.subject}`, `Memory updated: ${what} (from your email to ${email.to.map((a) => a.email).filter((e) => e !== agentConfig().address).join(", ") || "me"}).\n\nYou can review it at ${MEMORY_URL}.`);
-  return what;
-}
-
-async function memoryOnly(email, why) {
-  const what = await runMemoryPass(email, { notify: true });
-  return what ? `${why}: memory updated (${what})` : `${why}: nothing to remember, no reply`;
-}
-
-/** "remember:", "forget:", "what do you remember". Returns an outcome string or null when not a memory command. */
-async function memoryCommand(email, thread) {
-  const text = String(email.text || "").trim();
-  const remember = /^remember\s*:\s*([\s\S]+)/i.exec(text);
-  if (remember) {
-    const note = await rememberNote(remember[1].trim());
-    const { item, created, before } = await upsertMemory({ topic: note.topic, status: note.status, summary: note.summary, source: "email", sourceEmailId: email.id });
-    await replyToJosef(thread, email, created ? `Got it. I will remember this:\n\n${item.topic} (${item.status}): ${item.summary}` : `Got it. I updated what I had on ${before.topic}:\n\n${item.topic} (${item.status}): ${item.summary}\n\nBefore, it said: ${before.summary}`);
-    return `remember: ${item.topic}`;
-  }
-  const forget = /^forget\s*:\s*([\s\S]+)/i.exec(text);
-  if (forget) {
-    const gone = await forgetMemory(forget[1].trim());
-    await replyToJosef(thread, email, gone ? `Done. I have forgotten ${gone.topic}.` : `I could not find anything matching "${forget[1].trim()}" to forget. You can see everything I remember at ${MEMORY_URL}.`);
-    return gone ? `forget: ${gone.topic}` : "forget: nothing matched";
-  }
-  const what = /what do you (remember|know)(?:\s+about\s+(.+?))?\s*\??$/i.exec(text);
-  if (what) {
-    const items = what[2] ? await searchMemory(what[2]) : (await listMemory()).filter((m) => !isArchived(m));
-    await replyToJosef(thread, email, items.length ? `Here is what I have${what[2] ? ` on ${what[2].trim()}` : ""}:\n\n${describeMemory(items)}\n\nYou can edit any of it at ${MEMORY_URL}.` : `I have nothing on that yet. Tell me with "remember: ..." and I will keep it.`);
-    return "memory listed";
-  }
-  return null;
-}
-
-// ---------------------------------------------------------------------------
 // Unknown senders: one short reply, forward to Josef, nothing from the data.
 // ---------------------------------------------------------------------------
 async function handleUnknown(email, thread, sender) {
@@ -286,35 +237,39 @@ async function handleUnknown(email, thread, sender) {
 }
 
 // ---------------------------------------------------------------------------
-// Whitelisted staff: answer or escalate.
+// Whitelisted staff: answer, or turn a change request into a ticket for Josef.
 // ---------------------------------------------------------------------------
 async function handleStaff(email, thread, sender) {
-  thread.mode = "answer";
-  // Only Josef changes anything. A colleague's "remember:", "forget:" or request to edit records or access
-  // gets one polite line back (Josef in CC sees it) and nothing else: no escalation, no draft, no model answer.
   const text = (email.text || email.fullText || "").trim();
-  let change = /^(remember|forget)\s*:/i.test(firstLineOf(text)) ? "memory" : "";
-  const CHANGE_VERB = /\b(add|create|update|change|set|assign|move|reschedule|remove|give|grant|revoke|make|mark|edit|rename|open|close)\b/i;
-  if (!change && CHANGE_VERB.test(text)) {
+  const pending = pendingOf(thread);
+  // Details for a change the assistant asked about earlier in this thread.
+  if (pending?.kind === "plan" && pending.requester === email.from.email && !NO_RE.test(firstLineOf(text))) {
+    return startPlan(email, thread, sender, `${pending.request}\n\nMore details from ${email.from.name || email.from.email}: ${text}`);
+  }
+  if (pending?.kind === "plan" && NO_RE.test(firstLineOf(text))) {
+    thread.draft = null;
+    await send(thread, email, { to: [email.from.email], cc: ccForAsker(email), firstName: firstNameOf(email.from), text: "No problem, I have dropped that. Nothing was changed." });
+    return "plan dropped by requester";
+  }
+  thread.mode = "answer";
+  if (CHANGE_VERB.test(text)) {
     const intent = await timed("staff intent", () => classifyJosefIntent({ email, pendingDraft: null }));
-    if (intent.intent === "edit") change = "edit";
-    else if (intent.intent === "access_add" || intent.intent === "access_remove") change = "access";
+    if (intent.intent === "access_add" || intent.intent === "access_remove") {
+      await send(thread, email, { to: [email.from.email], cc: ccForAsker(email), firstName: firstNameOf(email.from), text: "Only Josef can change who has access to me, so I have not changed anything. I have let him know you asked, and you can also email him directly." });
+      return "refused access request from staff";
+    }
+    if (intent.intent === "edit") return startPlan(email, thread, sender, text);
   }
-  if (change) {
-    await send(thread, email, { to: [email.from.email], cc: ccForAsker(email), firstName: firstNameOf(email.from), text: "Only Josef can change what I remember or edit records, so I have not changed anything. I have let him know you asked, and you can also email him directly." });
-    return `refused ${change} request from staff`;
-  }
-  const result = await runAnswer({ email, senderKind: sender.kind, senderName: email.from.name, threadContext: threadContext(thread), memory: await memoryContext() });
+  const result = await runAnswer({ email, senderKind: sender.kind, senderName: email.from.name, threadContext: threadContext(thread), notes: await notesFor() });
   return applyAnswer(email, thread, sender, result);
 }
 
 async function applyAnswer(email, thread, sender, result) {
-  const cfg = agentConfig();
   const cc = ccForAsker(email);
   const firstName = firstNameOf(email.from);
   switch (result.action) {
     case "reply":
-      await send(thread, email, { to: [email.from.email], cc, firstName, text: bareBody(result.text) });
+      await send(thread, email, { to: [email.from.email], cc, firstName, text: bareBody(result.text), sources: result.references });
       return `answered (${result.toolCalls.map((t) => t.name).join(", ") || "no tools"})`;
     case "out_of_scope":
       await send(thread, email, { to: [email.from.email], cc, firstName, text: "I only handle questions about the EIB program, so I have passed this one along to Josef." });
@@ -329,6 +284,7 @@ async function applyAnswer(email, thread, sender, result) {
   }
 }
 
+/** The platform and the documents did not answer it: the asker hears it is with Josef, Josef gets the email. */
 async function escalate(email, thread, sender, result) {
   const cfg = agentConfig();
   const id = shortId();
@@ -344,11 +300,90 @@ async function escalate(email, thread, sender, result) {
     `What I found: ${plainForJosef(result.what_you_found) || "nothing on the EIB platform or in the documents folder"}`,
     result.draft_read ? `\nMy first read, for you to check: ${plainForJosef(result.draft_read)}` : "",
     "",
-    `Reply to this email in plain language and I will pass your answer to ${firstNameOf(email.from) || "them"} in their thread. Say "don't save this" if it should not be remembered.`,
+    `Reply to this email in plain language and I will pass your answer to ${firstNameOf(email.from) || "them"} in their thread. If this should be the standing answer, add it to the Read me document in the EIB Documents folder.`,
   ].join("\n");
   const sent = await sendMail({ to: cfg.josefAddresses.slice(0, 1), subject, text: composeForJosef(text) });
   await createEscalation({ shortId: id, askerEmail: email.from.email, askerName: email.from.name, askerCc, askerThreadRoot: thread.rootId, askerMessageId: email.messageId, askerReferences: email.references, askerSubject: email.subject, question: email.text || email.fullText, josefMessageId: sent.messageId, josefSubject: subject });
   return `escalated as Q-${id}`;
+}
+
+// ---------------------------------------------------------------------------
+// Change tickets
+// ---------------------------------------------------------------------------
+/** Plan a change for the sender (Josef or staff) and open a ticket, ask for details, or hand it to Josef. */
+async function startPlan(email, thread, sender, request) {
+  const cfg = agentConfig();
+  const isJosef = sender.kind === "josef";
+  const first = firstNameOf(email.from);
+  const r = await runPlan({ request, senderKind: sender.kind, senderName: email.from.name || email.from.email, threadContext: threadContext(thread), notes: await notesFor() });
+  const replyBack = (text) => (isJosef ? replyToJosef(thread, email, text) : send(thread, email, { to: [email.from.email], cc: ccForAsker(email), firstName: first, text }));
+
+  if (r.action === "need_details") {
+    setPending(thread, { kind: "plan", request, requester: email.from.email, createdAt: now() }, "details");
+    await replyBack(r.question);
+    return "plan: asked for details";
+  }
+  if (r.action !== "propose_changes" || !(r.steps || []).length) {
+    thread.draft = null;
+    if (isJosef) {
+      await replyToJosef(thread, email, `I could not turn that into a change myself: ${plainForJosef(r.reason) || "it is not a record or a document I can edit."} If it lives somewhere I can reach, tell me where and I will try again.`);
+      return "plan: nothing to propose (Josef told)";
+    }
+    await replyBack("Thanks for letting me know. I have passed this to Josef, who will take it from here.");
+    await noteToJosef(`[EIB fwd] ${email.subject}`, `${email.from.name || email.from.email} (${email.from.email}) asked for a change I could not prepare myself (${plainForJosef(r.reason) || "not something I can edit"}). I told them it is with you.\n\n${email.fullText}`);
+    return "plan: nothing to propose (passed to Josef)";
+  }
+
+  const requester = { email: email.from.email, name: email.from.name, kind: sender.kind, messageId: email.messageId, references: email.references, subject: email.subject };
+  const { ticket, usable } = await createTicket({ plan: r, requester, threadRootId: thread.rootId });
+  thread.draft = null;
+  if (!usable) {
+    const problems = ticket.steps.map((s) => `- ${s.description}: ${s.problem}`).join("\n");
+    if (isJosef) {
+      await replyToJosef(thread, email, `I worked out what would need to change, but none of it is something I can do right now:\n\n${problems}\n\nThe ticket is on the website for the record: ${ticketUrl(ticket)}`);
+      return `plan: ticket C-${ticket.shortId} has no usable steps (Josef told)`;
+    }
+    await replyBack("Thanks for letting me know. I have passed this to Josef, who will take it from here.");
+    await noteToJosef(`${ticketLabel(ticket)} needs you: ${ticket.summary}`, `${email.from.name || email.from.email} asked: ${ticket.summary}. I could not prepare any of it myself:\n\n${problems}\n\n${ticketUrl(ticket)}`);
+    return `plan: ticket C-${ticket.shortId} has no usable steps (passed to Josef)`;
+  }
+
+  // The approval email to Josef opens (or continues) a thread whose YES/NO decides the ticket.
+  const subject = `${ticketLabel(ticket)} ${ticket.summary}`;
+  const text = ticketEmailText(ticket);
+  if (isJosef) {
+    await replyToJosef(thread, email, text, [], subject);
+    setPending(thread, { kind: "change", changeId: ticket.id, createdAt: now() }, "confirm");
+  } else {
+    const sent = await sendMail({ to: cfg.josefAddresses.slice(0, 1), subject, text: composeForJosef(text) });
+    await saveThread({ rootId: sent.messageId, subject, participants: [...cfg.josefAddresses], mode: "change", messages: [], sent: [{ at: now(), to: cfg.josefAddresses.slice(0, 1), messageId: sent.messageId, resendId: sent.id, text: text.slice(0, 2000) }], draft: { kind: "change", changeId: ticket.id, createdAt: now(), awaiting: "confirm", expiresAt: ticket.expiresAt }, lastOutcome: `ticket C-${ticket.shortId} proposed` });
+    await replyBack(`Thanks, I have written this up for Josef to approve: ${ticket.summary}.\n\n${describeSteps(ticket)}\n\nI will let you know as soon as he has decided.`);
+  }
+  return `plan: ticket C-${ticket.shortId} proposed (${usable} step${usable === 1 ? "" : "s"}), awaiting approval`;
+}
+
+/** Josef decided a ticket by email (YES or NO on its thread). */
+async function decideTicketByEmail(email, thread, ticketId, approve) {
+  const ticket = await getChange(ticketId);
+  if (!ticket) {
+    await replyToJosef(thread, email, "I could not find that change ticket any more.");
+    return "ticket missing";
+  }
+  if (ticket.status !== "proposed") {
+    await replyToJosef(thread, email, `That ticket is already ${ticket.status}. ${ticketUrl(ticket)}`);
+    thread.draft = null;
+    return `ticket already ${ticket.status}`;
+  }
+  const lastSent = (thread.sent || [])[thread.sent.length - 1];
+  const updated = approve ? await applyTicket(ticket, { by: email.from.email }) : await rejectTicket(ticket, { by: email.from.email, reason: NO_RE.test(firstLineOf(email.text || "")) ? "" : (email.text || "").trim().slice(0, 300) });
+  thread.draft = null;
+  thread.mode = "change-decided";
+  await notifyDecision(updated, { viaEmail: true, josefThread: lastSent });
+  if (updated.requester?.kind === "josef") {
+    const lines = (updated.steps || []).map((s) => (s.status === "done" ? `${s.n}. Done: ${s.result}` : s.status === "failed" ? `${s.n}. Failed: ${s.problem}` : `${s.n}. Skipped: ${s.problem || s.description}`)).join("\n");
+    await replyToJosef(thread, email, approve ? `${updated.status === "applied" ? "Done" : updated.status === "partly applied" ? "Partly done" : "I could not apply it"}: ${updated.summary}.\n\n${lines}\n\n${ticketUrl(updated)}` : `Rejected, nothing was changed: ${updated.summary}.`);
+  }
+  return approve ? `ticket C-${updated.shortId} ${updated.status}` : `ticket C-${updated.shortId} rejected`;
 }
 
 // ---------------------------------------------------------------------------
@@ -357,6 +392,7 @@ async function escalate(email, thread, sender, result) {
 async function handleJosef(email, thread) {
   const cfg = agentConfig();
   const text = String(email.text || "").trim();
+  const firstLine = firstLineOf(text);
 
   // An answer to an open escalation?
   const q = /\[EIB Q-([a-z0-9]+)\]/i.exec(email.subject)?.[1];
@@ -370,18 +406,29 @@ async function handleJosef(email, thread) {
       askerThread.mode = "answered";
       await saveThread(askerThread);
     }
-    const dontSave = /don'?t save|do not save|ne pas (enregistrer|sauvegarder)/i.test(text);
-    const saved = r.save_to_memory && !dontSave;
-    if (saved) await upsertMemory({ topic: r.topic || esc.question.slice(0, 40), status: "info", summary: r.answer, source: "email", sourceEmailId: email.id });
-    await updateEscalation(esc.id, { status: "answered", answeredAt: now(), answer: r.answer, savedToMemory: saved });
+    await updateEscalation(esc.id, { status: "answered", answeredAt: now(), answer: r.answer });
     thread.mode = "escalation-answer";
-    return `relayed Josef's answer for Q-${q}${saved ? " and remembered it" : ""}`;
+    return `relayed Josef's answer for Q-${q}`;
   }
 
-  // A pending step comes first. A YES that lost its thread but quotes "I need your OK on this one" is matched
-  // to Josef's most recent forward draft.
+  // A YES or NO on a change ticket: by the pending state of this thread, or by the ticket id in the subject.
   let pending = pendingOf(thread);
-  if (!pending && YES_RE.test(firstLineOf(text)) && /I need your OK on this one/i.test(email.fullText || "")) {
+  const c = /\[EIB change C-([a-z0-9]+)\]/i.exec(email.subject)?.[1];
+  const ticketId = pending?.kind === "change" ? pending.changeId : c ? (await getChange(c.toLowerCase()))?.id : null;
+  if (ticketId && (YES_RE.test(firstLine) || NO_RE.test(firstLine))) return decideTicketByEmail(email, thread, ticketId, YES_RE.test(firstLine));
+  if (ticketId && pending?.kind === "change") {
+    // Anything else on a ticket thread is a change of mind: plan again with his notes.
+    const ticket = await getChange(ticketId);
+    if (ticket?.status === "proposed") {
+      await rejectTicket(ticket, { by: email.from.email, reason: "replaced by a new ticket" });
+      thread.draft = null;
+      const original = ticket.requester?.kind === "josef" ? (thread.messages || []).find((m) => m.from === email.from.email)?.text || ticket.summary : ticket.summary;
+      return startPlan(email, thread, { kind: "josef" }, `${original}\n\nJosef's changes to the plan: ${text}`);
+    }
+  }
+
+  // A YES that lost its thread but quotes "I need your OK on this one" is matched to his most recent forward draft.
+  if (!pending && YES_RE.test(firstLine) && /I need your OK on this one/i.test(email.fullText || "")) {
     const candidates = (await listThreads((t) => t.draft && t.draft.kind === "forward" && (t.participants || []).includes(email.from.email))).sort((a, b) => String(b.updatedAt).localeCompare(String(a.updatedAt)));
     if (candidates[0]) {
       const other = candidates[0];
@@ -396,124 +443,87 @@ async function handleJosef(email, thread) {
   const fwd = pending?.kind === "forward" ? null : parseForward(email);
   if (fwd) return handleForward(email, thread, fwd);
 
-  // Explicit memory commands.
-  const mem = await memoryCommand(email, thread);
-  if (mem) return mem;
+  // Details for a change the assistant asked about.
+  if (pending?.kind === "plan") {
+    if (NO_RE.test(firstLine)) {
+      thread.draft = null;
+      await replyToJosef(thread, email, "Dropped. Nothing was changed.");
+      return "plan dropped";
+    }
+    return startPlan(email, thread, { kind: "josef" }, `${pending.request}\n\nMore details from Josef: ${text}`);
+  }
 
   // Undo, delete, remove: not by email.
   if (!pending && REMOVE_RE.test(text) && /\b(mentor|lesson|record|change|him|her|them|entry|event)\b/i.test(text) && !/\baccess\b/i.test(text)) {
-    await replyToJosef(thread, email, `I only add and update records; removing or undoing is done by hand in the Mentor CRM so nothing disappears by accident. You can do that here: ${CRM_URL}\n\nIf you meant a change instead, tell me what to update and I will prepare it for your YES.`);
+    await replyToJosef(thread, email, `I only add and update records; removing or undoing is done by hand in the Mentor CRM so nothing disappears by accident. You can do that here: ${CRM_URL}\n\nIf you meant a change instead, tell me what to update and I will write it up for your approval.`);
     return "remove/undo request: pointed to the CRM";
   }
 
-  // A pending step is answered before any fresh intent detection. Yes and no are read from the first
-  // non-empty line of Josef's own words, never from anything quoted below.
-  const firstLine = firstLineOf(text);
+  // A pending forward or access step is answered before any fresh intent detection.
   let intent;
   if (pending && pending.kind === "forward") {
     console.log(`[eib agent] pending forward draft to ${pending.targetName}; reply: ${firstLine.slice(0, 40)}`);
     if (YES_RE.test(firstLine)) intent = { intent: "confirm", edit: EMPTY_EDIT };
     else if (NO_RE.test(firstLine)) intent = { intent: "cancel", edit: EMPTY_EDIT };
-    else {
-      // Changes to the draft: write it again with his notes.
-      const outcome = await handleForward(email, thread, pending.fields.forward, text);
-      return outcome;
-    }
+    else return handleForward(email, thread, pending.fields.forward, text);
   } else if (pending && pending.awaiting === "confirm" && YES_RE.test(firstLine)) intent = { intent: "confirm", edit: EMPTY_EDIT };
   else if (pending && NO_RE.test(firstLine)) intent = { intent: "cancel", edit: EMPTY_EDIT };
   else intent = await classifyJosefIntent({ email, pendingDraft: pending });
-  if (pending && pending.awaiting === "details" && pending.kind !== "forward" && (intent.intent === "other" || intent.intent === "question" || intent.intent === "confirm")) {
-    intent = { ...intent, intent: "edit", edit: { ...intent.edit, action: "update_draft", target_kind: pending.kind, target_name: pending.targetName } };
-  }
-  console.log(`[eib agent] josef intent ${intent.intent}${pending ? ` (pending ${pending.kind} ${pending.action}, awaiting ${pending.awaiting})` : ""}`);
+  console.log(`[eib agent] josef intent ${intent.intent}${pending ? ` (pending ${pending.kind}, awaiting ${pending.awaiting})` : ""}`);
 
-  let outcome;
   if (intent.intent === "confirm") {
     if (!pending) {
       await replyToJosef(thread, email, "There is nothing waiting for a yes in this thread. If you meant something else, just tell me.");
-      outcome = "confirm with no draft";
-    } else if (pending.awaiting === "details") {
-      await replyToJosef(thread, email, `I still need the ${pending.missing.join(", ")} before I can save. ${pending.kind === "mentor" ? "Reply with the email address at least." : ""}`.trim());
-      outcome = "confirm while details missing";
-    } else {
-      try {
-        let done;
-        if (pending.kind === "forward") done = await sendForwardReply(thread, pending.fields.forward, pending.fields.draft);
-        else if (pending.kind === "access") done = (pending.action === "grant" ? await grantAccess(pending.targetId, { name: pending.fields.name, addedBy: email.from.email }) : await revokeAccess(pending.targetId)).message;
-        else done = await commitDraft(pending, email.messageId);
-        thread.draft = null;
-        await replyToJosef(thread, email, done);
-        outcome = `wrote: ${done}`;
-      } catch (e) {
-        await replyToJosef(thread, email, `I could not save that: ${e.message}\n\nThe draft is still here; tell me what to change, or reply "cancel".`);
-        outcome = `write failed: ${e.message}`;
-      }
+      return "confirm with no draft";
     }
-  } else if (intent.intent === "cancel") {
+    try {
+      let done;
+      if (pending.kind === "forward") done = await sendForwardReply(thread, pending.fields.forward, pending.fields.draft, pending.fields.references || []);
+      else if (pending.kind === "access") done = (pending.action === "grant" ? await grantAccess(pending.targetId, { name: pending.fields.name, addedBy: email.from.email }) : await revokeAccess(pending.targetId)).message;
+      else done = "There is nothing waiting for a yes in this thread.";
+      thread.draft = null;
+      await replyToJosef(thread, email, done);
+      return `wrote: ${done}`;
+    } catch (e) {
+      await replyToJosef(thread, email, `I could not do that: ${e.message}\n\nTell me what to change, or reply "cancel".`);
+      return `write failed: ${e.message}`;
+    }
+  }
+  if (intent.intent === "cancel") {
     thread.draft = null;
     thread.mode = "edit-cancelled";
     await replyToJosef(thread, email, "Dropped. Nothing was changed.");
-    outcome = "draft cancelled";
-  } else if (intent.intent === "access_list") {
+    return "draft cancelled";
+  }
+  if (intent.intent === "access_list") {
     await replyToJosef(thread, email, await describeAccess());
-    outcome = "access list sent";
-  } else if (intent.intent === "access_add" || intent.intent === "access_remove") {
+    return "access list sent";
+  }
+  if (intent.intent === "access_add" || intent.intent === "access_remove") {
     const target = String(intent.edit.target_name || "").trim();
     if (!target) {
       await replyToJosef(thread, email, "Who should that be? Give me an email address or a domain.");
-      outcome = "access: no target";
-    } else {
-      setPending(thread, { kind: "access", action: intent.intent === "access_add" ? "grant" : "revoke", targetId: target, targetName: target, fields: { name: intent.edit.fields?.name || "" }, missing: [], createdAt: now() }, "confirm");
-      await replyToJosef(thread, email, intent.intent === "access_add" ? `Shall I give ${target} access to ask me questions${target.includes("@") ? "" : " (everyone at that domain)"}? Reply YES to confirm.` : `Shall I remove ${target}'s access? Reply YES to confirm.`);
-      outcome = `access ${intent.intent === "access_add" ? "grant" : "revoke"} proposed, awaiting YES`;
+      return "access: no target";
     }
-  } else if (intent.intent === "edit") {
-    const sameTarget = !intent.edit.target_name || intent.edit.target_name.toLowerCase() === String(pending?.targetName || "").toLowerCase() || String(pending?.targetName || "").toLowerCase().includes(intent.edit.target_name.toLowerCase());
-    const existing = pending && pending.kind !== "access" && pending.kind !== "forward" && (intent.edit.action === "update_draft" || sameTarget) ? pending : null;
-    if (!existing && !intent.edit.target_name && !intent.edit.fields?.name) {
-      await replyToJosef(thread, email, "Which mentor or lesson do you mean? Give me the name, for example: add a mentor, Sarah Chen.");
-      outcome = "edit: no target";
-    } else {
-      const r = await buildDraft({ edit: intent.edit, existingDraft: existing });
-      if (r.status === "not_found" || r.status === "ambiguous") {
-        await replyToJosef(thread, email, r.message);
-        outcome = `edit: ${r.status}`;
-      } else {
-        setPending(thread, r.draft, r.status === "ready" ? "confirm" : "details");
-        await replyToJosef(thread, email, r.message);
-        outcome = r.status === "ready" ? "edit drafted, awaiting YES" : `edit: asked for ${r.draft.missing.join(", ")}`;
-      }
-    }
-  } else if (intent.intent === "other" && pending && pending.kind !== "access" && pending.kind !== "forward") {
-    const r = await buildDraft({ edit: { ...intent.edit, action: "update_draft" }, existingDraft: pending });
-    setPending(thread, r.draft, r.status === "ready" ? "confirm" : "details");
-    await replyToJosef(thread, email, r.status === "ready" ? await confirmMessage(r.draft) : r.message);
-    outcome = "draft corrected";
-  } else {
-    thread.mode = "answer";
-    const result = await runAnswer({ email, senderKind: "josef", senderName: cfg.josefName, threadContext: threadContext(thread), memory: await memoryContext() });
-    if (result.action === "reply") {
-      await replyToJosef(thread, email, bareBody(result.text));
-      outcome = "josef question answered";
-    } else if (result.action === "escalate") {
-      await replyToJosef(thread, email, `I could not answer that from the EIB platform or the documents folder. ${result.what_you_found || ""}`.trim());
-      outcome = "josef question: no answer in data";
-    } else {
-      await replyToJosef(thread, email, "I only handle questions and changes about the EIB program.");
-      outcome = `josef: ${result.action}`;
-    }
+    setPending(thread, { kind: "access", action: intent.intent === "access_add" ? "grant" : "revoke", targetId: target, targetName: target, fields: { name: intent.edit.fields?.name || "" }, missing: [], createdAt: now() }, "confirm");
+    await replyToJosef(thread, email, intent.intent === "access_add" ? `Shall I give ${target} access to ask me questions${target.includes("@") ? "" : " (everyone at that domain)"}? Reply YES to confirm.` : `Shall I remove ${target}'s access? Reply YES to confirm.`);
+    return `access ${intent.intent === "access_add" ? "grant" : "revoke"} proposed, awaiting YES`;
   }
+  if (intent.intent === "edit") return startPlan(email, thread, { kind: "josef" }, text);
 
-  // Memory pass only when Josef stated something rather than asked for an action: edits, questions, access
-  // changes, and yes/no never create memory by themselves.
-  if (intent.intent === "other" && !pending) {
-    const what = await runMemoryPass(email, { notify: true }).catch((e) => {
-      console.error(`[eib agent] memory pass: ${e.message}`);
-      return "";
-    });
-    if (what) outcome += `; memory: ${what}`;
+  // A question, or anything else: answer from the platform and the documents.
+  thread.mode = "answer";
+  const result = await runAnswer({ email, senderKind: "josef", senderName: cfg.josefName, threadContext: threadContext(thread), notes: await notesFor() });
+  if (result.action === "reply") {
+    await replyToJosef(thread, email, bareBody(result.text), result.references);
+    return "josef question answered";
   }
-  return outcome;
+  if (result.action === "escalate") {
+    await replyToJosef(thread, email, `I could not answer that from the EIB platform or the documents folder. ${plainForJosef(result.what_you_found) || ""}`.trim());
+    return "josef question: no answer in data";
+  }
+  await replyToJosef(thread, email, "I only handle questions and changes about the EIB program.");
+  return `josef: ${result.action}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -529,25 +539,25 @@ async function handleForward(email, thread, fwd, changes = "") {
     await replyToJosef(thread, email, "That forward is one of my own emails, so there is nobody to reply to. Tell me what you would like done instead.");
     return "forward: nobody to reply to";
   }
-  const r = await runForward({ instruction: fwd.instruction, original: fwd.original, memory: await memoryContext(), extra: changes });
+  const r = await runForward({ instruction: fwd.instruction, original: fwd.original, notes: await notesFor(), extra: changes });
   if (r.action === "send_reply") {
-    const done = await sendForwardReply(thread, fwd, bareBody(r.text));
+    const done = await sendForwardReply(thread, fwd, bareBody(r.text), r.references || []);
     thread.draft = null;
     await replyToJosef(thread, email, done);
     return `forward: replied to ${fwd.original.from.email}`;
   }
-  setPending(thread, { kind: "forward", action: "send", targetId: fwd.original.from.email, targetName: fwd.original.from.email, fields: { forward: fwd, draft: bareBody(r.draft) }, missing: [], createdAt: now() }, "confirm");
+  setPending(thread, { kind: "forward", action: "send", targetId: fwd.original.from.email, targetName: fwd.original.from.email, fields: { forward: fwd, draft: bareBody(r.draft), references: r.references || [] }, missing: [], createdAt: now() }, "confirm");
   const first = firstNameOf(fwd.original.from) || "there";
   await replyToJosef(thread, email, `I need your OK on this one: ${r.reason}\n\nDraft to ${fwd.original.from.name || fwd.original.from.email}:\n\nHi ${first},\n\n${bareBody(r.draft) || "(nothing drafted yet; tell me what to say)"}\n\nReply YES to send, or reply with changes and I will redraft.`);
   return "forward: draft sent to Josef for OK";
 }
 
 /** Send the reply to the original sender (Josef in CC) and open a thread that routes their replies to Josef. */
-async function sendForwardReply(thread, fwd, text) {
+async function sendForwardReply(thread, fwd, text, references = []) {
   const cfg = agentConfig();
   const to = fwd.original.from.email;
   const subject = reSubject(fwd.original.subject);
-  const r = await sendMail({ to: [to], cc: cfg.josefAddresses.slice(0, 1), subject, text: compose({ firstName: firstNameOf(fwd.original.from), body: text }) });
+  const r = await sendMail({ to: [to], cc: cfg.josefAddresses.slice(0, 1), subject, text: compose({ firstName: firstNameOf(fwd.original.from), body: text, references }) });
   const sentEntry = { at: now(), to: [to], cc: cfg.josefAddresses.slice(0, 1), messageId: r.messageId, resendId: r.id, text: String(text).slice(0, 2000) };
   await saveThread({ rootId: r.messageId, subject, participants: [to, ...cfg.josefAddresses], mode: "forward-reply", messages: [], sent: [sentEntry], draft: null, lastOutcome: "replied on Josef's behalf" });
   thread.sent = [...(thread.sent || []), sentEntry];

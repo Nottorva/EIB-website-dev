@@ -18,7 +18,8 @@ export const agentConfig = () => ({
   resendKey: process.env.RESEND_API_KEY || "",
   webhookSecret: process.env.RESEND_WEBHOOK_SECRET || "",
   anthropicKey: process.env.ANTHROPIC_API_KEY || "",
-  model: process.env.AGENT_MODEL || "claude-sonnet-5-5",
+  // Planning document edits is the hardest thing the agent does; Opus is the default. AGENT_MODEL overrides.
+  model: process.env.AGENT_MODEL || "claude-opus-5-5",
   driveFolderId: process.env.EIB_DRIVE_FOLDER_ID || "",
   serviceAccountJson: process.env.GOOGLE_SERVICE_ACCOUNT_JSON || "",
   readUri: process.env.MONGODB_AGENT_READ_URI || "",
@@ -37,6 +38,8 @@ export const MAX_REPLIES_PER_THREAD_PER_HOUR = 5;
 export const ESCALATION_REMINDER_DAYS = 3;
 /** An unconfirmed edit draft is discarded after this long. */
 export const DRAFT_EXPIRY_DAYS = 7;
+/** A proposed change ticket nobody approved or rejected expires after this long. */
+export const CHANGE_EXPIRY_DAYS = 7;
 /** Model loop: at most this many tool rounds per email. */
 export const MAX_TOOL_ROUNDS = 8;
 /** Keep this many recent messages of a thread as context for the model. */

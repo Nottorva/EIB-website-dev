@@ -224,7 +224,28 @@ export function firstLineOf(text) {
 // ---------------------------------------------------------------------------
 // Sending
 // ---------------------------------------------------------------------------
-export async function sendMail({ to, cc = [], subject, text, inReplyTo, references = [] }) {
+const escapeHtml = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+/**
+ * The HTML twin of a plain-text email: same words, paragraphs kept, URLs clickable, and "References:" lines
+ * ("- Title: https://...") shown as links with the title as the link text.
+ */
+export function textToHtml(text) {
+  const paragraphs = String(text || "").replace(/\r\n/g, "\n").split(/\n{2,}/);
+  const html = paragraphs
+    .map((p) => {
+      const lines = p.split("\n").map((line) => {
+        const ref = /^(- )?(.+?): (https?:\/\/\S+)$/.exec(line.trim());
+        if (ref) return `${ref[1] ? "&bull; " : ""}<a href="${escapeHtml(ref[3])}">${escapeHtml(ref[2])}</a>`;
+        return escapeHtml(line).replace(/(https?:\/\/[^\s<]+[^\s<.,;:!?)])/g, '<a href="$1">$1</a>');
+      });
+      return `<p style="margin:0 0 14px">${lines.join("<br>")}</p>`;
+    })
+    .join("");
+  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#1a1a1a">${html}</div>`;
+}
+
+export async function sendMail({ to, cc = [], subject, text, html, inReplyTo, references = [] }) {
   const cfg = agentConfig();
   const from = `${cfg.displayName} <${cfg.address}>`;
   // Josef is on every email the agent sends, unless he is already in To or CC. Never duplicated.
@@ -238,7 +259,7 @@ export async function sendMail({ to, cc = [], subject, text, inReplyTo, referenc
     headers["In-Reply-To"] = inReplyTo;
     headers["References"] = [...references, inReplyTo].filter((v, i, a) => v && a.indexOf(v) === i).join(" ");
   }
-  const payload = { from, to: [].concat(to), cc: cc.length ? cc : undefined, subject, text, headers: Object.keys(headers).length ? headers : undefined };
+  const payload = { from, to: [].concat(to), cc: cc.length ? cc : undefined, subject, text, html: html || textToHtml(text), headers: Object.keys(headers).length ? headers : undefined };
   if (!cfg.resendKey) {
     if (process.env.NODE_ENV === "production") throw new Error("RESEND_API_KEY is not set; the agent cannot send.");
     const fs = await import("node:fs");
