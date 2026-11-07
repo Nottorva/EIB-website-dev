@@ -311,6 +311,10 @@ async function run() {
   let nb = outbox().length;
   r = await deliver(email({ from: COLLEAGUE, name: "Josef Marshall", subject: "EIB Night", text: "Hey, we're moving EIB Night to November 25th. Can you update everything?" }));
   check("a colleague's request is proposed back to them first", /proposal C-\w+ sent to the requester \(3 steps\)/.test(outcome(r)) && /Please reply with any corrections, or confirm this is correct/.test(lastTo(COLLEAGUE)?.text || "") && /November 25/.test(lastTo(COLLEAGUE)?.text || ""), outcome(r));
+  check("the proposal lists what it affects, without the step-by-step detail", /This change will affect the following:
+- EIB platform: Event EIB Night
+- EIB Night run of show
+- Session schedule \(test\)/.test(lastTo(COLLEAGUE)?.text || "") && !/Before:|After:/.test(lastTo(COLLEAGUE)?.text || ""), lastTo(COLLEAGUE)?.text);
   check("nothing has gone to Josef yet beyond the CC", lastTo(JOSEF)?.cc?.length === 0 || !/\[EIB change C-/.test([...outbox()].reverse().find((x) => x.to.includes(JOSEF))?.text || ""), "");
   check("the draft is not waiting for Josef", lastTicket()?.status === "draft");
   const eibRoot = r.mail.message_id;

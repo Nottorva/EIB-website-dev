@@ -93,7 +93,7 @@ export const PLAN_TERMINAL_TOOLS = [
             ["kind", "description"],
           ),
         },
-        notes: { type: "string", description: "For Josef: anything you could not change (a PDF, a place you were unsure about) or that he should check. Empty if nothing." },
+        notes: { type: "string", description: "Short plain paragraphs that both the person who asked and Josef will read: anything you could not change (a PDF, an old deck), a date or detail worth double-checking, things you deliberately left alone, and who else may need to hear about it. Say 'reply with the correction' rather than 'reject the ticket'. Empty if nothing." },
       },
       ["summary", "steps", "notes"],
     ),

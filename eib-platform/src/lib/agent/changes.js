@@ -75,6 +75,21 @@ export function describeSteps(ticket) {
 export const ticketLabel = (ticket) => `[EIB change C-${ticket.shortId}]`;
 export const ticketUrl = (ticket) => `${CHANGES_URL}#C-${ticket.shortId}`;
 
+/** What a ticket touches, in plain words for the requester: each document once, and each platform record. */
+export function affectedList(ticket) {
+  const lines = [];
+  const seen = new Set();
+  for (const s of ticket.steps || []) {
+    if (s.status !== "ready") continue;
+    const label = s.kind === "document" ? s.document : `EIB platform: ${s.title || s.description}`;
+    if (label && !seen.has(label)) {
+      seen.add(label);
+      lines.push(`- ${label}`);
+    }
+  }
+  return lines.join("\n");
+}
+
 /** The documents a ticket touches, for the References list of its emails. */
 export function ticketReferences(ticket) {
   const out = [];

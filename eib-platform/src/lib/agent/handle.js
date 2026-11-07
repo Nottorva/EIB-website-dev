@@ -14,7 +14,7 @@ import { parseForward, unquoted } from "./forward";
 import { readmeContext } from "./drive";
 import { getThread, listThreads, saveThread, createEscalation, findEscalation, updateEscalation } from "./db";
 import { describeAccess, grantAccess, revokeAccess } from "./access";
-import { createTicket, ticketEmailText, ticketUrl, ticketReferences, applyTicket, rejectTicket, notifyDecision, getChange, updateChange, describeSteps } from "./changes";
+import { createTicket, ticketEmailText, ticketUrl, ticketReferences, affectedList, applyTicket, rejectTicket, notifyDecision, getChange, updateChange } from "./changes";
 import { compose, composeForJosef, bareBody, firstNameOf, CRM_URL } from "./style";
 
 const now = () => new Date().toISOString();
@@ -388,7 +388,9 @@ async function startPlan(email, thread, sender, request) {
     return `plan: ticket C-${ticket.shortId} proposed (${usable} step${usable === 1 ? "" : "s"}), awaiting approval`;
   }
   // A colleague first confirms the proposal; only then is it logged for Josef.
-  await replyBack(`Thanks, here is what I understood: ${ticket.summary}.\n\n${describeSteps(ticket)}${ticket.notes ? `\n\nOne thing to note: ${ticket.notes}` : ""}\n\nPlease reply with any corrections, or confirm this is correct (a simple yes will do) and I will log it for Josef.`, ticketReferences(ticket));
+  // The requester gets the gist: the change, what it touches, and the notes. The step-by-step before and
+  // after is for Josef's ticket email and the /changes page.
+  await replyBack(`Thanks, here is what I understood: ${ticket.summary}.\n\nThis change will affect the following:\n${affectedList(ticket) || "- nothing I can change myself"}${ticket.notes ? `\n\n${ticket.notes}` : ""}\n\nPlease reply with any corrections, or confirm this is correct (a simple yes will do) and I will log it for Josef.`, ticketReferences(ticket));
   setPending(thread, { kind: "proposal", changeId: ticket.id, request, requester: email.from.email, createdAt: now() }, "confirm");
   return `plan: proposal C-${ticket.shortId} sent to the requester (${usable} step${usable === 1 ? "" : "s"}), awaiting their confirmation`;
 }
