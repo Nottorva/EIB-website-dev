@@ -130,7 +130,9 @@ async function send(thread, email, { to, cc = [], subject, text, firstName, toJo
 
 const replyToJosef = (thread, email, text, sources = [], subject) => send(thread, email, { to: [email.from.email], text, toJosef: true, sources, subject });
 /** Notes go to Josef's primary address only (holds, errors, forwards). */
-const noteToJosef = (subject, text) => sendMail({ to: [agentConfig().josefAddresses[0]], subject, text: composeForJosef(text) });
+const noteToJosef = (subject, text, { inReplyTo, references = [] } = {}) => sendMail({ to: [agentConfig().josefAddresses[0]], subject, text: composeForJosef(text), inReplyTo, references });
+/** A note about a specific email, threaded under it (Josef is usually in CC of what it answers). */
+const noteAbout = (email, subject, text) => noteToJosef(subject, text, { inReplyTo: email.messageId, references: email.references });
 
 /** The first sentence of a summary, on one line. */
 function oneSentence(s) {
@@ -193,7 +195,7 @@ export async function handleEmail(email) {
       // The person Josef had the agent write to has replied: Josef gets it, they get nothing.
       const theirs = unquoted(email.text || email.fullText).trim() || (email.text || email.fullText || "").trim();
       const { summary } = await summarizeEmail({ ...email, text: theirs, fullText: theirs });
-      await noteToJosef(`Re: ${thread.subject || email.subject}`, `${email.from.name || email.from.email} replied to the email I sent on your behalf.\n\nIn short: ${oneSentence(summary)}\n\nTheir message:\n${theirs.slice(0, 3000)}\n\nI have not replied to them; this one is yours.`);
+      await noteAbout(email, reSubject(thread.subject || email.subject), `${email.from.name || email.from.email} replied to the email I sent on your behalf.\n\nIn short: ${oneSentence(summary)}\n\nTheir message:\n${theirs.slice(0, 3000)}\n\nI have not replied to them; this one is yours.`);
       outcome = "forward-reply thread: passed to Josef, no reply sent";
     } else if (groupMail(email)) {
       // CC'd, BCC'd, or one of several recipients: the agent listens and says nothing.
@@ -201,7 +203,7 @@ export async function handleEmail(email) {
       outcome = `stored as context (group email${sender.kind === "josef" ? " from Josef" : ""})`;
     } else if (sender.kind !== "josef" && !pendingOf(thread) && repliesInLastHour(thread) >= MAX_REPLIES_PER_THREAD_PER_HOUR) {
       // Josef is never capped, and nothing inside an in-progress flow is dropped. Others are held, never silently.
-      await noteToJosef(`[EIB agent] held: ${email.subject}`, `I held a message from ${email.from.email} (${email.subject}) because of the rate limit (${MAX_REPLIES_PER_THREAD_PER_HOUR} replies in one thread within an hour). Their message:\n\n${(email.text || email.fullText).slice(0, 2000)}`);
+      await noteAbout(email, `[EIB agent] held: ${email.subject}`, `I held a message from ${email.from.email} (${email.subject}) because of the rate limit (${MAX_REPLIES_PER_THREAD_PER_HOUR} replies in one thread within an hour). Their message:\n\n${(email.text || email.fullText).slice(0, 2000)}`);
       outcome = "rate cap: held, Josef notified";
     } else if (sender.kind === "josef") {
       outcome = await handleJosef(email, thread);
@@ -213,7 +215,7 @@ export async function handleEmail(email) {
   } catch (e) {
     outcome = `error: ${e.message}`;
     try {
-      await noteToJosef(`[EIB agent error] ${email.subject}`, `I could not finish handling an email from ${email.from.email} (${sender.kind}).\n\nStep: ${e.step || "unknown"}\nError: ${e.message}\n\nThe email:\n${(email.text || email.fullText).slice(0, 2000)}`);
+      await noteAbout(email, `[EIB agent error] ${email.subject}`, `I could not finish handling an email from ${email.from.email} (${sender.kind}).\n\nStep: ${e.step || "unknown"}\nError: ${e.message}\n\nThe email:\n${(email.text || email.fullText).slice(0, 2000)}`);
     } catch (e2) {
       console.error(`[eib agent] could not send the error email either: ${e2?.message || e2}`);
     }
@@ -235,6 +237,8 @@ async function handleUnknown(email, thread, sender) {
   await sendMail({
     to: cfg.josefAddresses.slice(0, 1),
     subject: `[EIB fwd${sender.lookalike ? ", suspicious" : ""}] ${email.subject}`,
+    inReplyTo: email.messageId,
+    references: email.references,
     text: composeForJosef(`${sender.lookalike ? "Warning: this email claims to be from one of your addresses but failed authentication. Treat it as unknown.\n\n" : ""}This came in from ${email.from.name ? `${email.from.name} <${email.from.email}>` : email.from.email}, who is not on the access list (${sender.why}). I told them I have passed it to you.\n\n${email.fullText}`),
   });
   return sender.lookalike ? "lookalike Josef: forwarded as suspicious, nothing written" : "unknown sender: acknowledged and forwarded";
@@ -246,6 +250,11 @@ async function handleUnknown(email, thread, sender) {
 async function handleStaff(email, thread, sender) {
   const text = (email.text || email.fullText || "").trim();
   const pending = pendingOf(thread);
+  if (pending?.kind === "change") {
+    // The ticket is with Josef; the requester gets a short note rather than a second ticket.
+    await send(thread, email, { to: [email.from.email], cc: ccForAsker(email), firstName: firstNameOf(email.from), text: "Thanks. Your earlier request is still with Josef for approval; I will let you know as soon as he has decided. If this is a different request, send it as a new email." });
+    return "ticket pending: requester told to wait";
+  }
   // Details for a change the assistant asked about earlier in this thread.
   if (pending?.kind === "plan" && pending.requester === email.from.email && !NO_RE.test(firstLineOf(text))) {
     return startPlan(email, thread, sender, `${pending.request}\n\nMore details from ${email.from.name || email.from.email}: ${text}`);
@@ -277,10 +286,10 @@ async function applyAnswer(email, thread, sender, result) {
       return `answered (${result.toolCalls.map((t) => t.name).join(", ") || "no tools"})`;
     case "out_of_scope":
       await send(thread, email, { to: [email.from.email], cc, firstName, text: "I only handle questions about the EIB program, so I have passed this one along to Josef." });
-      await noteToJosef(`[EIB fwd, out of scope] ${email.subject}`, `From ${email.from.email}:\n\n${email.fullText}`);
+      await noteAbout(email, `[EIB fwd, out of scope] ${email.subject}`, `From ${email.from.email}:\n\n${email.fullText}`);
       return "out of scope: forwarded";
     case "suspicious":
-      await noteToJosef(`[EIB fwd, suspicious] ${email.subject}`, `This email tried to change my rules (${result.reason}). I did not reply.\n\nFrom ${email.from.email}:\n\n${email.fullText}`);
+      await noteAbout(email, `[EIB fwd, suspicious] ${email.subject}`, `This email tried to change my rules (${result.reason}). I did not reply.\n\nFrom ${email.from.email}:\n\n${email.fullText}`);
       return "suspicious: forwarded, no reply";
     case "escalate":
     default:
@@ -295,8 +304,10 @@ async function escalate(email, thread, sender, result) {
   thread.mode = "escalated";
   const askerCc = ccForAsker(email);
   await send(thread, email, { to: [email.from.email], cc: askerCc, firstName: firstNameOf(email.from), text: "Thanks for your question. I am checking with Josef and will get back to you as soon as I hear from him." });
-  const subject = `[EIB Q-${id}] ${(result.question_summary || email.subject).slice(0, 80)}`;
+  const subject = reSubject(email.subject);
   const text = [
+    `[EIB Q-${id}] ${(result.question_summary || email.subject).slice(0, 80)}`,
+    "",
     `${email.from.name || email.from.email} (${email.from.email}) asked:`,
     "",
     email.text || email.fullText,
@@ -306,7 +317,7 @@ async function escalate(email, thread, sender, result) {
     "",
     `Reply to this email in plain language and I will pass your answer to ${firstNameOf(email.from) || "them"} in their thread. If this should be the standing answer, add it to the Read me document in the EIB Documents folder.`,
   ].join("\n");
-  const sent = await sendMail({ to: cfg.josefAddresses.slice(0, 1), subject, text: composeForJosef(text) });
+  const sent = await sendMail({ to: cfg.josefAddresses.slice(0, 1), subject, text: composeForJosef(text), inReplyTo: email.messageId, references: email.references });
   await createEscalation({ shortId: id, askerEmail: email.from.email, askerName: email.from.name, askerCc, askerThreadRoot: thread.rootId, askerMessageId: email.messageId, askerReferences: email.references, askerSubject: email.subject, question: email.text || email.fullText, josefMessageId: sent.messageId, josefSubject: subject });
   return `escalated as Q-${id}`;
 }
@@ -348,21 +359,23 @@ async function startPlan(email, thread, sender, request) {
       return `plan: ticket C-${ticket.shortId} has no usable steps (Josef told)`;
     }
     await replyBack("Thanks for letting me know. I have passed this to Josef, who will take it from here.");
-    await noteToJosef(`${ticketLabel(ticket)} needs you: ${ticket.summary}`, `${email.from.name || email.from.email} asked: ${ticket.summary}. I could not prepare any of it myself:\n\n${problems}\n\n${ticketUrl(ticket)}`);
+    await noteAbout(email, reSubject(email.subject), `${email.from.name || email.from.email} asked: ${ticket.summary}. I could not prepare any of it myself:\n\n${problems}\n\n${ticketUrl(ticket)}`);
     return `plan: ticket C-${ticket.shortId} has no usable steps (passed to Josef)`;
   }
 
-  // The approval email to Josef opens (or continues) a thread whose YES/NO decides the ticket.
-  const subject = `${ticketLabel(ticket)} ${ticket.summary}`;
+  // The approval email to Josef is a reply in the requester's thread (Josef is CC'd on the requester's copy),
+  // so Gmail keeps the whole exchange together. His YES/NO in that thread decides the ticket.
   const text = ticketEmailText(ticket);
   if (isJosef) {
-    await replyToJosef(thread, email, text, ticketReferences(ticket), subject);
-    setPending(thread, { kind: "change", changeId: ticket.id, createdAt: now() }, "confirm");
+    await replyToJosef(thread, email, text, ticketReferences(ticket));
   } else {
-    const sent = await sendMail({ to: cfg.josefAddresses.slice(0, 1), subject, text: composeForJosef(text, ticketReferences(ticket)) });
-    await saveThread({ rootId: sent.messageId, subject, participants: [...cfg.josefAddresses], mode: "change", messages: [], sent: [{ at: now(), to: cfg.josefAddresses.slice(0, 1), messageId: sent.messageId, resendId: sent.id, text: text.slice(0, 2000) }], draft: { kind: "change", changeId: ticket.id, createdAt: now(), awaiting: "confirm", expiresAt: ticket.expiresAt }, lastOutcome: `ticket C-${ticket.shortId} proposed` });
+    const subject = reSubject(email.subject);
+    const sent = await sendMail({ to: cfg.josefAddresses.slice(0, 1), subject, text: composeForJosef(text, ticketReferences(ticket)), inReplyTo: email.messageId, references: email.references });
+    thread.sent = [...(thread.sent || []), { at: now(), to: cfg.josefAddresses.slice(0, 1), cc: [], messageId: sent.messageId, resendId: sent.id, text: text.slice(0, 2000) }];
+    if (!thread.participants.includes(cfg.josefAddresses[0])) thread.participants = [...thread.participants, cfg.josefAddresses[0]];
     await replyBack(`Thanks, I have written this up for Josef to approve: ${ticket.summary}.\n\n${describeSteps(ticket)}\n\nI will let you know as soon as he has decided.`, ticketReferences(ticket));
   }
+  setPending(thread, { kind: "change", changeId: ticket.id, createdAt: now() }, "confirm");
   return `plan: ticket C-${ticket.shortId} proposed (${usable} step${usable === 1 ? "" : "s"}), awaiting approval`;
 }
 
@@ -399,7 +412,7 @@ async function handleJosef(email, thread) {
   const firstLine = firstLineOf(text);
 
   // An answer to an open escalation?
-  const q = /\[EIB Q-([a-z0-9]+)\]/i.exec(email.subject)?.[1];
+  const q = (/\[EIB Q-([a-z0-9]+)\]/i.exec(email.subject) || /\[EIB Q-([a-z0-9]+)\]/i.exec(email.fullText || ""))?.[1];
   const esc = q ? await findEscalation((e) => e.shortId === q.toLowerCase() && e.status === "open") : null;
   if (esc) {
     const r = await relayAnswer({ question: esc.question, josefReply: text || email.fullText, askerName: esc.askerName || esc.askerEmail });
@@ -417,7 +430,7 @@ async function handleJosef(email, thread) {
 
   // A YES or NO on a change ticket: by the pending state of this thread, or by the ticket id in the subject.
   let pending = pendingOf(thread);
-  const c = /\[EIB change C-([a-z0-9]+)\]/i.exec(email.subject)?.[1];
+  const c = (/\[EIB change C-([a-z0-9]+)\]/i.exec(email.subject) || /\[EIB change C-([a-z0-9]+)\]/i.exec(email.fullText || ""))?.[1];
   const ticketId = pending?.kind === "change" ? pending.changeId : c ? (await getChange(c.toLowerCase()))?.id : null;
   if (ticketId && (YES_RE.test(firstLine) || NO_RE.test(firstLine))) return decideTicketByEmail(email, thread, ticketId, YES_RE.test(firstLine));
   if (ticketId && pending?.kind === "change") {

@@ -158,7 +158,7 @@ async function run() {
   r = await deliver(email({ from: JOSEF, name: "Josef", subject: "Re: new mentor", text: "email: sarah@example.com, organization: Acme Labs, title: Founder, preferred: email, public: email, lesson: 3, bio: Sarah founded Acme Labs and mentors early teams.", inReplyTo: root, references: [root] }));
   check("ticket proposed, awaiting approval", /ticket C-\w+ proposed/.test(outcome(r)), outcome(r));
   let tk = lastTo(JOSEF)?.text || "";
-  check("ticket email shows the record and the approve link", /\[EIB change C-/.test(lastTo(JOSEF)?.subject || "") && /Role \(shown to students\): Founder, Acme Labs/.test(tk) && /Approve or reject it here: https:\/\/www\.joineib\.ca\/changes#C-/.test(tk), tk);
+  check("ticket email shows the record and the approve link", /\[EIB change C-/.test(tk) && lastTo(JOSEF)?.subject === "Re: new mentor" && /Role \(shown to students\): Founder, Acme Labs/.test(tk) && /Approve or reject it here: https:\/\/www\.joineib\.ca\/changes#C-/.test(tk), tk);
   check("full lesson refused up front with a reason", /I left the lesson out: Lesson 3 is set to "No Mentor"/.test(tk), tk);
   check("still nothing written", db().mentors.length === mentorsBefore && lastTicket()?.status === "proposed");
   r = await deliver(email({ from: JOSEF, name: "Josef", subject: "Re: new mentor", text: "YES", inReplyTo: root, references: [root] }));
@@ -223,8 +223,9 @@ async function run() {
   r = await deliver({ ...email({ from: JOSEF, name: "Josef", subject: "a different subject", text: "" }), text: null, html: quotedHtml });
   check("the quoted chain is read and the ticket is proposed", /ticket C-\w+ proposed/.test(outcome(r)), outcome(r));
   check("the ticket carries the details from the reply", /quentin@example\.com/.test(lastTo(JOSEF)?.text || ""), lastTo(JOSEF)?.text);
-  r = await deliver(email({ from: JOSEF, name: "Josef", subject: "Re: a different subject", text: "cancel" }));
-  check("dropped", /rejected|cancelled|dropped/.test(outcome(r)), outcome(r));
+  const quentinTicket = lastTo(JOSEF);
+  r = await deliver(email({ from: JOSEF, name: "Josef", subject: "Re: a different subject", text: "cancel", inReplyTo: quentinTicket.messageId, references: [quentinTicket.messageId] }));
+  check("a NO in the ticket thread rejects it", /ticket C-\w+ rejected/.test(outcome(r)) && !db().mentors.some((m) => /quentin/i.test(m.name)), outcome(r));
 
   head("Escalation: what the platform and documents cannot answer goes to Josef; his reply reaches the asker");
   r = await deliver(email({ from: TFS, name: "Elana", subject: "parents at lesson 5", text: "Can parents sit in on lesson 5?" }));
@@ -232,10 +233,11 @@ async function run() {
   check("asker told it's being checked, by first name", /^Hi Elana,[\s\S]*checking with Josef/.test(lastTo(TFS)?.text || ""));
   const askRoot = r.mail.message_id;
   const qMail = lastTo(JOSEF);
-  check("escalation went to Josef's main address only", /\[EIB Q-/.test(qMail?.subject || "") && qMail?.to?.length === 1 && !(qMail?.cc || []).includes(TFS), JSON.stringify([qMail?.subject, qMail?.to, qMail?.cc]));
+  check("escalation is a reply in the asker's thread, to Josef's main address only", /\[EIB Q-/.test(qMail?.text || "") && qMail?.subject === "Re: parents at lesson 5" && qMail?.headers?.["In-Reply-To"] === askRoot && qMail?.to?.length === 1 && !(qMail?.cc || []).includes(TFS), JSON.stringify([qMail?.subject, qMail?.to, qMail?.cc]));
   check("Josef is pointed to the Read me doc for standing answers", /Read me document/.test(qMail?.text || ""));
-  const qid = /\[EIB Q-([a-z0-9]+)\]/.exec(qMail?.subject || "")?.[1];
-  r = await deliver(email({ from: JOSEF, name: "Josef", subject: `Re: ${qMail.subject}`, text: "Yes, parents are welcome at lesson 5; tell them to use the Lawrence entrance.", inReplyTo: qMail.messageId, references: [qMail.messageId] }));
+  const qid = /\[EIB Q-([a-z0-9]+)\]/.exec(qMail?.text || "")?.[1];
+  const quotedQ = `Yes, parents are welcome at lesson 5; tell them to use the Lawrence entrance.\n\nOn Fri, Nov 6, 2026 EIB Assistant <${AGENT}> wrote:\n> ${qMail.text.split("\n").slice(0, 6).join("\n> ")}\n`;
+  r = await deliver({ ...email({ from: JOSEF, name: "Josef", subject: `Re: ${qMail.subject}`, text: quotedQ, inReplyTo: qMail.messageId, references: [askRoot, qMail.messageId] }), text: quotedQ });
   check("relayed", /relayed Josef's answer/.test(outcome(r)), outcome(r));
   const relay = lastTo(TFS);
   check("asker got the answer in their thread, greeted by name", /^Hi Elana,[\s\S]*Lawrence entrance/.test(relay?.text || "") && relay?.headers?.["In-Reply-To"] === askRoot, JSON.stringify(relay?.headers));
@@ -314,11 +316,16 @@ async function run() {
   check("document step: the schedule table cell", t?.steps?.some((s) => s.kind === "document" && s.edit === "table_cell" && s.status === "ready" && s.before === "Nov 17" && s.after === "November 24"), JSON.stringify(t?.steps));
   check("prose in the run of show is a plain text replacement", t?.steps?.some((s) => s.kind === "document" && s.edit === "replace_text" && s.status === "ready" && s.before === "Nov 17" && s.document === "EIB Night run of show"), JSON.stringify(t?.steps?.map((s) => [s.document, s.edit, s.status])));
   check("the 2025-2026 schedule is left alone", !t?.steps?.some((s) => /2025-2026/.test(s.document || s.description || "")), JSON.stringify(t?.steps?.map((s) => s.document)));
-  const tkMail = [...outbox()].reverse().find((x) => /\[EIB change C-/.test(x.subject));
+  const tkMail = [...outbox()].reverse().find((x) => /\[EIB change C-/.test(x.text) && x.to.includes(JOSEF));
+  check("the ticket email is a reply in the requester's thread", tkMail?.subject === "Re: EIB Night" && tkMail?.headers?.["In-Reply-To"] === r.mail.message_id, JSON.stringify([tkMail?.subject, tkMail?.headers]));
   check("Josef got the ticket email, main address only, with before/after and the link", tkMail?.to?.length === 1 && tkMail.to[0] === JOSEF && /Before: Nov 17\nAfter: November 24/.test(tkMail.text) && /changes#C-/.test(tkMail.text), tkMail?.text);
   check("the ticket email links the documents it touches", /References:\n(- .+\n)*- Session schedule \(test\): https:\/\/docs\.google\.com\/document\/d\/fake-schedule/.test(tkMail?.text || "") && /<a href="https:\/\/docs\.google\.com\/document\/d\/fake-runofshow">EIB Night run of show<\/a>/.test(tkMail?.html || ""), (tkMail?.text || "").slice(-400));
   check("requester told it is with Josef, Josef in CC", /written this up for Josef to approve/.test(lastTo(COLLEAGUE)?.text || "") && lastTo(COLLEAGUE)?.cc?.includes(JOSEF), lastTo(COLLEAGUE)?.text);
   check("nothing changed yet", db().events.find((e) => e.title === "EIB Night")?.date === "Oct 16, 2026" && cell("Session schedule (test)", 4, 2) === "Nov 17");
+  nb = outbox().length;
+  nb = outbox().length;
+  r = await deliver(email({ from: COLLEAGUE, name: "Josef Marshall", subject: "Re: EIB Night", text: "any update?", inReplyTo: tkMail.messageId, references: [tkMail.messageId] }));
+  check("the requester nudging the thread is told it is with Josef, no second ticket", /ticket pending/.test(outcome(r)) && outbox().length === nb + 1 && tickets().filter((c) => c.status === "proposed").length === 1, `${outcome(r)} / sent=${outbox().length - nb} / proposed=${JSON.stringify(tickets().filter((c) => c.status === "proposed").map((c) => c.summary))}`);
   nb = outbox().length;
   r = await deliver(email({ from: JOSEF, name: "Josef", subject: `Re: ${tkMail.subject}`, text: "yes", inReplyTo: tkMail.messageId, references: [tkMail.messageId] }));
   check("YES by email applies the ticket", /ticket C-\w+ applied/.test(outcome(r)), outcome(r));

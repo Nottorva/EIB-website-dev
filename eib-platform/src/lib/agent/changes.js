@@ -91,6 +91,8 @@ export function ticketReferences(ticket) {
 export function ticketEmailText(ticket) {
   const who = ticket.requester?.kind === "josef" ? "You asked" : `${ticket.requester?.name || ticket.requester?.email || "Someone"} (${ticket.requester?.email}) asked`;
   return [
+    `${ticketLabel(ticket)} ${ticket.summary}`,
+    "",
     `${who}: ${ticket.summary}.`,
     "",
     "Here is what I would change:",
