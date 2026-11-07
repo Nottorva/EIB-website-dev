@@ -165,7 +165,6 @@ export async function notifyDecision(ticket, { viaEmail = false, josefThread = n
   const josef = cfg.josefAddresses[0];
   const req = ticket.requester || {};
   const requesterIsJosef = req.kind === "josef";
-  const applied = ticket.status === "applied" || ticket.status === "partly applied";
   const headline = ticket.status === "applied" ? "Applied" : ticket.status === "partly applied" ? "Partly applied" : ticket.status === "failed" ? "Could not apply" : "Rejected";
   const subject = `${ticketLabel(ticket)} ${headline}: ${ticket.summary}`;
 
@@ -177,8 +176,8 @@ export async function notifyDecision(ticket, { viaEmail = false, josefThread = n
   // The requester, in their own thread
   if (!requesterIsJosef && req.email) {
     const first = firstNameOf({ name: req.name }) || null;
-    // One line, no step list and no reasons: Josef keeps the details.
-    const body = ticket.status === "rejected" ? "Thanks again for flagging this. Josef has decided not to make that change for now; feel free to email him directly about it." : applied ? "The changes you asked for have been made." : "Thanks for flagging this. Josef is handling it directly and will be in touch.";
+    // One line, whatever the decision: Josef keeps the details and takes it up with them himself if needed.
+    const body = "The changes you asked for have been made.";
     await sendMail({ to: [req.email], cc: [josef], subject: reSubject(req.subject || ticket.summary), text: compose({ firstName: first, body }), inReplyTo: req.messageId, references: req.references || [] });
   }
 }

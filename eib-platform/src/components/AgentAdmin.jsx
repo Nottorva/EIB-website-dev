@@ -108,7 +108,7 @@ export default function AgentAdmin() {
       <Section icon={Users} title="Who can email the assistant">
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {data.access.envAddresses.map((e) => (
-            <Row key={`ea-${e}`} label={e} sub="set on Vercel (TFS_WHITELIST_ADDRESSES)" />
+            <Row key={`ea-${e}`} label={e} sub="" />
           ))}
           {data.access.addresses.map((a) => (
             <Row key={`a-${a.email}`} label={a.name ? `${a.name} · ${a.email}` : a.email} sub={`added ${fmtShortDateTime(a.addedAt)}${a.addedBy ? ` by ${a.addedBy}` : ""}`} onRemove={() => act(() => api.put("/api/agent/admin", { revoke: a.email }))} />

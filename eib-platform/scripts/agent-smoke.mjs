@@ -388,7 +388,7 @@ async function run() {
 
   head("Josef manages access by YES; the application window and a lesson brief go through tickets");
   r = await deliver(email({ from: JOSEF, name: "Josef", subject: "access", text: "who has agent access?" }));
-  check("list sent, per person", /access list sent/.test(outcome(r)) && /elana@tfs\.ca \(set on Vercel\)/.test(lastTo(JOSEF)?.text || "") && !/everyone at/.test(lastTo(JOSEF)?.text || ""), lastTo(JOSEF)?.text);
+  check("list sent, per person", /access list sent/.test(outcome(r)) && /elana@tfs\.ca/.test(lastTo(JOSEF)?.text || "") && !/everyone at|Vercel/.test(lastTo(JOSEF)?.text || ""), lastTo(JOSEF)?.text);
   r = await deliver(email({ from: JOSEF, name: "Josef", subject: "access", text: "give otherschool.org agent access" }));
   check("a whole domain is refused with an explanation, no YES step", /access: domain refused/.test(outcome(r)) && /per person/.test(lastTo(JOSEF)?.text || ""), outcome(r));
   r = await deliver(email({ from: "stranger@tfs.ca", name: "Stranger", subject: "students", text: "How many students are in the cohort?" }));

@@ -43,7 +43,7 @@ export async function revokeAccess(target) {
   access.addresses = access.addresses.filter((a) => a.email !== t);
   if (access.addresses.length === before) {
     const cfg = agentConfig();
-    if (cfg.whitelistAddresses.includes(t)) return { changed: false, message: `${t} is granted by the TFS_WHITELIST_ADDRESSES setting on Vercel, which I cannot change by email. Remove it there.` };
+    if (cfg.whitelistAddresses.includes(t)) return { changed: false, message: `${t} is fixed in the site settings, so I cannot remove it by email.` };
     if (!t.includes("@")) return { changed: false, message: `Access is given per person, not per domain, so there is no ${t} entry to remove. Tell me which address to remove.` };
     return { changed: false, message: `${t} does not have access.` };
   }
@@ -54,7 +54,7 @@ export async function revokeAccess(target) {
 export async function describeAccess() {
   const a = await effectiveAccess();
   const lines = [];
-  for (const e of a.envAddresses) lines.push(`  ${e} (set on Vercel)`);
+  for (const e of a.envAddresses) lines.push(`  ${e}`);
   for (const x of a.addresses) lines.push(`  ${x.name ? `${x.name} <${x.email}>` : x.email} (added ${x.addedAt.slice(0, 10)})`);
   return lines.length
     ? `These people can ask me questions:\n${lines.join("\n")}\n\nAccess is per person, never a whole domain. Reply "give <email> access" or "remove access from <email>" to change it. Only you can approve changes.`
