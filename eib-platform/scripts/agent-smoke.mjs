@@ -325,7 +325,7 @@ async function run() {
   check("event date updated on the platform", db().events.find((e) => e.title === "EIB Night")?.date === "November 24", JSON.stringify(db().events.find((e) => e.title === "EIB Night")));
   check("schedule table cell updated in the document", cell("Session schedule (test)", 4, 2) === "November 24", cell("Session schedule (test)", 4, 2));
   check("run of show prose updated; archived schedule untouched", /November 24/.test(drive().find((f) => f.name === "EIB Night run of show")?.blocks[0].text || "") && cell("Session schedule 2025-2026", 2, 2) === "Nov 17");
-  check("requester told it is done, Josef CC'd; Josef got the applied note", /Josef approved your request[\s\S]*Done:/.test(lastTo(COLLEAGUE)?.text || "") && lastTo(COLLEAGUE)?.cc?.includes(JOSEF) && /Applied: EIB Night moves to November 24/.test(lastTo(JOSEF)?.text || "") && outbox().length === nb + 2, JSON.stringify([lastTo(COLLEAGUE)?.text?.slice(0, 120), lastTo(JOSEF)?.text?.slice(0, 120)]));
+  check("requester gets one line, no step list; Josef CC'd and got the applied note", /The changes you asked for have been made\./.test(lastTo(COLLEAGUE)?.text || "") && !/Done:|Before:|References:/.test(lastTo(COLLEAGUE)?.text || "") && lastTo(COLLEAGUE)?.cc?.includes(JOSEF) && /Applied: EIB Night moves to November 24/.test(lastTo(JOSEF)?.text || "") && outbox().length === nb + 2, JSON.stringify([lastTo(COLLEAGUE)?.text?.slice(0, 160), lastTo(JOSEF)?.text?.slice(0, 120)]));
   check("ticket applied with results", lastTicket()?.status === "applied" && lastTicket()?.steps?.filter((s) => s.status === "done").length === 3);
 
   head("Change tickets: 'Dana is confirmed for L2' updates the mentor and the schedule row; NO rejects");

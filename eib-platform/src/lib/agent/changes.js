@@ -177,13 +177,9 @@ export async function notifyDecision(ticket, { viaEmail = false, josefThread = n
   // The requester, in their own thread
   if (!requesterIsJosef && req.email) {
     const first = firstNameOf({ name: req.name }) || null;
-    const body =
-      ticket.status === "rejected"
-        ? `Josef has looked at your request (${ticket.summary}) and decided not to make that change${ticket.rejectReason ? `: ${ticket.rejectReason}` : " for now"}. You can email him directly if you would like to discuss it.`
-        : applied
-          ? `Josef approved your request (${ticket.summary}) and it is done:\n\n${resultLines(ticket)}`
-          : `Josef approved your request (${ticket.summary}), but I could not apply it:\n\n${resultLines(ticket)}\n\nJosef has the details and will sort it out.`;
-    await sendMail({ to: [req.email], cc: [josef], subject: reSubject(req.subject || ticket.summary), text: compose({ firstName: first, body, references: applied ? ticketReferences(ticket) : [] }), inReplyTo: req.messageId, references: req.references || [] });
+    // One line, no step list and no reasons: Josef keeps the details.
+    const body = ticket.status === "rejected" ? "Thanks again for flagging this. Josef has decided not to make that change for now; feel free to email him directly about it." : applied ? "The changes you asked for have been made." : "Thanks for flagging this. Josef is handling it directly and will be in touch.";
+    await sendMail({ to: [req.email], cc: [josef], subject: reSubject(req.subject || ticket.summary), text: compose({ firstName: first, body }), inReplyTo: req.messageId, references: req.references || [] });
   }
 }
 
