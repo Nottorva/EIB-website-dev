@@ -373,18 +373,35 @@ export async function checkDocumentEdit(step) {
     if (c.kind !== "doc") return { ok: false, file, problem: `"${file.name}" is a ${c.kind}; use a sheet cell edit for spreadsheets.` };
     const table = c.blocks.find((b) => b.type === "table" && b.index === Number(step.table));
     if (!table) return { ok: false, file, problem: `"${file.name}" has no table ${step.table}.` };
-    const row = table.rows[Number(step.row) - 1];
+    let rowIndex = Number(step.row);
+    let row = table.rows[rowIndex - 1];
+    const label = (r) => String(r?.[0]?.text ?? "").trim();
+    // At approval time the row may have moved (a row inserted or removed above it): find it again by its label.
+    if (step.rowLabel !== undefined && label(row) !== step.rowLabel) {
+      const found = table.rows.findIndex((r) => label(r) === step.rowLabel);
+      if (found < 0) return { ok: false, file, problem: `The row "${step.rowLabel}" is no longer in table ${step.table} of "${file.name}". Not applied.` };
+      rowIndex = found + 1;
+      row = table.rows[found];
+    }
     const cell = row?.[Number(step.column) - 1];
     if (!cell) return { ok: false, file, problem: `Table ${step.table} in "${file.name}" has no row ${step.row}, column ${step.column}.` };
-    return { ok: true, file, before: cell.text, after: String(step.new_text || ""), count: 1 };
+    return { ok: true, file, before: cell.text, after: String(step.new_text || ""), count: 1, row: rowIndex, rowLabel: label(row) };
   }
   if (step.edit === "sheet_cell") {
     if (c.kind !== "sheet") return { ok: false, file, problem: `"${file.name}" is not a spreadsheet.` };
     const sheet = c.sheets.find((s) => norm(s.title) === norm(step.sheet)) || c.sheets[0];
     const ref = cellRef(step.cell);
     if (!sheet || !ref) return { ok: false, file, problem: `Cell "${step.cell}" on sheet "${step.sheet}" was not found in "${file.name}".` };
-    const before = sheet.rows[ref.row - 1]?.[ref.col - 1] ?? "";
-    return { ok: true, file, before, after: String(step.new_text || ""), count: 1, sheetTitle: sheet.title };
+    let rowIndex = ref.row;
+    const label = (i) => String(sheet.rows[i - 1]?.[0] ?? "").trim();
+    if (step.rowLabel !== undefined && step.rowLabel !== "" && label(rowIndex) !== step.rowLabel) {
+      const found = sheet.rows.findIndex((r) => String(r?.[0] ?? "").trim() === step.rowLabel);
+      if (found < 0) return { ok: false, file, problem: `The row "${step.rowLabel}" is no longer on sheet "${sheet.title}" of "${file.name}". Not applied.` };
+      rowIndex = found + 1;
+    }
+    const before = sheet.rows[rowIndex - 1]?.[ref.col - 1] ?? "";
+    const colLetters = String(step.cell).replace(/\d+$/, "").toUpperCase();
+    return { ok: true, file, before, after: String(step.new_text || ""), count: 1, sheetTitle: sheet.title, cell: `${colLetters}${rowIndex}`, rowLabel: label(rowIndex) };
   }
   return { ok: false, file, problem: `Unknown edit type "${step.edit}".` };
 }
@@ -405,20 +422,20 @@ export async function applyDocumentEdit(step) {
   if (step.edit === "table_cell") {
     const c = await readFile(file);
     const table = c.blocks.find((b) => b.type === "table" && b.index === Number(step.table));
-    const cell = table.rows[Number(step.row) - 1][Number(step.column) - 1];
+    const cell = table.rows[Number(chk.row) - 1][Number(step.column) - 1];
     const requests = [];
     // A cell's last newline cannot be deleted; everything before it can.
     if (cell.end - 1 > cell.start) requests.push({ deleteContentRange: { range: { startIndex: cell.start, endIndex: cell.end - 1 } } });
     if (String(step.new_text || "").length) requests.push({ insertText: { location: { index: cell.start }, text: String(step.new_text) } });
     if (requests.length) await gapi(`https://docs.googleapis.com/v1/documents/${file.id}:batchUpdate`, { method: "POST", body: { requests } });
     invalidate(file.id);
-    return `"${file.name}", table ${step.table}, row ${step.row}, column ${step.column}: "${chk.before || "(empty)"}" is now "${step.new_text}".`;
+    return `"${file.name}", table ${step.table}, row ${chk.row}${chk.rowLabel ? ` (${chk.rowLabel})` : ""}, column ${step.column}: "${chk.before || "(empty)"}" is now "${step.new_text}".`;
   }
   if (step.edit === "sheet_cell") {
-    const range = `'${chk.sheetTitle}'!${String(step.cell).toUpperCase()}`;
+    const range = `'${chk.sheetTitle}'!${String(chk.cell).toUpperCase()}`;
     await gapi(`https://sheets.googleapis.com/v4/spreadsheets/${file.id}/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`, { method: "PUT", body: { range, majorDimension: "ROWS", values: [[String(step.new_text || "")]] } });
     invalidate(file.id);
-    return `"${file.name}", sheet "${chk.sheetTitle}", cell ${String(step.cell).toUpperCase()}: "${chk.before || "(empty)"}" is now "${step.new_text}".`;
+    return `"${file.name}", sheet "${chk.sheetTitle}", cell ${String(chk.cell).toUpperCase()}: "${chk.before || "(empty)"}" is now "${step.new_text}".`;
   }
   throw new Error(`Unknown edit type "${step.edit}".`);
 }
@@ -472,19 +489,19 @@ async function fakeApply(file, step, chk) {
   }
   if (step.edit === "table_cell") {
     const table = f.blocks.find((b) => b.type === "table" && b.index === Number(step.table));
-    table.rows[Number(step.row) - 1][Number(step.column) - 1].text = String(step.new_text || "");
+    table.rows[Number(chk.row) - 1][Number(step.column) - 1].text = String(step.new_text || "");
     f.modifiedTime = new Date().toISOString();
     await fakeSave(files);
-    return `"${file.name}", table ${step.table}, row ${step.row}, column ${step.column}: "${chk.before || "(empty)"}" is now "${step.new_text}".`;
+    return `"${file.name}", table ${step.table}, row ${chk.row}${chk.rowLabel ? ` (${chk.rowLabel})` : ""}, column ${step.column}: "${chk.before || "(empty)"}" is now "${step.new_text}".`;
   }
   const sheet = f.sheets.find((s) => s.title === chk.sheetTitle);
-  const ref = cellRef(step.cell);
+  const ref = cellRef(chk.cell);
   while (sheet.rows.length < ref.row) sheet.rows.push([]);
   while (sheet.rows[ref.row - 1].length < ref.col) sheet.rows[ref.row - 1].push("");
   sheet.rows[ref.row - 1][ref.col - 1] = String(step.new_text || "");
   f.modifiedTime = new Date().toISOString();
   await fakeSave(files);
-  return `"${file.name}", sheet "${chk.sheetTitle}", cell ${String(step.cell).toUpperCase()}: "${chk.before || "(empty)"}" is now "${step.new_text}".`;
+  return `"${file.name}", sheet "${chk.sheetTitle}", cell ${String(chk.cell).toUpperCase()}: "${chk.before || "(empty)"}" is now "${step.new_text}".`;
 }
 
 const FAKE_SEED = [

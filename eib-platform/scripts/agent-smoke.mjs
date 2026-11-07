@@ -324,8 +324,17 @@ async function run() {
   check("NO rejects it, nothing changed", /ticket C-\w+ rejected/.test(outcome(r)) && lastTicket()?.status === "rejected" && db().mentors.find((x) => x.name === "Dana Whitfield")?.status === "responsive" && cell("Session schedule (test)", 2, 3) === "TBD", outcome(r));
   r = await deliver(email({ from: JOSEF, name: "Josef", subject: "Dana again", text: "Dana Whitfield is confirmed for L2" }));
   const danaRoot2 = r.mail.message_id;
+  check("ticket step remembers the row label", lastTicket()?.steps?.some((s) => s.kind === "document" && s.rowLabel === "L2" && s.row === 2), JSON.stringify(lastTicket()?.steps?.map((s) => [s.row, s.rowLabel])));
+  {
+    // Someone inserts an L1 row above L2 before Josef approves: the step must follow the L2 row, not row number 2.
+    const files = drive();
+    const table = files.find((f) => f.name === "Session schedule (test)").blocks.find((b) => b.type === "table");
+    table.rows.splice(1, 0, [{ text: "L1" }, { text: "Nov 3" }, { text: "TBD" }]);
+    fs.writeFileSync(DRIVE, JSON.stringify(files, null, 2));
+  }
   r = await deliver(email({ from: JOSEF, name: "Josef", subject: "Re: Dana again", text: "approve", inReplyTo: danaRoot2, references: [danaRoot2] }));
-  check("approve applies: mentor confirmed, schedule row written", /ticket C-\w+ applied/.test(outcome(r)) && db().mentors.find((x) => x.name === "Dana Whitfield")?.status === "confirmed" && cell("Session schedule (test)", 2, 3) === "Dana Whitfield (confirmed)", outcome(r));
+  check("approve applies: mentor confirmed, the moved L2 row written, the new L1 row untouched", /ticket C-\w+ applied/.test(outcome(r)) && db().mentors.find((x) => x.name === "Dana Whitfield")?.status === "confirmed" && cell("Session schedule (test)", 3, 3) === "Dana Whitfield (confirmed)" && cell("Session schedule (test)", 2, 3) === "TBD", `${outcome(r)} / row2=${cell("Session schedule (test)", 2, 3)} row3=${cell("Session schedule (test)", 3, 3)}`);
+  check("result names the row it found", /row 3 \(L2\)/.test(lastTicket()?.steps?.find((s) => s.kind === "document")?.result || ""), lastTicket()?.steps?.find((s) => s.kind === "document")?.result);
 
   head("Colleague mode: answers without contact details, access requests refused, forward-reply pass-through");
   if (!JOSEF2) console.log("skipped: JOSEF_ADDRESSES has a single address");

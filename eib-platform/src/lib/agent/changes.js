@@ -36,7 +36,7 @@ export async function createTicket({ plan, requester, threadRootId }) {
       } else if (raw.kind === "document") {
         const chk = await checkDocumentEdit(raw);
         if (!chk.ok) throw new Error(chk.problem);
-        Object.assign(step, { document: chk.file.name, link: chk.file.link, edit: raw.edit, find: raw.find || "", replace: raw.replace || "", table: raw.table, row: raw.row, column: raw.column, sheet: raw.sheet || "", cell: raw.cell || "", new_text: raw.new_text || "", before: chk.before, after: chk.after, count: chk.count, title: chk.file.name });
+        Object.assign(step, { document: chk.file.name, link: chk.file.link, edit: raw.edit, find: raw.find || "", replace: raw.replace || "", table: raw.table, row: raw.row, column: raw.column, sheet: raw.sheet || "", cell: raw.cell || "", new_text: raw.new_text || "", before: chk.before, after: chk.after, count: chk.count, title: chk.file.name, ...(chk.rowLabel !== undefined ? { rowLabel: chk.rowLabel } : {}) });
       } else throw new Error(`Unknown step kind "${raw.kind}".`);
     } catch (e) {
       step.status = "skipped";
