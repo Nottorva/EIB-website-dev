@@ -319,7 +319,7 @@ async function run() {
   check("a correction is written up again", /proposal C-\w+ sent to the requester \(3 steps\)/.test(outcome(r)) && /November 24/.test(lastTo(COLLEAGUE)?.text || "") && tickets().filter((c) => c.status === "superseded").length === 1, outcome(r));
   nb = outbox().length;
   r = await deliver(email({ from: COLLEAGUE, name: "Josef Marshall", subject: "Re: EIB Night", text: "yup all good", inReplyTo: eibRoot, references: [eibRoot] }));
-  check("an affirmative logs it: requester thanked, ticket proposed to Josef", /ticket C-\w+ proposed/.test(outcome(r)) && /your changes have been logged/.test(lastTo(COLLEAGUE)?.text || "") && outbox().length === nb + 2, outcome(r));
+  check("an affirmative logs it: only the ticket to Josef goes out, nothing more to the requester", /ticket C-\w+ proposed/.test(outcome(r)) && outbox().length === nb + 1 && !/your changes have been logged/.test(lastTo(COLLEAGUE)?.text || ""), `${outcome(r)} / sent=${outbox().length - nb}`);
   let t = lastTicket();
   check("platform step: the event's date", t?.steps?.some((s) => s.kind === "platform" && s.record === "event" && s.status === "ready" && /November 24/.test(s.after)), JSON.stringify(t?.steps?.map((s) => [s.kind, s.status, s.description])));
   check("document step: the schedule table cell", t?.steps?.some((s) => s.kind === "document" && s.edit === "table_cell" && s.status === "ready" && s.before === "Nov 17" && s.after === "November 24"), JSON.stringify(t?.steps));
@@ -329,19 +329,21 @@ async function run() {
   check("the ticket email is a reply in the requester's thread", tkMail?.subject === "Re: EIB Night" && tkMail?.headers?.["In-Reply-To"] === r.mail.message_id && tkMail?.headers?.References?.includes(eibRoot), JSON.stringify([tkMail?.subject, tkMail?.headers]));
   check("Josef got the ticket email, main address only, with before/after and the link", tkMail?.to?.length === 1 && tkMail.to[0] === JOSEF && /Before: Nov 17\nAfter: November 24/.test(tkMail.text) && /changes#C-/.test(tkMail.text), tkMail?.text);
   check("the ticket email links the documents it touches", /References:\n(- .+\n)*- Session schedule \(test\): https:\/\/docs\.google\.com\/document\/d\/fake-schedule/.test(tkMail?.text || "") && /<a href="https:\/\/docs\.google\.com\/document\/d\/fake-runofshow">EIB Night run of show<\/a>/.test(tkMail?.html || ""), (tkMail?.text || "").slice(-400));
-  check("requester thanked and told it is logged, Josef in CC", /your changes have been logged/.test(lastTo(COLLEAGUE)?.text || "") && lastTo(COLLEAGUE)?.cc?.includes(JOSEF), lastTo(COLLEAGUE)?.text);
+  check("the requester's last email is still the proposal, with Josef in CC", /Please reply with any corrections/.test(lastTo(COLLEAGUE)?.text || "") && lastTo(COLLEAGUE)?.cc?.includes(JOSEF), lastTo(COLLEAGUE)?.text);
   check("nothing changed yet", db().events.find((e) => e.title === "EIB Night")?.date === "Oct 16, 2026" && cell("Session schedule (test)", 4, 2) === "Nov 17" && t?.status === "proposed");
   nb = outbox().length;
   nb = outbox().length;
-  r = await deliver(email({ from: COLLEAGUE, name: "Josef Marshall", subject: "Re: EIB Night", text: "any update?", inReplyTo: tkMail.messageId, references: [tkMail.messageId] }));
-  check("the requester nudging the thread is told it is with Josef, no second ticket", /ticket pending/.test(outcome(r)) && outbox().length === nb + 1 && tickets().filter((c) => c.status === "proposed").length === 1, `${outcome(r)} / sent=${outbox().length - nb} / proposed=${JSON.stringify(tickets().filter((c) => c.status === "proposed").map((c) => c.summary))}`);
+  r = await deliver(email({ from: COLLEAGUE, name: "Josef Marshall", subject: "Re: EIB Night", text: "any update on this?", inReplyTo: tkMail.messageId, references: [tkMail.messageId] }));
+  check("the requester asking for an update is told it is with Josef, no second ticket", /ticket status answered \(proposed\)/.test(outcome(r)) && /still with Josef/.test(lastTo(COLLEAGUE)?.text || "") && outbox().length === nb + 1 && tickets().filter((c) => c.status === "proposed").length === 1, `${outcome(r)} / sent=${outbox().length - nb}`);
   nb = outbox().length;
   r = await deliver(email({ from: JOSEF, name: "Josef", subject: `Re: ${tkMail.subject}`, text: "yes", inReplyTo: tkMail.messageId, references: [tkMail.messageId] }));
   check("YES by email applies the ticket", /ticket C-\w+ applied/.test(outcome(r)), outcome(r));
   check("event date updated on the platform", db().events.find((e) => e.title === "EIB Night")?.date === "November 24", JSON.stringify(db().events.find((e) => e.title === "EIB Night")));
   check("schedule table cell updated in the document", cell("Session schedule (test)", 4, 2) === "November 24", cell("Session schedule (test)", 4, 2));
   check("run of show prose updated; archived schedule untouched", /November 24/.test(drive().find((f) => f.name === "EIB Night run of show")?.blocks[0].text || "") && cell("Session schedule 2025-2026", 2, 2) === "Nov 17");
-  check("requester gets one line, no step list; Josef CC'd and got the applied note", /The changes you asked for have been made\./.test(lastTo(COLLEAGUE)?.text || "") && !/Done:|Before:|References:/.test(lastTo(COLLEAGUE)?.text || "") && lastTo(COLLEAGUE)?.cc?.includes(JOSEF) && /Applied: EIB Night moves to November 24/.test(lastTo(JOSEF)?.text || "") && outbox().length === nb + 2, JSON.stringify([lastTo(COLLEAGUE)?.text?.slice(0, 160), lastTo(JOSEF)?.text?.slice(0, 120)]));
+  check("after the decision only Josef hears back (in his thread); the requester gets nothing", /Applied: EIB Night moves to November 24/.test(lastTo(JOSEF)?.text || "") && outbox().length === nb + 1 && !/The changes you asked for have been made/.test(lastTo(COLLEAGUE)?.text || ""), `sent=${outbox().length - nb} / ${lastTo(JOSEF)?.text?.slice(0, 120)}`);
+  r = await deliver(email({ from: COLLEAGUE, name: "Josef Marshall", subject: "Re: EIB Night", text: "did that change go through?", inReplyTo: tkMail.messageId, references: [tkMail.messageId] }));
+  check("asked afterwards, the requester is told it was made", /ticket status answered \(applied\)/.test(outcome(r)) && /the changes you asked for have been made/.test(lastTo(COLLEAGUE)?.text || ""), outcome(r));
   check("ticket applied with results", lastTicket()?.status === "applied" && lastTicket()?.steps?.filter((s) => s.status === "done").length === 3);
 
   head("Change tickets: 'Dana is confirmed for L2' updates the mentor and the schedule row; NO rejects");

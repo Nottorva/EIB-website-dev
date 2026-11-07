@@ -7,8 +7,8 @@ import { agentConfig, CHANGE_EXPIRY_DAYS } from "./config";
 import { createChange, getChange, listChanges, updateChange } from "./db";
 import { buildDraft, commitDraft, previewDraft } from "./edits";
 import { checkDocumentEdit, applyDocumentEdit } from "./drive";
-import { sendMail, reSubject } from "./mail";
-import { compose, composeForJosef, firstNameOf, CHANGES_URL } from "./style";
+import { sendMail } from "./mail";
+import { composeForJosef, CHANGES_URL } from "./style";
 
 const now = () => new Date().toISOString();
 const shortId = () => Math.random().toString(36).slice(2, 7);
@@ -193,13 +193,8 @@ export async function notifyDecision(ticket, { viaEmail = false, josefThread = n
     const body = ticket.status === "rejected" ? `Rejected: ${ticket.summary}. I have told ${req.name || req.email}.` : `${headline}: ${ticket.summary}.\n\n${resultLines(ticket)}\n\nI have told ${req.name || req.email}.\n\nThe ticket: ${ticketUrl(ticket)}`;
     await sendMail({ to: [josef], subject, text: composeForJosef(body, ticketReferences(ticket)), inReplyTo: josefThread?.messageId });
   }
-  // The requester, in their own thread
-  if (!requesterIsJosef && req.email) {
-    const first = firstNameOf({ name: req.name }) || null;
-    // One line, whatever the decision: Josef keeps the details and takes it up with them himself if needed.
-    const body = "The changes you asked for have been made.";
-    await sendMail({ to: [req.email], cc: [josef], subject: reSubject(req.subject || ticket.summary), text: compose({ firstName: first, body }), inReplyTo: req.messageId, references: req.references || [] });
-  }
+  // The requester hears nothing: they confirmed, and that was the end of the exchange. If they ask later
+  // whether it went through, handle.js answers from the ticket's status.
 }
 
 export { getChange, listChanges, updateChange };

@@ -442,8 +442,9 @@ verdicts plus the DKIM signing domain from the raw message), never from the From
   this is correct"); corrections are written up again, an affirmative logs it ("your changes have been
   logged") and only then does the ticket go to Josef, as a reply in the same thread. Approve (on the page, or
   YES by email) applies every ready step through the write user and the Docs/Sheets APIs; Reject (or NO)
-  drops it. Either way the requester gets one line, "The changes you asked for have been made."; Josef gets a
-  confirmation only when he decided by email. Josef's own edit requests go straight to a ticket. Missing details are asked for first; a request the planner cannot turn into
+  drops it. The requester hears nothing more after confirming; if they later ask whether it went through,
+  the assistant answers from the ticket's status. Josef gets a confirmation only when he decided by email.
+  Josef's own edit requests go straight to a ticket. Missing details are asked for first; a request the planner cannot turn into
   steps is passed to Josef as a plain forward. Proposed tickets expire after 7 days (daily cron).
 - **Program year.** The `agentProgramYear` setting (default: the current cohort year, "2026-2027"; editable
   on `/agent`) decides which documents are current. A title whose year (the first year of a range) is earlier,
@@ -487,7 +488,7 @@ service account `data/fake-drive.json` stands in for the folder (seeded with tes
 
 ```
 AGENT_ADDRESS=assistant@joineib.ca TFS_WHITELIST_ADDRESSES=elana@tfs.ca,orlaith@tfs.ca,maryclaire@tfs.ca JOSEF_ADDRESSES=josefm2173@gmail.com,jmarshall@tfs.ca npm run dev
-npm run smoke:agent      # 130 checks: data questions, documents, references, tickets, forwards, access, style, guards
+npm run smoke:agent      # 132 checks: data questions, documents, references, tickets, forwards, access, style, guards
 ```
 
 **Setup** (done 2026-11-06): Resend receiving on `mail.joineib.ca` with the `email.received` webhook; Atlas
