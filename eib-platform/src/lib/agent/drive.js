@@ -25,7 +25,6 @@ const MIME = {
   folder: "application/vnd.google-apps.folder",
 };
 const README_RE = /\b(read ?me|additional (info|information)|how i keep|conventions|notes? (for|to) (the )?assistant|assistant notes)\b/i;
-export const DEFAULT_EDIT_FILTER = "test";
 
 function base64url(input) {
   return Buffer.from(input).toString("base64").replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
@@ -231,7 +230,7 @@ export async function readmeContext() {
   if (!driveConfigured()) return "";
   let files;
   try {
-    files = (await listFiles()).filter(isReadme);
+    files = (await splitByYear(await listFiles())).current.filter(isReadme);
   } catch (e) {
     console.error(`[eib agent] readme list failed: ${e.message}`);
     return "";
@@ -265,10 +264,13 @@ function snippetsFor(text, qs) {
 }
 
 /** Files whose title or contents match the words, best first, with snippets and links. */
-export async function searchDocuments(query) {
+export async function searchDocuments(query, { includeArchive = false } = {}) {
   if (!driveConfigured()) return { configured: false, files: [] };
   const qs = words(query);
-  const files = await listFiles();
+  const { current, archived, start } = await splitByYear(await listFiles());
+  // A query that names an earlier year is about the archive.
+  const wantsArchive = includeArchive || yearsInTitle(query).some((y) => y < start);
+  const files = wantsArchive ? [...current, ...archived] : current;
   const scored = [];
   for (const f of files) {
     const nameScore = qs.reduce((n, w) => n + (norm(f.name).includes(w) ? 3 : 0), 0);
@@ -286,8 +288,10 @@ export async function searchDocuments(query) {
   scored.sort((a, b) => b.score - a.score || String(b.file.modifiedTime).localeCompare(String(a.file.modifiedTime)));
   return {
     configured: true,
+    archivedLeftOut: wantsArchive ? 0 : archived.length,
     files: scored.slice(0, 5).map(({ file, content }) => ({
       title: file.name,
+      archive: isArchivedTitle(file.name, start) || undefined,
       modified: String(file.modifiedTime).slice(0, 10),
       link: file.link,
       readable: Boolean(content?.readable),
@@ -318,27 +322,40 @@ export async function readDocument(title) {
 }
 
 // ---------------------------------------------------------------------------
-// Editing (only documents whose title passes the edit filter)
+// Program year: documents whose title carries an earlier year ("2025-2026", "2024") are archive. They are
+// left out of the standing notes and of searches unless asked for, and the planner never edits them.
 // ---------------------------------------------------------------------------
-/** Comma-separated words; a document may be edited when its title contains one of them. Empty = any document. */
-export async function editFilter() {
-  const v = await getSetting("agentDocEditFilter");
-  return v === undefined || v === null ? DEFAULT_EDIT_FILTER : String(v);
+export async function programYear() {
+  const v = await getSetting("agentProgramYear");
+  if (v) return String(v);
+  const y = Number((await getSetting("currentCohortYear")) || new Date().getFullYear());
+  return `${y}-${y + 1}`;
 }
 
-export function titlePassesFilter(name, filter) {
-  const ws = String(filter || "")
-    .split(/[,\s]+/)
-    .map((w) => w.trim().toLowerCase())
-    .filter(Boolean);
-  if (!ws.length) return true;
-  const n = String(name || "").toLowerCase();
-  return ws.some((w) => n.includes(w));
+export const startYearOf = (programYearText) => Number(/(20\d{2})/.exec(String(programYearText || ""))?.[1] || new Date().getFullYear());
+
+/** Four-digit years in a title ("Session schedule 2025-2026" -> [2025, 2026]). */
+export function yearsInTitle(name) {
+  return [...String(name || "").matchAll(/\b(20\d{2})\b/g)].map((m) => Number(m[1]));
 }
 
+/** Archive: the title's year (the first year of a range) is before the program's start year. "2025-2026" is
+ *  archive when the program year is 2026-2027; "2026" and "2026-2027" are current; no year means current. */
+export function isArchivedTitle(name, startYear) {
+  const ys = yearsInTitle(name);
+  return ys.length > 0 && Math.min(...ys) < startYear;
+}
+
+export async function splitByYear(files) {
+  const year = await programYear();
+  const start = startYearOf(year);
+  return { year, start, current: files.filter((f) => !isArchivedTitle(f.name, start)), archived: files.filter((f) => isArchivedTitle(f.name, start)) };
+}
+
+/** Google Docs and Sheets of the current program year: what the planner may edit. */
 export async function editableFiles() {
-  const filter = await editFilter();
-  return (await listFiles()).filter((f) => titlePassesFilter(f.name, filter) && ["doc", "sheet"].includes(kindOf(f.mimeType)));
+  const { current } = await splitByYear(await listFiles());
+  return current.filter((f) => ["doc", "sheet"].includes(kindOf(f.mimeType)));
 }
 
 const cellRef = (a1) => {
@@ -357,8 +374,8 @@ export async function checkDocumentEdit(step) {
   if (!driveConfigured()) return { ok: false, problem: "The documents folder is not connected." };
   const { file, candidates } = await findFile(step.document);
   if (!file) return { ok: false, problem: candidates.length ? `Several documents match "${step.document}": ${candidates.map((c) => c.name).join("; ")}.` : `No document titled "${step.document}".` };
-  const filter = await editFilter();
-  if (!titlePassesFilter(file.name, filter)) return { ok: false, file, problem: `"${file.name}" is outside the documents I may edit right now (titles containing: ${filter}).` };
+  const { start } = await splitByYear([]);
+  if (isArchivedTitle(file.name, start)) return { ok: false, file, problem: `"${file.name}" is from an earlier program year, so I leave it as it is. Change it by hand if it should move too.` };
   const c = await readFile(file);
   if (!c.readable) return { ok: false, file, problem: `"${file.name}" cannot be edited (PDF or Word). It needs a manual change.` };
   if (step.edit === "replace_text") {
@@ -558,6 +575,29 @@ const FAKE_SEED = [
     modifiedTime: "2026-10-20T12:00:00.000Z",
     link: "https://docs.google.com/document/d/fake-runofshow",
     blocks: [{ type: "paragraph", text: "6:00 doors, 6:30 pitches, 7:30 awards. EIB Night is on Nov 17 in the library." }],
+    sheets: [],
+  },
+  {
+    id: "fake-old-schedule",
+    name: "Session schedule 2025-2026",
+    mimeType: MIME.doc,
+    kind: "doc",
+    modifiedTime: "2025-11-01T12:00:00.000Z",
+    link: "https://docs.google.com/document/d/fake-old-schedule",
+    blocks: [
+      { type: "paragraph", text: "EIB session schedule, cohort 2025." },
+      { type: "table", index: 1, rows: [[{ text: "Lesson" }, { text: "Date" }, { text: "Mentor" }], [{ text: "EIB Night" }, { text: "Nov 17" }, { text: "Panel" }]] },
+    ],
+    sheets: [],
+  },
+  {
+    id: "fake-old-notes",
+    name: "Additional information 2025-2026",
+    mimeType: MIME.doc,
+    kind: "doc",
+    modifiedTime: "2025-11-01T12:00:00.000Z",
+    link: "https://docs.google.com/document/d/fake-old-notes",
+    blocks: [{ type: "paragraph", text: "Parents park in the west lot. The 2025 venue was the gym." }],
     sheets: [],
   },
 ];

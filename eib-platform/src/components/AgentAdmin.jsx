@@ -40,7 +40,7 @@ export default function AgentAdmin() {
   const [error, setError] = useState(null);
   const [grant, setGrant] = useState("");
   const [grantName, setGrantName] = useState("");
-  const [filter, setFilter] = useState(null);
+  const [year, setYear] = useState(null);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState(null);
 
@@ -159,19 +159,19 @@ export default function AgentAdmin() {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            act(() => api.put("/api/agent/admin", { docEditFilter: filter ?? data.docs.editFilter })).then(() => setFilter(null));
+            act(() => api.put("/api/agent/admin", { programYear: year ?? data.docs.programYear })).then(() => setYear(null));
           }}
           style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap", alignItems: "center" }}
         >
-          <span style={{ fontSize: 13.5, color: COLORS.sub }}>Only edit documents whose title contains:</span>
-          <input value={filter ?? data.docs.editFilter} onChange={(e) => setFilter(e.target.value)} placeholder="any document" aria-label="Edit filter words" style={{ ...fieldStyle, flex: 1, minWidth: 160, padding: "8px 12px" }} />
-          <PrimaryButton type="submit" disabled={busy || filter === null || filter === data.docs.editFilter}>
+          <span style={{ fontSize: 13.5, color: COLORS.sub }}>Program year:</span>
+          <input value={year ?? data.docs.programYear} onChange={(e) => setYear(e.target.value)} placeholder="2026-2027" aria-label="Program year" style={{ ...fieldStyle, width: 140, padding: "8px 12px" }} />
+          <PrimaryButton type="submit" disabled={busy || year === null || year === data.docs.programYear}>
             Save
           </PrimaryButton>
         </form>
         <div style={{ fontSize: 13, color: COLORS.sub, marginTop: 8 }}>
-          Words separated by commas; leave it empty to allow every Google Doc and Sheet in the folder.{" "}
-          {data.docs.configured ? `Editable right now: ${data.docs.editable.length ? data.docs.editable.join("; ") : "nothing"}.` : ""}
+          Documents whose title carries an earlier year (for example &ldquo;2025-2026&rdquo;) are archive: left out of the notes and of searches unless a question is about that year, and never edited.
+          {data.docs.configured ? ` Current: ${data.docs.currentCount}. Archive: ${data.docs.archivedCount}${data.docs.archived.length ? ` (${data.docs.archived.slice(0, 6).join("; ")}${data.docs.archived.length > 6 ? "; …" : ""})` : ""}.` : ""}
         </div>
       </Section>
 

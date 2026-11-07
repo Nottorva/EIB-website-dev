@@ -41,7 +41,7 @@ export const TOOL_DEFINITIONS = [
   { name: "get_agreement_status", description: "The student agreement by name: who has signed, who submitted but whose guardian has not confirmed, and who has not started. Names for Josef or TFS staff; emails for Josef only.", input_schema: obj() },
   { name: "get_applications_summary", description: "Applications for the current intake: counts by status (pending, interview, waitlist, approved, denied), the class size cap, and when applications open and close. Names for Josef or TFS staff.", input_schema: obj() },
   { name: "get_events", description: "Events in the Mentor CRM such as EIB Night, Cougar's Den or a panel: title, date, time, location, note, and the mentors on them.", input_schema: obj() },
-  { name: "search_documents", description: "Search the EIB Documents folder by words, in file titles and in the contents of Google Docs, Sheets, Slides and text files. Returns up to five files with matching lines and their links. Use read_document to read one in full.", input_schema: obj({ query: { type: "string", description: "Words to look for, for example 'Cougar's Den date' or 'lesson 4 run of show'" } }, ["query"]) },
+  { name: "search_documents", description: "Search the EIB Documents folder by words, in file titles and in the contents of Google Docs, Sheets, Slides and text files. Returns up to five files with matching lines and their links. Documents whose title carries an earlier program year are archive and are left out unless include_archive is true or the query names that year. Use read_document to read one in full.", input_schema: obj({ query: { type: "string", description: "Words to look for, for example 'Cougar's Den date' or 'lesson 4 run of show'" }, include_archive: { type: "boolean", description: "Also search documents from earlier program years. Only when the question is about the past or nothing current answers it." } }, ["query"]) },
   { name: "read_document", description: "The full text of one file in the EIB Documents folder, by its title. Tables come as 'Row N: cell | cell' lines under a '[Table N]' marker; spreadsheets as rows under a '[Sheet \"name\"]' marker.", input_schema: obj({ title: { type: "string", description: "The file's title, as search_documents gave it" } }, ["title"]) },
 ];
 
@@ -236,9 +236,9 @@ async function runToolRaw(name, input, senderKind) {
       return (await readAll("events")).map((e) => ({ title: e.title, date: e.date || "not set", time: e.startTime && e.endTime ? `${e.startTime} to ${e.endTime}` : "not set", location: e.location || "not set", note: e.note || "", mentors: (e.mentorIds || []).map((id) => mentors.find((m) => m.id === id)?.name).filter(Boolean) }));
     }
     case "search_documents": {
-      const r = await searchDocuments(input.query);
+      const r = await searchDocuments(input.query, { includeArchive: Boolean(input.include_archive) });
       if (!r.configured) return { note: "The documents folder is not connected yet.", files: [] };
-      return { files: r.files.map((f) => ({ source: f.title, ...f })) };
+      return { ...(r.archivedLeftOut ? { note: `${r.archivedLeftOut} document(s) from earlier program years were left out; set include_archive if the question is about the past.` } : {}), files: r.files.map((f) => ({ source: f.title, ...f })) };
     }
     case "read_document": {
       const r = await readDocument(input.title);

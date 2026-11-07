@@ -80,10 +80,14 @@ async function loadThread(email) {
   return thread;
 }
 
+/** Both sides of the thread so far (the sender's earlier emails and the assistant's replies), oldest first. */
 function threadContext(thread) {
-  return (thread.messages || [])
-    .slice(-THREAD_CONTEXT_MESSAGES, -1)
-    .map((m) => `[${m.at.slice(0, 16)}] ${m.name || m.from}: ${m.text}`)
+  const inbound = (thread.messages || []).slice(0, -1).map((m) => ({ at: m.at, who: m.name || m.from, text: m.text }));
+  const sent = (thread.sent || []).map((s) => ({ at: s.at, who: "EIB Assistant", text: s.text }));
+  return [...inbound, ...sent]
+    .sort((a, b) => String(a.at).localeCompare(String(b.at)))
+    .slice(-THREAD_CONTEXT_MESSAGES)
+    .map((m) => `[${String(m.at).slice(0, 16)}] ${m.who}: ${m.text}`)
     .join("\n\n");
 }
 
@@ -315,7 +319,7 @@ async function startPlan(email, thread, sender, request) {
   const cfg = agentConfig();
   const isJosef = sender.kind === "josef";
   const first = firstNameOf(email.from);
-  const r = await runPlan({ request, senderKind: sender.kind, senderName: email.from.name || email.from.email, threadContext: threadContext(thread), notes: await notesFor() });
+  const r = await runPlan({ request, senderKind: sender.kind, senderName: email.from.name || email.from.email, threadContext: threadContext(thread), notes: await notesFor(), email });
   const replyBack = (text) => (isJosef ? replyToJosef(thread, email, text) : send(thread, email, { to: [email.from.email], cc: ccForAsker(email), firstName: first, text }));
 
   if (r.action === "need_details") {
@@ -509,7 +513,9 @@ async function handleJosef(email, thread) {
     await replyToJosef(thread, email, intent.intent === "access_add" ? `Shall I give ${target} access to ask me questions${target.includes("@") ? "" : " (everyone at that domain)"}? Reply YES to confirm.` : `Shall I remove ${target}'s access? Reply YES to confirm.`);
     return `access ${intent.intent === "access_add" ? "grant" : "revoke"} proposed, awaiting YES`;
   }
-  if (intent.intent === "edit") return startPlan(email, thread, { kind: "josef" }, text);
+  // A reply that continues a change the assistant asked about, found only through the quoted chain (the thread
+  // itself was not matched): the quoted assistant question plus his reply is the request.
+  if (intent.intent === "edit") return startPlan(email, thread, { kind: "josef" }, !pending && intent.edit.action === "update_draft" && email.quoted ? `${email.quoted}\n\nJosef's reply: ${text}` : text);
 
   // A question, or anything else: answer from the platform and the documents.
   thread.mode = "answer";

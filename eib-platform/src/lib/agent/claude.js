@@ -7,7 +7,7 @@ import { agentConfig, MAX_TOOL_ROUNDS } from "./config";
 import { answerSystemPrompt, forwardSystemPrompt, planSystemPrompt, josefIntentPrompt, JOSEF_INTENT_SCHEMA, relayPrompt, RELAY_SCHEMA, summaryPrompt, SUMMARY_SCHEMA } from "./prompts";
 import { TOOL_DEFINITIONS, TERMINAL_TOOLS, FORWARD_TERMINAL_TOOLS, PLAN_TERMINAL_TOOLS, TERMINAL_NAMES, runTool, resolveReferences } from "./tools";
 import { buildDraft, findMentors, findEvents } from "./edits";
-import { searchDocuments, readDocument, editableFiles } from "./drive";
+import { searchDocuments, readDocument, editableFiles, programYear } from "./drive";
 
 const g = globalThis;
 function client() {
@@ -77,13 +77,15 @@ async function toolLoop({ label, system, user, terminal, senderKind, onFallback,
 }
 
 /** Answer mode. Returns { action: "reply" | "escalate" | "out_of_scope" | "suspicious", ...tool input, references, toolCalls }. */
+const quotedBlock = (email) => (email?.quoted ? `<quoted_earlier_messages note="the part of the email under 'On ... wrote:', oldest at the bottom">\n${email.quoted}\n</quoted_earlier_messages>` : "");
+
 export async function runAnswer({ email, senderKind, senderName, threadContext, notes }) {
   const cfg = agentConfig();
-  const user = [threadContext ? `<thread_so_far>\n${threadContext}\n</thread_so_far>` : "", `<email from="${email.from.name || email.from.email}" subject="${email.subject}">\n${email.text || email.fullText}\n</email>`].filter(Boolean).join("\n\n");
+  const user = [threadContext ? `<thread_so_far>\n${threadContext}\n</thread_so_far>` : "", `<email from="${email.from.name || email.from.email}" subject="${email.subject}">\n${email.text || email.fullText}\n</email>`, quotedBlock(email)].filter(Boolean).join("\n\n");
   if (!client()) return mockAnswer(email, senderKind);
   return toolLoop({
     label: "claude answer",
-    system: answerSystemPrompt({ josefName: cfg.josefName, senderKind, senderName, notes }),
+    system: answerSystemPrompt({ josefName: cfg.josefName, senderKind, senderName, notes, programYear: await programYear().catch(() => "") }),
     user,
     terminal: TERMINAL_TOOLS,
     senderKind,
@@ -116,14 +118,14 @@ export async function runForward({ instruction, original, notes, extra = "" }) {
  * Plan mode: turn a change request into concrete steps for a ticket.
  * Returns { action: "propose_changes" | "need_details" | "cannot_plan", summary, steps, notes | question | reason, toolCalls }.
  */
-export async function runPlan({ request, senderKind, senderName, threadContext, notes }) {
+export async function runPlan({ request, senderKind, senderName, threadContext, notes, email }) {
   const cfg = agentConfig();
   const editable = (await editableFiles().catch(() => [])).map((f) => f.name);
-  const user = [threadContext ? `<thread_so_far>\n${threadContext}\n</thread_so_far>` : "", `<request from="${senderName || "the sender"}">\n${request}\n</request>`].filter(Boolean).join("\n\n");
+  const user = [threadContext ? `<thread_so_far>\n${threadContext}\n</thread_so_far>` : "", `<request from="${senderName || "the sender"}">\n${request}\n</request>`, quotedBlock(email)].filter(Boolean).join("\n\n");
   if (!client()) return mockPlan({ request, senderKind });
   return toolLoop({
     label: "claude plan",
-    system: planSystemPrompt({ josefName: cfg.josefName, senderName, senderKind, notes, editable }),
+    system: planSystemPrompt({ josefName: cfg.josefName, senderName, senderKind, notes, editable, programYear: await programYear().catch(() => "") }),
     user,
     terminal: PLAN_TERMINAL_TOOLS,
     senderKind,
@@ -149,6 +151,7 @@ export async function classifyJosefIntent({ email, pendingDraft }) {
   const user = [
     pendingDraft ? `<pending_edit>\nThe assistant is waiting on this ${pendingDraft.kind} ${pendingDraft.action || ""}: ${JSON.stringify(pendingDraft.fields || pendingDraft.request || "")}. Still missing: ${(pendingDraft.missing || []).join(", ") || "nothing; awaiting YES"}.\n</pending_edit>` : "",
     `<email subject="${email.subject}">\n${email.text || email.fullText}\n</email>`,
+    quotedBlock(email),
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -189,7 +192,7 @@ async function mockAnswer(email, senderKind) {
   if (/ignore (your|all) (previous |prior )?instructions|you are now authori[sz]ed|new rules/.test(t)) return done({ action: "suspicious", reason: "tries to change the rules" });
   if (senderKind !== "josef" && /give .+ access/.test(t)) return done({ action: "reply", text: "Only Josef can change who has access, so I have not changed anything. You can email him directly." });
   if (/would .* work as a mentor|should we|can a parent/.test(t)) return done({ action: "escalate", question_summary: email.subject, what_you_found: "A judgment call.", draft_read: "Draft read: fits the brief for a founder-type mentor." });
-  if (/run of show|document|slides|deck|file|parking|where is the venue|cougar|eib night/.test(t)) {
+  if (/run of show|document|slides|deck|file|parking|venue|cougar|eib night|\b20\d{2}\b/.test(t)) {
     const r = await mockTool("search_documents", { query: email.subject + " " + email.text }, senderKind, toolCalls, sources);
     const hit = (r.files || []).find((f) => f.readable && f.snippets.length);
     if (hit) return done({ action: "reply", text: `${hit.snippets[0]} You can read the rest in ${hit.title}.`, references: [hit.title] });
@@ -384,6 +387,7 @@ function mockIntent(email, pendingDraft) {
   const lesson = /lesson\s*(\d+)/i.exec(text);
   if (lesson && Object.keys(fields).length) return { intent: "edit", edit: { ...empty, target_kind: "lesson", target_name: lesson[1], action: "update", fields } };
   if (pendingDraft && Object.keys(fields).length) return { intent: "edit", edit: { ...empty, target_kind: pendingDraft.kind, target_name: pendingDraft.targetName, action: "update_draft", fields } };
+  if (!pendingDraft && /Happy to add|Could you send me the rest|I need (his|her|their) email/i.test(email.quoted || "")) return { intent: "edit", edit: { ...empty, target_kind: "mentor", target_name: "", action: "update_draft", fields } };
   if (/\?/.test(text) || /^(what|when|where|who|how)\b/.test(t)) return { intent: "question", edit: empty };
   return { intent: "other", edit: empty };
 }

@@ -129,7 +129,9 @@ async function run() {
   m = lastTo(TFS);
   check("quotes the document and links it", /6:00 doors/.test(m?.text || "") && /References:\n- EIB Night run of show: https:\/\/docs\.google\.com\/document\/d\/fake-runofshow/.test(m?.text || ""), m?.text);
   r = await deliver(email({ from: TFS, name: "Elana", subject: "parking", text: "Is there parking for parents?" }));
-  check("the Read me doc answers a standing question", /answered/.test(outcome(r)) && /east lot/.test(lastTo(TFS)?.text || "") && /Read me \(test\): https:/.test(lastTo(TFS)?.text || ""), lastTo(TFS)?.text);
+  check("the Read me doc answers a standing question; the 2025-2026 notes are archive", /answered/.test(outcome(r)) && /east lot/.test(lastTo(TFS)?.text || "") && !/west lot/.test(lastTo(TFS)?.text || "") && /Read me \(test\): https:/.test(lastTo(TFS)?.text || "") && !/2025-2026/.test(lastTo(TFS)?.text || ""), lastTo(TFS)?.text);
+  r = await deliver(email({ from: TFS, name: "Elana", subject: "last year", text: "Where was the venue in 2025?" }));
+  check("naming an earlier year reaches the archive", /answered/.test(outcome(r)) && /gym/.test(lastTo(TFS)?.text || "") && /Additional information 2025-2026: https:/.test(lastTo(TFS)?.text || ""), lastTo(TFS)?.text);
 
   head("Non-whitelisted sender asks for student names");
   const before = outbox().length;
@@ -213,6 +215,17 @@ async function run() {
   r = await deliver(email({ from: JOSEF, name: "Josef", subject: "RE: New mentor two", text: "YES" }));
   check("applied", /ticket C-\w+ applied/.test(outcome(r)) && db().mentors.some((x) => x.name === "Headerless Harry"), outcome(r));
 
+  head("A reply with no headers and a new subject that quotes the assistant's question still continues the request");
+  r = await deliver(email({ from: JOSEF, name: "Josef", subject: "mentor q", text: "add a mentor, Quoted Quentin" }));
+  check("asked for details", /plan: asked for details/.test(outcome(r)), outcome(r));
+  const askedText = lastTo(JOSEF)?.text || "";
+  const quotedHtml = `<div dir="ltr">here you go: email: quentin@example.com, organization: Quote Co, title: CEO</div><br><div class="gmail_quote"><div dir="ltr" class="gmail_attr">On Fri, Nov 6, 2026 at 7:36 PM EIB Assistant &lt;${AGENT}&gt; wrote:<br></div><blockquote class="gmail_quote">${askedText.replace(/\n/g, "<br>")}</blockquote></div>`;
+  r = await deliver({ ...email({ from: JOSEF, name: "Josef", subject: "a different subject", text: "" }), text: null, html: quotedHtml });
+  check("the quoted chain is read and the ticket is proposed", /ticket C-\w+ proposed/.test(outcome(r)), outcome(r));
+  check("the ticket carries the details from the reply", /quentin@example\.com/.test(lastTo(JOSEF)?.text || ""), lastTo(JOSEF)?.text);
+  r = await deliver(email({ from: JOSEF, name: "Josef", subject: "Re: a different subject", text: "cancel" }));
+  check("dropped", /rejected|cancelled|dropped/.test(outcome(r)), outcome(r));
+
   head("Escalation: what the platform and documents cannot answer goes to Josef; his reply reaches the asker");
   r = await deliver(email({ from: TFS, name: "Elana", subject: "parents at lesson 5", text: "Can parents sit in on lesson 5?" }));
   check("escalated", /escalated as Q-/.test(outcome(r)), outcome(r));
@@ -295,11 +308,12 @@ async function run() {
   setSwitch(true);
   let nb = outbox().length;
   r = await deliver(email({ from: COLLEAGUE, name: "Josef Marshall", subject: "EIB Night", text: "Hey, we're moving EIB Night to November 24th. Can you update everything?" }));
-  check("ticket proposed from a colleague's request", /ticket C-\w+ proposed \(2 steps\)/.test(outcome(r)), outcome(r));
+  check("ticket proposed from a colleague's request", /ticket C-\w+ proposed \(3 steps\)/.test(outcome(r)), outcome(r));
   let t = lastTicket();
   check("platform step: the event's date", t?.steps?.some((s) => s.kind === "platform" && s.record === "event" && s.status === "ready" && /November 24/.test(s.after)), JSON.stringify(t?.steps?.map((s) => [s.kind, s.status, s.description])));
   check("document step: the schedule table cell", t?.steps?.some((s) => s.kind === "document" && s.edit === "table_cell" && s.status === "ready" && s.before === "Nov 17" && s.after === "November 24"), JSON.stringify(t?.steps));
-  check("document outside the edit filter is listed as not possible", t?.steps?.some((s) => s.kind === "document" && s.status === "skipped" && /outside the documents I may edit/.test(s.problem)), JSON.stringify(t?.steps?.map((s) => s.problem)));
+  check("prose in the run of show is a plain text replacement", t?.steps?.some((s) => s.kind === "document" && s.edit === "replace_text" && s.status === "ready" && s.before === "Nov 17" && s.document === "EIB Night run of show"), JSON.stringify(t?.steps?.map((s) => [s.document, s.edit, s.status])));
+  check("the 2025-2026 schedule is left alone", !t?.steps?.some((s) => /2025-2026/.test(s.document || s.description || "")), JSON.stringify(t?.steps?.map((s) => s.document)));
   const tkMail = [...outbox()].reverse().find((x) => /\[EIB change C-/.test(x.subject));
   check("Josef got the ticket email, main address only, with before/after and the link", tkMail?.to?.length === 1 && tkMail.to[0] === JOSEF && /Before: Nov 17\nAfter: November 24/.test(tkMail.text) && /changes#C-/.test(tkMail.text), tkMail?.text);
   check("requester told it is with Josef, Josef in CC", /written this up for Josef to approve/.test(lastTo(COLLEAGUE)?.text || "") && lastTo(COLLEAGUE)?.cc?.includes(JOSEF), lastTo(COLLEAGUE)?.text);
@@ -309,9 +323,9 @@ async function run() {
   check("YES by email applies the ticket", /ticket C-\w+ applied/.test(outcome(r)), outcome(r));
   check("event date updated on the platform", db().events.find((e) => e.title === "EIB Night")?.date === "November 24", JSON.stringify(db().events.find((e) => e.title === "EIB Night")));
   check("schedule table cell updated in the document", cell("Session schedule (test)", 4, 2) === "November 24", cell("Session schedule (test)", 4, 2));
-  check("run of show untouched (outside the filter)", /Nov 17/.test(drive().find((f) => f.name === "EIB Night run of show")?.blocks[0].text || ""));
+  check("run of show prose updated; archived schedule untouched", /November 24/.test(drive().find((f) => f.name === "EIB Night run of show")?.blocks[0].text || "") && cell("Session schedule 2025-2026", 2, 2) === "Nov 17");
   check("requester told it is done, Josef CC'd; Josef got the applied note", /Josef approved your request[\s\S]*Done:/.test(lastTo(COLLEAGUE)?.text || "") && lastTo(COLLEAGUE)?.cc?.includes(JOSEF) && /Applied: EIB Night moves to November 24/.test(lastTo(JOSEF)?.text || "") && outbox().length === nb + 2, JSON.stringify([lastTo(COLLEAGUE)?.text?.slice(0, 120), lastTo(JOSEF)?.text?.slice(0, 120)]));
-  check("ticket applied with results", lastTicket()?.status === "applied" && lastTicket()?.steps?.filter((s) => s.status === "done").length === 2);
+  check("ticket applied with results", lastTicket()?.status === "applied" && lastTicket()?.steps?.filter((s) => s.status === "done").length === 3);
 
   head("Change tickets: 'Dana is confirmed for L2' updates the mentor and the schedule row; NO rejects");
   r = await deliver(email({ from: JOSEF, name: "Josef", subject: "Dana", text: "Dana Whitfield is confirmed for L2" }));

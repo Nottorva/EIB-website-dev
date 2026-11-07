@@ -150,7 +150,8 @@ function normalize(data, rawHeaders) {
     .split(/\s+/)
     .map((s) => s.trim())
     .filter(Boolean);
-  const text = String(data.text || "") || htmlToText(data.html || "");
+  // The plain-text part keeps the quoted chain; an HTML-only email gets it converted with the quotes kept.
+  const text = String(data.text || "") || htmlToText(data.html || "", { keepQuotes: true });
   // Resend's `to` is the envelope recipient (the agent's own address), not the To line the sender wrote.
   // The header To and Cc say who the email was really addressed to, which decides CC mode.
   const headerTo = parseAddressList(headers.to);
@@ -164,6 +165,7 @@ function normalize(data, rawHeaders) {
     subject: String(data.subject || headers.subject || ""),
     text: stripQuotedReply(text),
     fullText: text,
+    quoted: quotedPart(text),
     html: data.html || "",
     headers,
     inReplyTo: String(headers["in-reply-to"] || "").trim(),
@@ -174,13 +176,18 @@ function normalize(data, rawHeaders) {
   };
 }
 
-export function htmlToText(html) {
-  return String(html || "")
-    .replace(/<style[\s\S]*?<\/style>|<script[\s\S]*?<\/script>/gi, "")
-    // Gmail, Outlook and Apple Mail wrap the quoted earlier message in a marked block: drop it whole.
-    .replace(/<div[^>]*class="[^"]*\b(gmail_quote|moz-cite-prefix|yahoo_quoted)\b[^"]*"[\s\S]*$/i, "")
-    .replace(/<div[^>]*id="(divRplyFwdMsg|appendonsend)"[\s\S]*$/i, "")
-    .replace(/<blockquote[^>]*type="cite"[\s\S]*$/i, "")
+export function htmlToText(html, { keepQuotes = false } = {}) {
+  let h = String(html || "").replace(/<style[\s\S]*?<\/style>|<script[\s\S]*?<\/script>/gi, "");
+  // Gmail, Outlook and Apple Mail wrap the quoted earlier message in a marked block: drop it whole, unless
+  // the caller wants the whole chain (for context and thread matching).
+  if (!keepQuotes) {
+    h = h
+      .replace(/<div[^>]*class="[^"]*\b(gmail_quote|moz-cite-prefix|yahoo_quoted)\b[^"]*"[\s\S]*$/i, "")
+      .replace(/<div[^>]*id="(divRplyFwdMsg|appendonsend)"[\s\S]*$/i, "")
+      .replace(/<blockquote[^>]*type="cite"[\s\S]*$/i, "");
+  }
+  return h
+    .replace(/<blockquote[^>]*>/gi, "\n> ")
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<\/(p|div|li|h\d|tr)>/gi, "\n")
     .replace(/<[^>]+>/g, "")
@@ -209,6 +216,24 @@ export function stripQuotedReply(text) {
     out.push(line);
   }
   return out.join("\n").trim();
+}
+
+/** The quoted earlier messages under the sender's own words (everything from the first quote marker on). */
+export function quotedPart(text) {
+  const lines = String(text || "").replace(/\r\n/g, "\n").split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const t = lines[i].trim();
+    if (/^On\b.{0,300}\bwrote:/.test(t) || /^Le\b.{0,300}a écrit\s*:/.test(t) || /^-{2,}\s*Original Message\s*-{2,}/i.test(t) || lines[i].startsWith(">") || (/^From:\s.+/.test(t) && i > 0 && /^(Sent|Date):/.test((lines[i + 1] || "").trim()))) {
+      return lines
+        .slice(i)
+        .map((l) => l.replace(/^(>\s?)+/, ""))
+        .join("\n")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim()
+        .slice(0, 8000);
+    }
+  }
+  return "";
 }
 
 /** The first non-empty line of the sender's own text, for yes/no decisions. */

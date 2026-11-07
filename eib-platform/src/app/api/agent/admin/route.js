@@ -1,18 +1,17 @@
 // /api/agent/admin (super admin only): what the /agent page shows and edits.
 //   GET            config status, access list, documents folder, ticket counts, recent threads
-//   PUT            { grant: "email or domain", name? } | { revoke: "email or domain" } | { testColleague: "email", on: bool } | { docEditFilter: "words" }
+//   PUT            { grant: "email or domain", name? } | { revoke: "email or domain" } | { testColleague: "email", on: bool } | { programYear: "2026-2027" }
 import { guarded, readJson, HttpError } from "@/lib/auth";
 import { setSetting } from "@/lib/data/store";
 import { agentConfig } from "@/lib/agent/config";
 import { effectiveAccess, grantAccess, revokeAccess, getTestColleagues, setTestColleague, TEST_COLLEAGUE_HOURS } from "@/lib/agent/access";
 import { listThreads } from "@/lib/agent/db";
 import { listChanges } from "@/lib/agent/changes";
-import { driveConfigured, listFiles, lastListedAt, editFilter, titlePassesFilter, isReadme } from "@/lib/agent/drive";
+import { driveConfigured, listFiles, lastListedAt, splitByYear, isReadme } from "@/lib/agent/drive";
 
 async function docsInfo() {
   const cfg = agentConfig();
   const configured = driveConfigured();
-  const filter = await editFilter();
   let files = [];
   if (configured) {
     try {
@@ -21,14 +20,18 @@ async function docsInfo() {
       console.error(`[eib agent] admin: drive list failed: ${e.message}`);
     }
   }
+  const { year, current, archived } = await splitByYear(files);
   return {
     configured,
     folderUrl: cfg.driveFolderId ? `https://drive.google.com/drive/folders/${cfg.driveFolderId}` : "",
     fileCount: files.length,
     listedAt: lastListedAt(),
-    readme: files.filter(isReadme).map((f) => f.name),
-    editFilter: filter,
-    editable: files.filter((f) => titlePassesFilter(f.name, filter) && /document|spreadsheet/.test(f.mimeType || "")).map((f) => f.name),
+    readme: current.filter(isReadme).map((f) => f.name),
+    programYear: year,
+    currentCount: current.length,
+    archivedCount: archived.length,
+    archived: archived.map((f) => f.name),
+    editable: current.filter((f) => /document|spreadsheet/.test(f.mimeType || "")).map((f) => f.name),
   };
 }
 
@@ -69,11 +72,12 @@ export const PUT = guarded(["superAdmin"], async ({ req, user }) => {
     if (body.grant) result = await grantAccess(body.grant, { name: body.name || "", addedBy: user.email });
     else if (body.revoke) result = await revokeAccess(body.revoke);
     else if (body.testColleague) result = await setTestColleague(body.testColleague, Boolean(body.on), { by: user.email });
-    else if (typeof body.docEditFilter === "string") {
-      const v = body.docEditFilter.trim();
-      await setSetting("agentDocEditFilter", v);
-      result = { changed: true, message: v ? `The assistant may now edit documents whose title contains: ${v}.` : "The assistant may now edit any Google Doc or Sheet in the folder." };
-    } else throw new HttpError(400, "Send { grant }, { revoke }, { testColleague, on } or { docEditFilter }.");
+    else if (typeof body.programYear === "string") {
+      const v = body.programYear.trim();
+      if (v && !/^20\d{2}(\s*[-/]\s*20\d{2})?$/.test(v)) throw new HttpError(400, 'Give the program year as "2026-2027" or "2026".');
+      await setSetting("agentProgramYear", v);
+      result = { changed: true, message: v ? `Program year set to ${v}. Documents with an earlier year in the title are now archive.` : "Program year follows the current cohort year again." };
+    } else throw new HttpError(400, "Send { grant }, { revoke }, { testColleague, on } or { programYear }.");
   } catch (e) {
     throw new HttpError(e.status || 400, e.message);
   }

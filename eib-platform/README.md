@@ -441,9 +441,14 @@ verdicts plus the DKIM signing domain from the raw message), never from the From
   Josef. Approve (on the page, or YES by email) applies every ready step through the write user and the
   Docs/Sheets APIs and tells both; Reject (or NO) drops it and tells the requester. Josef's own edit requests
   go through the same tickets. Missing details are asked for first; a request the planner cannot turn into
-  steps is passed to Josef as a plain forward. Proposed tickets expire after 7 days (daily cron). Document
-  edits are limited to files whose title contains the words in the `agentDocEditFilter` setting (default
-  `test`, editable on `/agent`; empty means any Google Doc or Sheet in the folder).
+  steps is passed to Josef as a plain forward. Proposed tickets expire after 7 days (daily cron).
+- **Program year.** The `agentProgramYear` setting (default: the current cohort year, "2026-2027"; editable
+  on `/agent`) decides which documents are current. A title whose year (the first year of a range) is earlier,
+  such as "Session schedule 2025-2026", is archive: left out of the standing notes and of searches unless the
+  question names that year or the model asks for the archive, and never edited by a ticket.
+- **Whole chain.** Replies are read with their quoted earlier messages (an HTML-only Gmail reply keeps its
+  quote block for this), the model sees both sides of the thread so far, and a reply that quotes an assistant
+  question about a change continues that change even when the thread headers were lost.
 - **Forward + "handle this".** Josef forwards an email with an instruction ("handle this", "reply saying X",
   "send them the run of show"). The agent replies directly to the original sender with Josef in CC, using the
   platform, the documents and the folder notes. If the answer needs information it does not have, or would
@@ -464,8 +469,8 @@ and carries the AI disclosure in the footer. Plain text with an HTML twin. No in
 the pending step of a thread by References/In-Reply-To, then by every message id seen or sent, then by sender
 and subject, then by the quoted body, so a "yes" or a batch of details is never read as a new request.
 
-**Pages** (super admin): `/agent` (connections, who may email the agent, the documents folder with the edit
-filter, ticket counts, recent threads, and a per-address "treat as a colleague for testing" switch that turns
+**Pages** (super admin): `/agent` (connections, who may email the agent, the documents folder with the program
+year, ticket counts, recent threads, and a per-address "treat as a colleague for testing" switch that turns
 itself off after 24 hours), `/changes` (tickets waiting for approval with every step's before/after, Approve
 and Reject, and the history).
 
@@ -479,7 +484,7 @@ service account `data/fake-drive.json` stands in for the folder (seeded with tes
 
 ```
 AGENT_ADDRESS=assistant@joineib.ca TFS_WHITELIST_DOMAINS=tfs.ca JOSEF_ADDRESSES=josefm2173@gmail.com,jmarshall@tfs.ca npm run dev
-npm run smoke:agent      # 113 checks: data questions, documents, references, tickets, forwards, access, style, guards
+npm run smoke:agent      # 121 checks: data questions, documents, references, tickets, forwards, access, style, guards
 ```
 
 **Setup** (done 2026-11-06): Resend receiving on `mail.joineib.ca` with the `email.received` webhook; Atlas
