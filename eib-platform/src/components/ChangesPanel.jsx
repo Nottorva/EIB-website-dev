@@ -87,11 +87,7 @@ function Ticket({ t, busy, onDecide }) {
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => {
-                  const reason = window.prompt("Reason for rejecting (optional, the requester will see it):", "");
-                  if (reason === null) return;
-                  onDecide(t, "reject", reason);
-                }}
+                onClick={() => onDecide(t, "reject")}
                 style={{ display: "flex", alignItems: "center", gap: 6, border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.red, fontWeight: 800, fontSize: 14, borderRadius: 10, padding: "9px 16px", cursor: busy ? "default" : "pointer", fontFamily: "inherit" }}
               >
                 <X size={15} /> Reject
