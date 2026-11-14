@@ -612,7 +612,7 @@ function DeliverablesPanel({ student, lessons, saver }) {
 }
 
 /* Super admin only: suspend or reinstate the student's account. */
-function AccountCard({ student, account, onSuspend }) {
+function AccountCard({ student, account, onSuspend, onAgreement }) {
   const suspended = Boolean(account?.suspended);
   const [busy, setBusy] = useState(false);
   const [confirmDanger, confirmUI] = useDangerConfirm();
@@ -648,30 +648,50 @@ function AccountCard({ student, account, onSuspend }) {
       >
         {suspended ? "Reinstate account" : "Suspend account"}
       </button>
-      <AgreementStatus account={account} />
+      <AgreementStatus account={account} onAgreement={onAgreement} />
     </div>
   );
 }
 
 // The Student Agreement line on an account card: signed (with the parent's
 // details) or still pending.
-function AgreementStatus({ account }) {
+function AgreementStatus({ account, onAgreement }) {
   const a = account?.agreement;
   const signed = a?.status === "signed";
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
   const resend = async () => {
     setBusy(true);
     setMsg(null);
     try {
       const r = await api.post("/api/agreement/resend", { userId: account.id });
-      setMsg({ ok: true, text: `Confirmation email sent to ${r.agreement.parentEmailMasked}.` });
+      onAgreement?.(r.agreement);
+      setMsg({ ok: true, text: `Confirmation email sent to ${r.agreement.parentEmail}.` });
     } catch (e) {
       setMsg({ ok: false, text: e.message });
     } finally {
       setBusy(false);
     }
   };
+  // Correct a mistyped guardian address: saves it and sends a fresh link there.
+  const saveEmail = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    setMsg(null);
+    try {
+      const r = await api.put("/api/agreement/guardian-email", { userId: account.id, parentEmail: newEmail });
+      onAgreement?.(r.agreement);
+      setEditing(false);
+      setMsg(r.warning ? { ok: false, text: r.warning } : { ok: true, text: `Email changed. Confirmation email sent to ${r.agreement.parentEmail}; the link sent to the old address no longer works.` });
+    } catch (err) {
+      setMsg({ ok: false, text: err.message });
+    } finally {
+      setBusy(false);
+    }
+  };
+  const pill = { border: `1px solid ${COLORS.indigoBorder}`, background: COLORS.indigoSoft, color: COLORS.indigo, fontWeight: 800, fontSize: 12.5, borderRadius: 999, padding: "6px 12px", cursor: busy ? "default" : "pointer", fontFamily: "inherit" };
   const tone = signed ? COLORS.green : a ? COLORS.amber : COLORS.faint;
   const title = signed ? "Student Agreement signed" : a ? "Student Agreement: guardian confirmation pending" : "Student Agreement not started";
   const fee = a?.feeAcknowledgement;
@@ -689,9 +709,31 @@ function AgreementStatus({ account }) {
             {fee ? <><br /><span style={{ color: COLORS.faint }}>Fee acknowledged at application on {fmtDate(fee.acknowledgedAt)} ("{fee.answer}")</span></> : null}
             {!signed && (
               <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                <button type="button" onClick={resend} disabled={busy} style={{ border: `1px solid ${COLORS.indigoBorder}`, background: COLORS.indigoSoft, color: COLORS.indigo, fontWeight: 800, fontSize: 12.5, borderRadius: 999, padding: "6px 12px", cursor: busy ? "default" : "pointer", fontFamily: "inherit" }}>
-                  {busy ? "Sending…" : "Resend confirmation email"}
-                </button>
+                {editing ? (
+                  <form onSubmit={saveEmail} style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", width: "100%" }}>
+                    <input
+                      type="email"
+                      required
+                      autoFocus
+                      value={newEmail}
+                      onChange={(e) => setNewEmail(e.target.value)}
+                      placeholder="Guardian's correct email"
+                      aria-label="Guardian's correct email"
+                      style={{ flex: "1 1 220px", minWidth: 0, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "7px 10px", fontSize: 13, fontFamily: "inherit", color: COLORS.text }}
+                    />
+                    <button type="submit" disabled={busy} style={pill}>{busy ? "Saving…" : "Save and send confirmation"}</button>
+                    <button type="button" onClick={() => setEditing(false)} disabled={busy} style={{ ...pill, border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.sub }}>Cancel</button>
+                  </form>
+                ) : (
+                  <>
+                    <button type="button" onClick={resend} disabled={busy} style={pill}>
+                      {busy ? "Sending…" : "Resend confirmation email"}
+                    </button>
+                    <button type="button" onClick={() => { setNewEmail(a.parentEmail || ""); setMsg(null); setEditing(true); }} disabled={busy} style={{ ...pill, border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.sub }}>
+                      Edit guardian's email
+                    </button>
+                  </>
+                )}
                 {msg && <span style={{ fontSize: 12.5, fontWeight: 700, color: msg.ok ? COLORS.green : COLORS.red }}>{msg.text}</span>}
               </div>
             )}
@@ -732,7 +774,7 @@ function ResetCard({ student, onReset }) {
   );
 }
 
-function StudentDetail({ student, account, isSuperAdmin, onSuspend, onReset, questions, lessons, saver, onBack }) {
+function StudentDetail({ student, account, isSuperAdmin, onSuspend, onAgreement, onReset, questions, lessons, saver, onBack }) {
   const [view, setView] = useState("application");
   const answerFor = (qid) => student.answers.find((a) => a.questionId === qid)?.answer ?? "";
 
@@ -776,7 +818,7 @@ function StudentDetail({ student, account, isSuperAdmin, onSuspend, onReset, que
         />
       </div>
 
-      {isSuperAdmin && student.studentId && account && <AccountCard student={student} account={account} onSuspend={onSuspend} />}
+      {isSuperAdmin && student.studentId && account && <AccountCard student={student} account={account} onSuspend={onSuspend} onAgreement={onAgreement} />}
       {isSuperAdmin && <ResetCard student={student} onReset={onReset} />}
 
       {view === "application" ? (
@@ -1065,6 +1107,7 @@ function StudentsTab({ saver, user }) {
         account={openStudent.studentId ? accounts[openStudent.studentId] : null}
         isSuperAdmin={isSuperAdmin}
         onSuspend={(suspended) => suspend(openStudent, suspended)}
+        onAgreement={(agreement) => setAccounts((prev) => (prev[openStudent.studentId] ? { ...prev, [openStudent.studentId]: { ...prev[openStudent.studentId], agreement } } : prev))}
         onReset={() => resetApplicant(openStudent)}
         questions={questions}
         lessons={lessons}

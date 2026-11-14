@@ -238,6 +238,31 @@ export async function issueConfirmation(userId, { origin, byAdmin = false } = {}
   return { record: next };
 }
 
+// Super admin: the student typed the wrong guardian address. Stores the new
+// one (the old one is kept in parentEmailHistory), kills the link already
+// sent to the old address, and emails a fresh link to the new address.
+// Returns { record, warning? } or { error, status }.
+export async function changeGuardianEmail(userId, email, { origin, by } = {}) {
+  const user = await findById("users", userId);
+  const rec = user?.agreement;
+  if (!user || !rec) return { error: "This student has not submitted an agreement yet.", status: 404 };
+  if (rec.status === "signed") return { error: "This agreement is already confirmed, so the guardian's email can no longer be changed.", status: 409 };
+  const parentEmail = clean(email, 160).toLowerCase();
+  if (!/^\S+@\S+\.\S+$/.test(parentEmail)) return { error: "Please enter a valid email address.", status: 400 };
+  if (parentEmail === String(rec.parentEmail || "").toLowerCase()) return { error: "That is already the guardian's email address.", status: 400 };
+  const now = new Date().toISOString();
+  const changed = {
+    ...rec,
+    parentEmail,
+    parentEmailHistory: [...(rec.parentEmailHistory || []), { email: rec.parentEmail, replacedAt: now, by: by || null }],
+    confirmation: { ...(rec.confirmation || {}), tokenHash: null, expiresAt: null },
+  };
+  await updateOne("users", userId, { agreement: changed });
+  const sent = await issueConfirmation(userId, { origin, byAdmin: true });
+  if (sent.error) return { record: changed, warning: `The address was changed, but the email could not be sent: ${sent.error}` };
+  return { record: sent.record };
+}
+
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 async function userByToken(token) {
