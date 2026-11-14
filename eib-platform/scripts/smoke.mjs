@@ -205,6 +205,27 @@ head("lesson view, submissions, grading");
   const after = await req(student, "GET", "/api/submissions?lessonId=lesson_1");
   check("student sees the grade once released", "7", after.json?.find((s) => s.deliverableId === "del_journal")?.grade);
   check("leader sees every student's rows", true, (await req(leader, "GET", "/api/submissions")).json.some((s) => s.studentId === "user_amara"));
+
+  // Export as MD: the lesson's AI instructions, then the student's own answers
+  const l1 = (await req(admin, "GET", "/api/lessons/lesson_1")).json;
+  const put = await req(admin, "PUT", "/api/lessons/lesson_1", { ...l1, aiInstructions: "Coach me on problem discovery. SMOKE-AI-1" });
+  check("admin saves AI instructions on a lesson", [200, "Coach me on problem discovery. SMOKE-AI-1"], [put.status, put.json?.aiInstructions]);
+  check("AI instructions are not in the student's lesson data", [false, false], [
+    (await req(student, "GET", "/api/lessons/view")).json.lessons.some((l) => "aiInstructions" in l),
+    "aiInstructions" in (await req(student, "GET", "/api/lessons/lesson_1")).json,
+  ]);
+  await req(student, "PUT", "/api/submissions", { lessonId: "lesson_1", deliverableId: "del_worksheet", payload: { columns: ["Who is affected", "How often", "Evidence"], rowLabels: [], rows: [["Commuters", "Daily | twice", "Survey"], ["", "", ""]] } });
+  const one = await fetch(`${BASE}/api/lessons/export?lesson=lesson_1`, { headers: { Cookie: student } });
+  const oneText = await one.text();
+  check("export one lesson -> markdown download", [200, true, true], [one.status, (one.headers.get("content-type") || "").startsWith("text/markdown"), /attachment; filename="EIB-lesson-1-problem-identification\.md"/.test(one.headers.get("content-disposition") || "")]);
+  check("export: instructions first, then the student's answers", true, oneText.indexOf("SMOKE-AI-1") > 0 && oneText.indexOf("SMOKE-AI-1") < oneText.indexOf("#### Problem Journal Entry") && oneText.includes("my entry"));
+  check("export: table answer as a markdown table, blank rows dropped, pipes escaped", true, oneText.includes("| Who is affected | How often | Evidence |") && oneText.includes("| Commuters | Daily \\| twice | Survey |") && !oneText.includes("|  |  |  |"));
+  check("export: one lesson only", false, oneText.includes("Customer Discovery"));
+  const allMd = await (await fetch(`${BASE}/api/lessons/export`, { headers: { Cookie: student } })).text();
+  check("export all: every lesson in order, unanswered marked", true, allMd.indexOf("## Lesson 1: Problem Identification") < allMd.indexOf("## Lesson 2: Customer Discovery") && allMd.includes("_Not completed yet._") && /- \[[x ]\] Interviewed at least 3 people/.test(allMd));
+  const staffMd = await (await fetch(`${BASE}/api/lessons/export?lesson=lesson_1`, { headers: { Cookie: leader } })).text();
+  check("export for staff carries no student's answers", [true, false], [staffMd.includes("SMOKE-AI-1"), staffMd.includes("my entry")]);
+  check("export: unknown lesson -> 404, stranger -> 401", [404, 401], [await code(student, "GET", "/api/lessons/export?lesson=nope"), await code(stranger, "GET", "/api/lessons/export")]);
 }
 
 /* ---- 5. mentors / CRM ---- */

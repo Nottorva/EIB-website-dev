@@ -86,6 +86,9 @@ export function normalizeLesson(input, id) {
     // Shown on the CRM's Sessions tab; the super admin writes it. Never sent
     // to students (see the lessons routes).
     mentorBrief: String(input.mentorBrief ?? ""),
+    // The core of this lesson's "Export as MD" file (see exportMd.js). Written
+    // by the super admin; reaches students only inside the exported file.
+    aiInstructions: String(input.aiInstructions ?? ""),
     // Public website fields. Only `published` lessons appear on the site, and
     // only through toPublicLesson() below (never deliverables or links).
     published: Boolean(input.published),
@@ -121,7 +124,7 @@ export const MENTOR_SESSION_KEYS = ["mentorLocation", "mentorStartTime", "mentor
 
 // Students never receive the mentor-facing fields.
 export function forStudent(lesson) {
-  const { mentorBrief, mentorLocation, mentorStartTime, mentorEndTime, teachingPlanFile, ...rest } = lesson;
+  const { mentorBrief, mentorLocation, mentorStartTime, mentorEndTime, teachingPlanFile, aiInstructions, ...rest } = lesson;
   return rest;
 }
 

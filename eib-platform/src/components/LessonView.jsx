@@ -285,7 +285,7 @@ function Logistics({ lesson, editable, onChange, showMentor }) {
 }
 
 /* ---------- Lesson card ---------- */
-function LessonCard({ lesson, mode, submissions, onChangePayload, onChangeLogistics, superAdmin }) {
+function LessonCard({ lesson, mode, submissions, onChangePayload, onChangeLogistics, onExport, superAdmin }) {
   const [activeModal, setActiveModal] = useState(null);
   const eyebrow = lesson.chapterLabel || "Chapter";
 
@@ -313,6 +313,7 @@ function LessonCard({ lesson, mode, submissions, onChangePayload, onChangeLogist
         <Pill icon={Eye} label="Student Overview" onClick={() => setActiveModal("overview")} />
         <Pill icon={Presentation} label="Slides" onClick={() => setActiveModal("slides")} />
         {mode === "leader" && <Pill icon={FileText} label="Teaching Plan" onClick={() => setActiveModal("plan")} />}
+        <Pill icon={Download} label="Export as MD" onClick={() => onExport(lesson.id)} />
         {lesson.mentorEnabled && <Pill icon={UserCheck} label={mentorNames(lesson).length > 1 ? `Mentors: ${mentorNames(lesson).join(" & ")}` : `Mentor: ${mentorNames(lesson)[0] || "Unassigned"}`} tone="amber" onClick={() => setActiveModal("mentor")} />}
       </div>
 
@@ -382,6 +383,15 @@ export default function LessonView({ user }) {
     });
   };
 
+  // Download the Markdown file for one lesson, or for all of them. Waits for
+  // answers still being saved, so the file has what is on screen.
+  const savingRef = useRef(saver.status);
+  savingRef.current = saver.status;
+  const exportMd = async (lessonId) => {
+    for (let i = 0; i < 40 && savingRef.current === "saving"; i++) await new Promise((r) => setTimeout(r, 100));
+    window.location.href = `/api/lessons/export${lessonId ? `?lesson=${encodeURIComponent(lessonId)}` : ""}`;
+  };
+
   const mode = data?.mode || (user.role === "student" ? "student" : "leader");
   const lessons = data?.lessons || [];
 
@@ -390,7 +400,10 @@ export default function LessonView({ user }) {
       <div style={{ maxWidth: 1180, margin: "0 auto", padding: "36px 24px 80px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 22 }}>
           <span style={{ fontSize: 30, fontWeight: 800, color: COLORS.text }}>Lessons</span>
-          <SaveIndicator status={saver.status} />
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <SaveIndicator status={saver.status} />
+            {lessons.length > 0 && <Pill icon={Download} label="Export all as MD" tone="default" onClick={() => exportMd()} />}
+          </div>
         </div>
 
         {error && <Notice onClose={() => setError(null)}>{error}</Notice>}
@@ -403,7 +416,7 @@ export default function LessonView({ user }) {
         ) : (
           <LessonLayout lessons={lessons}>
             {lessons.map((lesson) => (
-              <LessonCard key={lesson.id} lesson={lesson} mode={mode} submissions={submissions} onChangePayload={changePayload} onChangeLogistics={changeLogistics} superAdmin={user.role === "superAdmin"} />
+              <LessonCard key={lesson.id} lesson={lesson} mode={mode} submissions={submissions} onChangePayload={changePayload} onChangeLogistics={changeLogistics} onExport={exportMd} superAdmin={user.role === "superAdmin"} />
             ))}
           </LessonLayout>
         )}
