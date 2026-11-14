@@ -1,7 +1,5 @@
-import { guarded, readJson, HttpError } from "@/lib/auth";
+import { guarded, CRM_ROLES, readJson, HttpError } from "@/lib/auth";
 import { getEvent, updateEvent, deleteEvent, EVENT_FIELDS } from "@/lib/data/events";
-
-const CRM_ROLES = ["superAdmin", "studentLeader", "advancement"];
 
 export const GET = guarded(CRM_ROLES, async ({ params }) => {
   const ev = await getEvent(params.id);

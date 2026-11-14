@@ -5,7 +5,7 @@
 // (or straight to their lessons when no agreement is required). Pressing it
 // marks the account as welcomed, so this page shows once.
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { PartyPopper, ArrowRight } from "lucide-react";
 import { COLORS, Notice } from "./ui";
 import { api } from "@/lib/api";

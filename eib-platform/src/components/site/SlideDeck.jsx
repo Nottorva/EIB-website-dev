@@ -6,36 +6,11 @@
 // 30-slide deck does not rasterise all at once on a phone. If the script
 // fails to load, the download link still works.
 
-import React, { useEffect, useRef, useState } from "react";
-
-import { loadPdfJs } from "@/lib/pdfjs";
+import { usePdfDocument, useElementWidth, usePdfPage } from "@/lib/pdfjs";
 
 export default function SlideDeck({ src, title }) {
-  const [doc, setDoc] = useState(null);
-  const [error, setError] = useState(null);
-  const [width, setWidth] = useState(0);
-  const colRef = useRef(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    loadPdfJs()
-      .then((lib) => lib.getDocument(src).promise)
-      .then((d) => { if (!cancelled) setDoc(d); })
-      .catch((e) => { if (!cancelled) setError(e.message || "Could not load the slides."); });
-    return () => { cancelled = true; };
-  }, [src]);
-
-  // the column width drives the render scale; re-measure on resize
-  useEffect(() => {
-    const el = colRef.current;
-    if (!el) return undefined;
-    const measure = () => setWidth(Math.floor(el.getBoundingClientRect().width));
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
+  const { doc, error } = usePdfDocument(src);
+  const [colRef, width] = useElementWidth();
   const count = doc?.numPages || 0;
 
   return (
@@ -54,47 +29,8 @@ export default function SlideDeck({ src, title }) {
 }
 
 function Slide({ doc, index, count, width }) {
-  const canvasRef = useRef(null);
-  const boxRef = useRef(null);
-  const [near, setNear] = useState(false);
-  const [ratio, setRatio] = useState(9 / 16);
-
   // render when the slide is within two screens of the viewport
-  useEffect(() => {
-    const el = boxRef.current;
-    if (!el) return undefined;
-    const io = new IntersectionObserver(
-      (entries) => { if (entries.some((e) => e.isIntersecting)) setNear(true); },
-      { rootMargin: "200% 0px" }
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (!near) return undefined;
-    let cancelled = false;
-    let task = null;
-    doc.getPage(index).then((page) => {
-      if (cancelled) return;
-      const base = page.getViewport({ scale: 1 });
-      setRatio(base.height / base.width);
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const scale = (width / base.width) * dpr;
-      const vp = page.getViewport({ scale });
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      canvas.width = Math.floor(vp.width);
-      canvas.height = Math.floor(vp.height);
-      task = page.render({ canvasContext: canvas.getContext("2d"), viewport: vp });
-      task.promise.catch(() => {});
-    });
-    return () => {
-      cancelled = true;
-      if (task) task.cancel();
-    };
-  }, [near, doc, index, width]);
-
+  const { canvasRef, boxRef, ratio } = usePdfPage(doc, index, width, { rootMargin: "200% 0px", ratio: 9 / 16 });
   return (
     <figure className="slide" ref={boxRef} style={{ aspectRatio: `1 / ${ratio}` }}>
       <canvas ref={canvasRef} aria-label={`Slide ${index} of ${count}`} />

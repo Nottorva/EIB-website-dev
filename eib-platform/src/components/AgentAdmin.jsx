@@ -4,7 +4,7 @@
 // the documents it may edit, ticket counts, recent threads, and whether each service is connected. Escalations
 // are not listed: each one is emailed to Josef.
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Bot, Plus, Trash2, CircleCheck, Circle, Mail, FolderOpen, ClipboardCheck, Users } from "lucide-react";
 import { COLORS, PageTitle, Card, fieldStyle, Notice, Loading, PrimaryButton, IconButton, SectionLabel, EmptyState } from "./ui";
 import { api } from "@/lib/api";

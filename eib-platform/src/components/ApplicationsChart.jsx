@@ -9,10 +9,10 @@
 //   - running total (line), with the class-size cap as a reference line
 // Hover gives a crosshair + tooltip; a table view sits behind a toggle.
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { COLORS } from "./ui";
+import { TZ } from "@/lib/format";
 
-const TZ = "America/Toronto";
 const DAY = 86400000;
 const INK = { text: COLORS.text, sub: COLORS.sub, faint: COLORS.faint, grid: "#e9ecf3", axis: "#d6dbe6" };
 const SERIES = COLORS.indigo; // validated on the light surface (3:1+, L in band)

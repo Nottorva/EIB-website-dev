@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
+import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
 import {
 
   X,
@@ -70,6 +70,19 @@ let uid = 1000;
 export const nextId = (prefix) => `${prefix}_${Date.now().toString(36)}${(uid++).toString(36)}`;
 
 /* ---------- Editable primitives ---------- */
+// Looks like plain text until focused; the negative margin keeps the text
+// where it was when the border and padding appear.
+const editableStyle = (focused, y, x) => ({
+  border: `1px solid ${focused ? COLORS.indigo : "transparent"}`,
+  borderRadius: 8,
+  padding: `${y}px ${x}px`,
+  margin: `-${y}px -${x}px`,
+  background: focused ? "#fff" : "transparent",
+  fontFamily: "inherit",
+  outline: "none",
+  width: "100%",
+  boxSizing: "border-box",
+});
 export function EditableInput({ value, onChange, placeholder, style, type = "text" }) {
   const [focused, setFocused] = useState(false);
   return (
@@ -80,18 +93,7 @@ export function EditableInput({ value, onChange, placeholder, style, type = "tex
       placeholder={placeholder}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
-      style={{
-        border: `1px solid ${focused ? COLORS.indigo : "transparent"}`,
-        borderRadius: 8,
-        padding: "3px 7px",
-        margin: "-3px -7px",
-        background: focused ? "#fff" : "transparent",
-        fontFamily: "inherit",
-        outline: "none",
-        width: "100%",
-        boxSizing: "border-box",
-        ...style,
-      }}
+      style={{ ...editableStyle(focused, 3, 7), ...style }}
     />
   );
 }
@@ -115,20 +117,7 @@ export function EditableTextarea({ value, onChange, placeholder, style, rows = 3
       rows={rows}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
-      style={{
-        border: `1px solid ${focused ? COLORS.indigo : "transparent"}`,
-        borderRadius: 8,
-        padding: "6px 8px",
-        margin: "-6px -8px",
-        background: focused ? "#fff" : "transparent",
-        fontFamily: "inherit",
-        outline: "none",
-        width: "100%",
-        boxSizing: "border-box",
-        resize: "none",
-        overflow: "hidden",
-        ...style,
-      }}
+      style={{ ...editableStyle(focused, 6, 8), resize: "none", overflow: "hidden", ...style }}
     />
   );
 }
@@ -401,24 +390,7 @@ export function FilterBar({ filter, setFilter, statuses, search, setSearch, righ
   return (
     <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 14, flexWrap: "wrap" }}>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-        <button
-          type="button"
-          onClick={() => setFilter("all")}
-          style={{
-            fontSize: 13,
-            fontWeight: 800,
-            color: filter === "all" ? "#fff" : COLORS.text,
-            background: filter === "all" ? COLORS.indigo : "#fff",
-            border: `1px solid ${filter === "all" ? COLORS.indigo : COLORS.border}`,
-            borderRadius: 999,
-            padding: "6px 13px",
-            cursor: "pointer",
-            fontFamily: "inherit",
-          }}
-        >
-          All
-        </button>
-        {statuses.map((s) => {
+        {[{ id: "all", label: "All", color: COLORS.indigo, ink: COLORS.text, soft: "#fff", border: COLORS.border }, ...statuses].map((s) => {
           const active = filter === s.id;
           return (
             <button
@@ -428,7 +400,7 @@ export function FilterBar({ filter, setFilter, statuses, search, setSearch, righ
               style={{
                 fontSize: 13,
                 fontWeight: 800,
-                color: active ? "#fff" : s.color,
+                color: active ? "#fff" : s.ink || s.color,
                 background: active ? s.color : s.soft,
                 border: `1px solid ${active ? s.color : s.border}`,
                 borderRadius: 999,

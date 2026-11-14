@@ -3,7 +3,7 @@
 // The four student-facing deliverable inputs. Used for real in the lesson
 // view and as a live "what students see" preview in the lesson editor.
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { Plus, Trash2, CheckSquare, Square, ExternalLink, Link2 } from "lucide-react";
 import { COLORS } from "./ui";
 

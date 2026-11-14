@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Link2, CheckCircle2, Send, LogIn, LogOut, CalendarClock, Lock, ShieldCheck, Clock, ArrowRight, AlertTriangle } from "lucide-react";
 import { signOut as nextAuthSignOut } from "next-auth/react";
@@ -189,21 +189,30 @@ function SignInCard({ domain, onSignedIn, authMode, signInAvailable }) {
   }
   if (authMode === "google") {
     return (
-      <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 18, padding: 28 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
-          <div style={{ width: 44, height: 44, borderRadius: 12, background: COLORS.indigoSoft, color: COLORS.indigo, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Lock size={20} strokeWidth={2.25} />
-          </div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: COLORS.text }}>Sign in to apply</div>
-        </div>
-        <div style={{ fontSize: 14.5, color: COLORS.sub, lineHeight: 1.6, marginBottom: 18 }}>
-          Use your <strong>@{domain}</strong> Google account. Your name and school email come from that account, so you won't need to type them into the form.
-        </div>
+      <SignInShell domain={domain}>
         <GoogleSignInButton callbackUrl="/apply" label={`Sign in with your @${domain} Google account`} style={{ width: "100%" }} />
-      </div>
+      </SignInShell>
     );
   }
   return <DevSignInCard domain={domain} onSignedIn={onSignedIn} />;
+}
+
+// The card both sign-in variants share: lock, heading and the one-line explanation.
+function SignInShell({ domain, children }) {
+  return (
+    <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 18, padding: 28 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
+        <div style={{ width: 44, height: 44, borderRadius: 12, background: COLORS.indigoSoft, color: COLORS.indigo, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <Lock size={20} strokeWidth={2.25} />
+        </div>
+        <div style={{ fontSize: 20, fontWeight: 800, color: COLORS.text }}>Sign in to apply</div>
+      </div>
+      <div style={{ fontSize: 14.5, color: COLORS.sub, lineHeight: 1.6, marginBottom: 18 }}>
+        Use your <strong>@{domain}</strong> Google account. Your name and school email come from that account, so you won't need to type them into the form.
+      </div>
+      {children}
+    </div>
+  );
 }
 
 function DevSignInCard({ domain, onSignedIn }) {
@@ -227,16 +236,7 @@ function DevSignInCard({ domain, onSignedIn }) {
   };
 
   return (
-    <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 18, padding: 28 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
-        <div style={{ width: 44, height: 44, borderRadius: 12, background: COLORS.indigoSoft, color: COLORS.indigo, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <Lock size={20} strokeWidth={2.25} />
-        </div>
-        <div style={{ fontSize: 20, fontWeight: 800, color: COLORS.text }}>Sign in to apply</div>
-      </div>
-      <div style={{ fontSize: 14.5, color: COLORS.sub, lineHeight: 1.6, marginBottom: 18 }}>
-        Use your <strong>@{domain}</strong> Google account. Your name and school email come from that account, so you won't need to type them into the form.
-      </div>
+    <SignInShell domain={domain}>
       {error && <Notice onClose={() => setError(null)}>{error}</Notice>}
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name (as on your school account)" aria-label="Full name, as on your school account" autoComplete="name" required style={fieldStyle} />
@@ -250,7 +250,7 @@ function DevSignInCard({ domain, onSignedIn }) {
         </button>
       </form>
       <div style={{ fontSize: 12, color: COLORS.faint, marginTop: 12, lineHeight: 1.5 }}>Sandbox: this stand-in asks for the name and email that Google would provide. In production this button opens the real Google sign-in, restricted to @{domain}.</div>
-    </div>
+    </SignInShell>
   );
 }
 

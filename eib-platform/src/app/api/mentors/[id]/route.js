@@ -1,7 +1,5 @@
-import { guarded, readJson, HttpError } from "@/lib/auth";
+import { guarded, CRM_ROLES, readJson, HttpError } from "@/lib/auth";
 import { getMentor, updateMentor, deleteMentor } from "@/lib/data/mentors";
-
-const CRM_ROLES = ["superAdmin", "studentLeader", "advancement"];
 
 export const GET = guarded(CRM_ROLES, async ({ params }) => {
   const m = await getMentor(params.id);

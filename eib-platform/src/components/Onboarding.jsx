@@ -5,7 +5,7 @@
 // Lessons page stays closed until this is done. The super admin can preview
 // the page; only a student can sign.
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { FileText, Download, CircleCheck, Lock, ArrowRight, ShieldCheck, Mail, Clock } from "lucide-react";
 import { SECTION_13, AGREEMENT_VERSION_LABEL } from "@/lib/agreementText";
 import { COLORS, fieldStyle, Notice, Loading } from "./ui";

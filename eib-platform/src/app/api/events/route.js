@@ -1,8 +1,6 @@
 // CRM-only events. The CRM roles read; the super admin creates.
-import { guarded, readJson } from "@/lib/auth";
+import { guarded, CRM_ROLES, readJson } from "@/lib/auth";
 import { listEvents, createEvent } from "@/lib/data/events";
-
-const CRM_ROLES = ["superAdmin", "studentLeader", "advancement"];
 
 export const GET = guarded(CRM_ROLES, async () => Response.json({ events: await listEvents() }));
 

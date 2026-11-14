@@ -12,13 +12,11 @@ import { classifySender, otherParticipants } from "./classify";
 import { runAnswer, runForward, runPlan, classifyJosefIntent, relayAnswer, summarizeEmail, timed } from "./claude";
 import { parseForward, unquoted } from "./forward";
 import { readmeContext } from "./drive";
-import { getThread, listThreads, saveThread, createEscalation, findEscalation, updateEscalation } from "./db";
+import { getThread, listThreads, saveThread, createEscalation, findEscalation, updateEscalation, now, shortId } from "./db";
 import { describeAccess, grantAccess, revokeAccess } from "./access";
 import { createTicket, ticketEmailText, ticketUrl, ticketReferences, affectedList, applyTicket, rejectTicket, notifyDecision, getChange, updateChange } from "./changes";
 import { compose, composeForJosef, bareBody, firstNameOf, CRM_URL } from "./style";
 
-const now = () => new Date().toISOString();
-const shortId = () => Math.random().toString(36).slice(2, 7);
 const EMPTY_EDIT = { target_kind: "", target_name: "", action: "", fields: {} };
 
 // ---------------------------------------------------------------------------

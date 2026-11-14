@@ -4,7 +4,7 @@
 // published to the site from the Lesson Editor; the copy lives in
 // src/lib/siteContent.js.
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Globe, Plus, Trash2, RotateCcw } from "lucide-react";
 import { COLORS, PageTitle, Card, fieldStyle, Notice, SaveIndicator, Loading, PrimaryButton, IconButton, SectionLabel } from "./ui";
 import { api, useDebouncedSaver } from "@/lib/api";

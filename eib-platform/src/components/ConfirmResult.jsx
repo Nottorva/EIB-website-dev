@@ -1,7 +1,7 @@
 "use client";
 
 // The guardian's result page after clicking the confirmation link.
-import React, { useState } from "react";
+import { useState } from "react";
 import { CircleCheck, Clock, AlertTriangle, Mail } from "lucide-react";
 import { COLORS, Notice } from "./ui";
 import { api } from "@/lib/api";

@@ -14,6 +14,8 @@ import { auth, authEnabled } from "./nextauth";
 export const DEV_COOKIE = "eib_dev_user";
 export const NO_ACCESS_SENTINEL = "__stranger__";
 export const authMode = authEnabled ? "google" : "dev";
+// Who may open the Mentor CRM (mentors and events).
+export const CRM_ROLES = ["superAdmin", "studentLeader", "advancement"];
 
 // The signed-in Google identity, whether or not it is on the allow-list.
 export async function getSessionIdentity() {

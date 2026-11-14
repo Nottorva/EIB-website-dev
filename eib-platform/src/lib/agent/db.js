@@ -102,7 +102,8 @@ export async function writeUpdate(collection, id, patch) {
 // ---------------------------------------------------------------------------
 // Bookkeeping (app store)
 // ---------------------------------------------------------------------------
-const now = () => new Date().toISOString();
+export const now = () => new Date().toISOString();
+export const shortId = () => Math.random().toString(36).slice(2, 7);
 
 export async function alreadyProcessed(emailId) {
   return Boolean(await store.findOne("agent_processed", (r) => r.emailId === emailId));

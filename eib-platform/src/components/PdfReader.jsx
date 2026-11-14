@@ -5,37 +5,15 @@
 // Used by the onboarding page so "I have read it" can only be ticked once
 // the whole agreement has been seen.
 
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { COLORS } from "./ui";
 
-import { loadPdfJs } from "@/lib/pdfjs";
+import { usePdfDocument, useElementWidth, usePdfPage } from "@/lib/pdfjs";
 
 export default function PdfReader({ src, onReachEnd, onError }) {
-  const [doc, setDoc] = useState(null);
-  const [error, setError] = useState(null);
-  const [width, setWidth] = useState(0);
-  const colRef = useRef(null);
+  const { doc, error } = usePdfDocument(src, { withCredentials: true, onError });
+  const [colRef, width] = useElementWidth();
   const reached = useRef(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    loadPdfJs()
-      .then((lib) => lib.getDocument({ url: src, withCredentials: true }).promise)
-      .then((d) => { if (!cancelled) setDoc(d); })
-      .catch((e) => { if (!cancelled) { setError(e.message || "Could not load the PDF."); onError?.(); } });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [src]);
-
-  useEffect(() => {
-    const el = colRef.current;
-    if (!el) return undefined;
-    const measure = () => setWidth(Math.floor(el.getBoundingClientRect().width));
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
 
   const count = doc?.numPages || 0;
   const reachEnd = () => {
@@ -56,18 +34,7 @@ export default function PdfReader({ src, onReachEnd, onError }) {
 }
 
 function Page({ doc, index, count, width, last, onSeen }) {
-  const canvasRef = useRef(null);
-  const boxRef = useRef(null);
-  const [near, setNear] = useState(false);
-  const [ratio, setRatio] = useState(11 / 8.5);
-
-  useEffect(() => {
-    const el = boxRef.current;
-    if (!el) return undefined;
-    const io = new IntersectionObserver((entries) => { if (entries.some((e) => e.isIntersecting)) setNear(true); }, { rootMargin: "150% 0px" });
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
+  const { canvasRef, boxRef, ratio } = usePdfPage(doc, index, width, { rootMargin: "150% 0px", ratio: 11 / 8.5 });
 
   // the last page counts as read once most of it has been on screen
   useEffect(() => {
@@ -79,26 +46,6 @@ function Page({ doc, index, count, width, last, onSeen }) {
     return () => io.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [last]);
-
-  useEffect(() => {
-    if (!near) return undefined;
-    let cancelled = false;
-    let task = null;
-    doc.getPage(index).then((page) => {
-      if (cancelled) return;
-      const base = page.getViewport({ scale: 1 });
-      setRatio(base.height / base.width);
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const vp = page.getViewport({ scale: (width / base.width) * dpr });
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      canvas.width = Math.floor(vp.width);
-      canvas.height = Math.floor(vp.height);
-      task = page.render({ canvasContext: canvas.getContext("2d"), viewport: vp });
-      task.promise.catch(() => {});
-    });
-    return () => { cancelled = true; if (task) task.cancel(); };
-  }, [near, doc, index, width]);
 
   return (
     <figure ref={boxRef} style={{ margin: 0, position: "relative", background: "#fff", border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: "hidden", aspectRatio: `1 / ${ratio}`, boxShadow: "0 8px 24px -18px rgba(15,23,42,0.3)" }}>

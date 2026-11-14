@@ -3,7 +3,7 @@
 // /changes (super admin): tickets the assistant proposed. Each one lists the exact edits (platform records and
 // document spots) with before and after; Approve applies them all, Reject drops them and tells the requester.
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { ClipboardCheck, Check, X, FileText, Database, ChevronDown, ChevronRight, ExternalLink } from "lucide-react";
 import { COLORS, PageTitle, Card, Notice, Loading, PrimaryButton, SectionLabel, EmptyState } from "./ui";
 import { api } from "@/lib/api";

@@ -2,7 +2,7 @@
 // same timestamp reads the same on a phone, on a laptop and on the server.
 // Every helper returns "" (or the given fallback) for a missing value.
 
-const TZ = "America/Toronto";
+export const TZ = "America/Toronto";
 const LOCALE = "en-CA";
 
 const d = (v) => {

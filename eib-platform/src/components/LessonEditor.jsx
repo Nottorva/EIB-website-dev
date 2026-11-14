@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BookOpen, Eye, Presentation, UserCheck, Users, FileText, Trash2, Plus, Pencil, ExternalLink, Upload, CalendarCog, Send, CircleCheck } from "lucide-react";
 import { MENTOR_DEFAULTS, STUDENT_DEFAULTS } from "@/lib/sessionDefaults";
 import { fmtDate } from "@/lib/format";

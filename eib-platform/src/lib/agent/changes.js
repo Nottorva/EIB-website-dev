@@ -4,14 +4,12 @@
 // requester hear what was changed. Nothing is written before approval.
 
 import { agentConfig, CHANGE_EXPIRY_DAYS } from "./config";
-import { createChange, getChange, listChanges, updateChange } from "./db";
+import { createChange, getChange, listChanges, updateChange, now, shortId } from "./db";
 import { buildDraft, commitDraft, previewDraft } from "./edits";
 import { checkDocumentEdit, applyDocumentEdit } from "./drive";
 import { sendMail } from "./mail";
 import { composeForJosef, CHANGES_URL } from "./style";
 
-const now = () => new Date().toISOString();
-const shortId = () => Math.random().toString(36).slice(2, 7);
 const kindOfRecord = { mentor: "mentor", lesson: "lesson", event: "event", applications: "applications" };
 
 /**
