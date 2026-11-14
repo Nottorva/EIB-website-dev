@@ -206,6 +206,7 @@ export function HeaderButton({ icon: Icon, label, onClick, tone = "default", hre
   const tones = {
     default: { background: COLORS.indigo, color: "#fff" },
     danger: { background: COLORS.redSoft, color: COLORS.red },
+    soft: { background: COLORS.indigoSoft, color: COLORS.indigo },
   };
   const style = {
     display: "flex",

@@ -3,14 +3,15 @@
 // Renders a PDF page by page inside the platform (pdf.js from cdnjs), and
 // tells the parent when the reader has scrolled the last page into view.
 // Used by the onboarding page so "I have read it" can only be ticked once
-// the whole agreement has been seen.
+// the whole agreement has been seen, and by the Lessons page to preview a
+// lesson's slides or teaching plan.
 
 import { useEffect, useRef } from "react";
 import { COLORS } from "./ui";
 
 import { usePdfDocument, useElementWidth, usePdfPage } from "@/lib/pdfjs";
 
-export default function PdfReader({ src, onReachEnd, onError }) {
+export default function PdfReader({ src, onReachEnd, onError, loadingText = "Loading the agreement…" }) {
   const { doc, error } = usePdfDocument(src, { withCredentials: true, onError });
   const [colRef, width] = useElementWidth();
   const reached = useRef(false);
@@ -25,7 +26,7 @@ export default function PdfReader({ src, onReachEnd, onError }) {
   return (
     <div ref={colRef} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       {error && <div style={{ fontSize: 13.5, color: COLORS.red }}>{error}</div>}
-      {!error && !doc && <div style={{ fontSize: 13.5, color: COLORS.faint }}>Loading the agreement…</div>}
+      {!error && !doc && <div style={{ fontSize: 13.5, color: COLORS.faint }}>{loadingText}</div>}
       {doc && width > 0 && Array.from({ length: count }, (_, i) => (
         <Page key={i} doc={doc} index={i + 1} count={count} width={width} last={i + 1 === count} onSeen={reachEnd} />
       ))}

@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Eye, Presentation, UserCheck, MapPin, Clock, ChevronDown, ChevronUp, MessageCircle, FileText, User, Lightbulb, ExternalLink, Pencil, CalendarDays, EyeOff } from "lucide-react";
+import { Eye, Presentation, UserCheck, MapPin, Clock, ChevronDown, ChevronUp, MessageCircle, FileText, User, Lightbulb, ExternalLink, Pencil, CalendarDays, EyeOff, Download } from "lucide-react";
 import { COLORS, Pill, ModalShell, HeaderButton, Notice, SaveIndicator, Loading, TypeChip, fieldStyle } from "./ui";
 import { api, useDebouncedSaver } from "@/lib/api";
 import { MENTOR_DEFAULTS, mentorWhere, mentorWhen } from "@/lib/sessionDefaults";
 import { DeliverableInput, DeliverablePreview, ExampleBlock } from "./DeliverableInputs";
+import PdfReader from "./PdfReader";
 
 /* ---------- Modals ---------- */
 // Shown only when a resource button is clicked and no link has been set yet.
@@ -13,6 +14,58 @@ function MissingLinkModal({ eyebrow, lesson, what, onClose }) {
   return (
     <ModalShell eyebrow={`${eyebrow} · ${what}`} title={lesson.title} onClose={onClose} maxWidth={520}>
       <div style={{ fontSize: 15, color: COLORS.sub, lineHeight: 1.6 }}>No {what.toLowerCase()} link has been added for this lesson yet. It is set in the Lesson Editor.</div>
+    </ModalShell>
+  );
+}
+
+// How to show a slides / teaching plan link inside the page.
+//   uploaded PDF           -> drawn page by page (pdf.js), download = the file
+//   uploaded Office file   -> browsers cannot draw these: download only
+//   Google Slides/Docs/Drive link -> Google's own embeddable preview, download as PDF
+//   any other link         -> framed as is, with "open in a new tab" as the way out
+function resourceView(link, file) {
+  if (link.startsWith("/api/lessons/")) {
+    const pdf = !file || file.type === "application/pdf" || /\.pdf$/i.test(file.name || "");
+    return { kind: pdf ? "pdf" : "file", src: link, download: `${link}?download=1`, name: file?.name || "" };
+  }
+  const g = link.match(/^https:\/\/docs\.google\.com\/(presentation|document|spreadsheets)\/d\/([\w-]+)/);
+  if (g && g[2] !== "e") return { kind: "frame", src: `https://docs.google.com/${g[1]}/d/${g[2]}/preview`, download: `https://docs.google.com/${g[1]}/d/${g[2]}/export?format=pdf`, open: link };
+  const d = link.match(/^https:\/\/drive\.google\.com\/file\/d\/([\w-]+)/);
+  if (d) return { kind: "frame", src: `https://drive.google.com/file/d/${d[1]}/preview`, download: `https://drive.google.com/uc?export=download&id=${d[1]}`, open: link };
+  return { kind: "frame", src: link, download: null, open: link };
+}
+
+// Slides or the teaching plan, previewed in a popup with a download button.
+function ResourceModal({ eyebrow, lesson, what, link, file, onClose }) {
+  const v = resourceView(link, file);
+  const [failed, setFailed] = useState(false);
+  const frame = { width: "100%", height: "72vh", border: `1px solid ${COLORS.border}`, borderRadius: 12, background: "#f7f8fb", display: "block" };
+  return (
+    <ModalShell
+      eyebrow={`${eyebrow} · ${what}`}
+      title={lesson.title}
+      onClose={onClose}
+      maxWidth={980}
+      headerRight={
+        <>
+          {v.open && <HeaderButton icon={ExternalLink} label="Open in new tab" href={v.open} tone="soft" />}
+          {v.download && <HeaderButton icon={Download} label="Download" href={v.download} />}
+        </>
+      }
+    >
+      {v.kind === "pdf" && !failed && <PdfReader src={v.src} onError={() => setFailed(true)} loadingText={`Loading the ${what.toLowerCase()}…`} />}
+      {v.kind === "pdf" && failed && <div style={{ fontSize: 15, color: COLORS.sub, lineHeight: 1.6 }}>The preview could not load. Use the Download button to open the file instead.</div>}
+      {v.kind === "file" && (
+        <div style={{ fontSize: 15, color: COLORS.sub, lineHeight: 1.6 }}>
+          <strong style={{ color: COLORS.text }}>{v.name || "This file"}</strong> is not a PDF, so it cannot be previewed here. Use the Download button to open it.
+        </div>
+      )}
+      {v.kind === "frame" && (
+        <>
+          <iframe src={v.src} title={`${what}: ${lesson.title}`} style={frame} allow="fullscreen" allowFullScreen />
+          <div style={{ fontSize: 12.5, color: COLORS.faint, marginTop: 8 }}>If the preview stays blank, the site it comes from does not allow previews. Use "Open in new tab".</div>
+        </>
+      )}
     </ModalShell>
   );
 }
@@ -236,10 +289,6 @@ function LessonCard({ lesson, mode, submissions, onChangePayload, onChangeLogist
   const [activeModal, setActiveModal] = useState(null);
   const eyebrow = lesson.chapterLabel || "Chapter";
 
-  const openLink = (link, fallbackModal) => {
-    if (link) window.open(link, "_blank", "noopener,noreferrer");
-    else setActiveModal(fallbackModal);
-  };
 
   return (
     <div id={`lesson-${lesson.id}`} style={{ background: COLORS.card, borderRadius: 22, padding: "34px 36px 36px", boxShadow: "0 1px 3px rgba(15,23,42,0.05)", scrollMarginTop: 84 }}>
@@ -262,8 +311,8 @@ function LessonCard({ lesson, mode, submissions, onChangePayload, onChangeLogist
 
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 24, paddingBottom: 24, borderBottom: `1px solid ${COLORS.border}` }}>
         <Pill icon={Eye} label="Student Overview" onClick={() => setActiveModal("overview")} />
-        <Pill icon={lesson.slidesLink ? ExternalLink : Presentation} label="Slides" onClick={() => openLink(lesson.slidesLink, "noSlides")} />
-        {mode === "leader" && <Pill icon={lesson.teachingPlanLink ? ExternalLink : FileText} label="Teaching Plan" onClick={() => openLink(lesson.teachingPlanLink, "noPlan")} />}
+        <Pill icon={Presentation} label="Slides" onClick={() => setActiveModal("slides")} />
+        {mode === "leader" && <Pill icon={FileText} label="Teaching Plan" onClick={() => setActiveModal("plan")} />}
         {lesson.mentorEnabled && <Pill icon={UserCheck} label={mentorNames(lesson).length > 1 ? `Mentors: ${mentorNames(lesson).join(" & ")}` : `Mentor: ${mentorNames(lesson)[0] || "Unassigned"}`} tone="amber" onClick={() => setActiveModal("mentor")} />}
       </div>
 
@@ -278,8 +327,11 @@ function LessonCard({ lesson, mode, submissions, onChangePayload, onChangeLogist
       </div>
 
       {activeModal === "overview" && <StudentOverviewModal eyebrow={eyebrow} lesson={lesson} onClose={() => setActiveModal(null)} />}
-      {activeModal === "noSlides" && <MissingLinkModal eyebrow={eyebrow} lesson={lesson} what="Slides" onClose={() => setActiveModal(null)} />}
-      {activeModal === "noPlan" && <MissingLinkModal eyebrow={eyebrow} lesson={lesson} what="Teaching Plan" onClose={() => setActiveModal(null)} />}
+      {["slides", "plan"].includes(activeModal) && (() => {
+        const [what, link, file] = activeModal === "slides" ? ["Slides", lesson.slidesLink, lesson.slidesFile] : ["Teaching Plan", lesson.teachingPlanLink, lesson.teachingPlanFile];
+        const Modal = link ? ResourceModal : MissingLinkModal;
+        return <Modal eyebrow={eyebrow} lesson={lesson} what={what} link={link} file={file} onClose={() => setActiveModal(null)} />;
+      })()}
       {activeModal === "mentor" && <MentorInfoModal eyebrow={eyebrow} mentors={lesson.mentors} onClose={() => setActiveModal(null)} />}
     </div>
   );
