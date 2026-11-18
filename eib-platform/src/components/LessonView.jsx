@@ -7,6 +7,7 @@ import { api, useDebouncedSaver } from "@/lib/api";
 import { MENTOR_DEFAULTS, mentorWhere, mentorWhen } from "@/lib/sessionDefaults";
 import { DeliverableInput, DeliverablePreview, ExampleBlock } from "./DeliverableInputs";
 import PdfReader from "./PdfReader";
+import OfficeReader, { officeKind } from "./OfficeReader";
 
 /* ---------- Modals ---------- */
 // Shown only when a resource button is clicked and no link has been set yet.
@@ -20,13 +21,15 @@ function MissingLinkModal({ eyebrow, lesson, what, onClose }) {
 
 // How to show a slides / teaching plan link inside the page.
 //   uploaded PDF           -> drawn page by page (pdf.js), download = the file
-//   uploaded Office file   -> browsers cannot draw these: download only
+//   uploaded .pptx / .docx  -> drawn in the browser (OfficeReader), download = the file
+//   other uploaded files   -> browsers cannot draw these: download only
 //   Google Slides/Docs/Drive link -> Google's own embeddable preview, download as PDF
 //   any other link         -> framed as is, with "open in a new tab" as the way out
 function resourceView(link, file) {
   if (link.startsWith("/api/lessons/")) {
     const pdf = !file || file.type === "application/pdf" || /\.pdf$/i.test(file.name || "");
-    return { kind: pdf ? "pdf" : "file", src: link, download: `${link}?download=1`, name: file?.name || "" };
+    const office = pdf ? null : officeKind(file);
+    return { kind: pdf ? "pdf" : office ? "office" : "file", office, src: link, download: `${link}?download=1`, name: file?.name || "" };
   }
   const g = link.match(/^https:\/\/docs\.google\.com\/(presentation|document|spreadsheets)\/d\/([\w-]+)/);
   if (g && g[2] !== "e") return { kind: "frame", src: `https://docs.google.com/${g[1]}/d/${g[2]}/preview`, download: `https://docs.google.com/${g[1]}/d/${g[2]}/export?format=pdf`, open: link };
@@ -54,10 +57,11 @@ function ResourceModal({ eyebrow, lesson, what, link, file, onClose }) {
       }
     >
       {v.kind === "pdf" && !failed && <PdfReader src={v.src} onError={() => setFailed(true)} loadingText={`Loading the ${what.toLowerCase()}…`} />}
-      {v.kind === "pdf" && failed && <div style={{ fontSize: 15, color: COLORS.sub, lineHeight: 1.6 }}>The preview could not load. Use the Download button to open the file instead.</div>}
+      {v.kind === "office" && !failed && <OfficeReader src={v.src} kind={v.office} onError={() => setFailed(true)} loadingText={`Loading the ${what.toLowerCase()}…`} />}
+      {["pdf", "office"].includes(v.kind) && failed && <div style={{ fontSize: 15, color: COLORS.sub, lineHeight: 1.6 }}>The preview could not load. Use the Download button to open the file instead.</div>}
       {v.kind === "file" && (
         <div style={{ fontSize: 15, color: COLORS.sub, lineHeight: 1.6 }}>
-          <strong style={{ color: COLORS.text }}>{v.name || "This file"}</strong> is not a PDF, so it cannot be previewed here. Use the Download button to open it.
+          <strong style={{ color: COLORS.text }}>{v.name || "This file"}</strong> is in a format that cannot be previewed here. Use the Download button to open it. (PDF, PowerPoint .pptx and Word .docx files show a preview.)
         </div>
       )}
       {v.kind === "frame" && (

@@ -105,7 +105,7 @@ function FileField({ label, lesson, kind, onPatch, hint }) {
 function SlidesModal({ eyebrow, lesson, onPatch, onClose }) {
   return (
     <ModalShell eyebrow={`${eyebrow} · Slides`} title={lesson.title} onClose={onClose} maxWidth={620}>
-      <FileField label="Slides" lesson={lesson} kind="slides" onPatch={onPatch} hint='Students and leaders open this from the "Slides" button on the lesson card. A PDF opens in the browser; a PowerPoint downloads.' />
+      <FileField label="Slides" lesson={lesson} kind="slides" onPatch={onPatch} hint='Students and leaders open this from the "Slides" button on the lesson card. It opens as a preview on the page (PDF or PowerPoint .pptx), with a Download button.' />
     </ModalShell>
   );
 }
@@ -114,7 +114,7 @@ function SlidesModal({ eyebrow, lesson, onPatch, onClose }) {
 function TeachingPlanModal({ eyebrow, lesson, onPatch, onClose }) {
   return (
     <ModalShell eyebrow={`${eyebrow} · Teaching Plan`} title={lesson.title} onClose={onClose} maxWidth={620}>
-      <FileField label="Teaching plan" lesson={lesson} kind="teachingPlan" onPatch={onPatch} hint="Only student leaders see this button. Students never receive the teaching plan." />
+      <FileField label="Teaching plan" lesson={lesson} kind="teachingPlan" onPatch={onPatch} hint="Only student leaders see this button. Students never receive the teaching plan. It opens as a preview on the page (PDF or Word .docx)." />
     </ModalShell>
   );
 }
