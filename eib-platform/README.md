@@ -47,8 +47,8 @@ builds and whenever Google sign-in is on.
 
 | Signed in as | What you can open |
 |---|---|
-| Josef Marshall (super admin) | Lesson Editor, Mentor CRM, Student Manager (all three tabs), Lessons (leader preview) |
-| Jack Harlow (student leader) | Mentor CRM, Student Manager (Forms + Students only), Lessons (leader mode) |
+| Josef Marshall (super admin) | Lesson Editor, Mentor CRM, Student Manager (all three tabs), Grading, Lessons (leader preview) |
+| Jack Harlow (student leader) | Mentor CRM, Student Manager (Forms + Students only), Grading, Lessons (leader mode) |
 | Advancement team (created by the super admin from the CRM's **New advancement team member** button) | Mentor CRM only; the hub sends them straight there |
 | Amara Chen (student) | Lessons (student mode, own submissions only) |
 | Not on the allow-list | Nothing except the public application form |
@@ -175,7 +175,9 @@ Things worth trying, in order:
    Student Manager → Amara Chen → Deliverables: the text is there. Enter a
    grade and feedback; they are a draft the student cannot see. Click
    **Release to student**. Switch back to Amara: grade and feedback appear.
-   "Withdraw from student" hides them again.
+   "Withdraw from student" hides them again. **Grading** (top bar) is the
+   faster route for a whole class: pick a deliverable, then grade student by
+   student; **Release & next** (or Ctrl+Enter) releases and moves on.
 5. **Approve, then release.** Open the public Application form (link in the
    top bar). Sign in with the sandbox stand-in (any name, an @tfs.ca email)
    and submit: the page becomes a single status card ("under review",

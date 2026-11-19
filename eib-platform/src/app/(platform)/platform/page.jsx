@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Pencil, Users, ClipboardList, GraduationCap, FileText, Globe, Bot, ClipboardCheck } from "lucide-react";
+import { Pencil, Users, ClipboardList, GraduationCap, FileText, Globe, Bot, ClipboardCheck, CheckCheck } from "lucide-react";
 import { getAccessState, authMode } from "@/lib/auth";
 import { ROLE_LABEL } from "@/lib/roles";
 
@@ -37,6 +37,13 @@ const TOOLS = [
     icon: ClipboardList,
     roles: ["superAdmin", "studentLeader"],
     blurb: "Edit the application form, review applicants, grade deliverables.",
+  },
+  {
+    href: "/grading",
+    label: "Grading",
+    icon: CheckCheck,
+    roles: ["superAdmin", "studentLeader"],
+    blurb: "Grade one deliverable across the whole class, student by student.",
   },
   {
     href: "/lessons",

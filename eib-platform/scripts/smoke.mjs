@@ -96,10 +96,10 @@ head("health, public site");
 head("pages by role");
 {
   const want = {
-    admin: { "/platform": 200, "/editor": 200, "/crm": 200, "/manager": 200, "/lessons": 200, "/website": 200, "/apply": 200 },
-    leader: { "/platform": 200, "/editor": 307, "/crm": 200, "/manager": 200, "/lessons": 200, "/website": 307 },
-    student: { "/platform": 307, "/editor": 307, "/crm": 307, "/manager": 307, "/lessons": 200, "/website": 307 },
-    stranger: { "/platform": 200, "/editor": 307, "/crm": 307, "/manager": 307, "/lessons": 307, "/website": 307 },
+    admin: { "/platform": 200, "/editor": 200, "/crm": 200, "/manager": 200, "/grading": 200, "/lessons": 200, "/website": 200, "/apply": 200 },
+    leader: { "/platform": 200, "/editor": 307, "/crm": 200, "/manager": 200, "/grading": 200, "/lessons": 200, "/website": 307 },
+    student: { "/platform": 307, "/editor": 307, "/crm": 307, "/manager": 307, "/grading": 307, "/lessons": 200, "/website": 307 },
+    stranger: { "/platform": 200, "/editor": 307, "/crm": 307, "/manager": 307, "/grading": 307, "/lessons": 307, "/website": 307 },
   };
   const jars = { admin, leader, student, stranger };
   for (const [who, pages] of Object.entries(want)) {
@@ -205,6 +205,14 @@ head("lesson view, submissions, grading");
   const after = await req(student, "GET", "/api/submissions?lessonId=lesson_1");
   check("student sees the grade once released", "7", after.json?.find((s) => s.deliverableId === "del_journal")?.grade);
   check("leader sees every student's rows", true, (await req(leader, "GET", "/api/submissions")).json.some((s) => s.studentId === "user_amara"));
+  // a late typing save (grade + feedback, no release flag) must not undo the release
+  check("grade edit without a release flag keeps it released", ["8", true], (({ json }) => [json?.grade, json?.released])(await req(leader, "PUT", "/api/submissions", { ...key, studentId: "user_amara", grade: "8", feedback: "ok" })));
+  await req(leader, "PUT", "/api/submissions", { ...key, studentId: "user_amara", grade: "7", feedback: "ok" });
+  // the Grading tool's one read
+  const gr = await req(leader, "GET", "/api/grading");
+  check("grading: leader gets class list, lessons, submissions", [200, true, true, true], [gr.status, gr.json?.students.some((s) => s.id === "user_amara"), gr.json?.lessons.some((l) => l.id === "lesson_1"), gr.json?.submissions.some((s) => s.deliverableId === "del_journal" && s.grade === "7")]);
+  check("grading: class list is id + name only", true, gr.json?.students.every((s) => Object.keys(s).join() === "id,name"));
+  check("grading: student -> 403", 403, await code(student, "GET", "/api/grading"));
 
   // Export as MD: the lesson's AI instructions, then the student's own answers
   const l1 = (await req(admin, "GET", "/api/lessons/lesson_1")).json;
