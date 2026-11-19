@@ -40,7 +40,7 @@ export const GET = guarded(["superAdmin"], async ({ req }) => {
     live: aidaLive(),
     model: aidaConfig().model,
     usage,
-    lessons: lessons.map((l) => ({ id: l.id, number: l.number, title: l.title, studentVisible: l.studentVisible, aiInstructions: l.aiInstructions || "" })),
+    lessons: lessons.map((l) => ({ id: l.id, number: l.number, title: l.title, studentVisible: l.studentVisible, aiInstructions: l.aiInstructions || "", deliverables: l.deliverables.map((d) => ({ id: d.id, title: d.title })) })),
     students: students.filter((u) => !u.suspended).map((u) => ({ id: u.id, name: u.name, isTest: u.isTest === true })).sort((a, b) => Number(b.isTest) - Number(a.isTest) || a.name.localeCompare(b.name)),
   });
 });

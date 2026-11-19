@@ -1,6 +1,7 @@
 // AIDA for students, opened from a lesson on the Lessons page.
 //
-// GET    ?lesson=ID   the conversation so far and what is left of today's allowance
+// GET    ?lesson=ID   the conversation so far, what is left of today's allowance, and whether AIDA is
+//                     closed right now (the hours set on the AIDA page)
 // POST   { lessonId, message }   the reply, streamed as plain text
 // DELETE ?lesson=ID   start a fresh chat (the old one is kept for staff)
 //
@@ -12,7 +13,7 @@ import { listSubmissions } from "@/lib/data/submissions";
 import { needsAgreement } from "@/lib/data/agreement";
 import { MAX_MESSAGE_CHARS, MAX_CONVERSATION_MESSAGES } from "@/lib/aida/config";
 import { sharedText, buildContext, contextKey, changedWork, sentHashes, payloadMap } from "@/lib/aida/context";
-import { getAidaSettings, aidaOpenFor, getConversation, newConversation, saveConversation, archiveConversation, usageToday, recordUsage } from "@/lib/aida/store";
+import { getAidaSettings, aidaOpenFor, closedNote, getConversation, newConversation, saveConversation, archiveConversation, usageToday, recordUsage } from "@/lib/aida/store";
 import { runChat, streamResponse } from "@/lib/aida/client";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +34,8 @@ const shown = (conv) => (conv?.messages || []).map((m) => ({ role: m.role, conte
 export const GET = guarded(["student"], async ({ req, user }) => {
   const { settings, lesson } = await open(user, new URL(req.url).searchParams.get("lesson"));
   const [conv, usage] = await Promise.all([getConversation(user.id, lesson.id), usageToday(user.id)]);
-  return Response.json({ messages: shown(conv), remaining: Math.max(0, settings.dailyLimit - usage.messages) });
+  // Outside the set hours the student can still read their chat; `closed` says when AIDA is open.
+  return Response.json({ messages: shown(conv), remaining: Math.max(0, settings.dailyLimit - usage.messages), closed: closedNote(settings) });
 });
 
 export const POST = guarded(["student"], async ({ req, user }) => {
@@ -42,6 +44,8 @@ export const POST = guarded(["student"], async ({ req, user }) => {
   if (!message) throw new HttpError(400, "Type a message first.");
   if (message.length > MAX_MESSAGE_CHARS) throw new HttpError(400, `That message is too long (${MAX_MESSAGE_CHARS} characters at most).`);
   const { settings, lessons, lesson } = await open(user, body.lessonId);
+  const closed = closedNote(settings);
+  if (closed) throw new HttpError(403, closed);
 
   const usage = await usageToday(user.id);
   if (usage.messages >= settings.dailyLimit) throw new HttpError(429, "You have reached today's limit for AIDA. It resets tomorrow.");

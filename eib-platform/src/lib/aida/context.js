@@ -13,10 +13,25 @@ import { createHash } from "node:crypto";
 import { answerMd } from "../data/exportMd";
 import { DEFAULT_PROMPT } from "./prompt";
 
+/** "1B": lesson 1, second deliverable. The name students and AIDA both use. */
+export const shortName = (lesson, index) => `${lesson.number}${String.fromCharCode(65 + index)}`;
+
 export const hash = (text) => createHash("sha1").update(String(text)).digest("hex").slice(0, 16);
 const partKey = (lessonId, deliverableId) => `${lessonId}:${deliverableId}`;
 const TYPE_NOTE = { text: "written answer", link: "a link; you cannot open it", table: "table", checklist: "checklist" };
 // Older instructions may still carry the inline-deliverable markers that the AIDA page once offered.
+// How AIDA pulls deliverables into the chat. Fixed here, not in the editable prompt, because the chat
+// box depends on the exact marker (see AidaChat.jsx).
+const CARD_NOTE = `PULLING DELIVERABLES INTO THE CHAT
+
+Each deliverable has a short name, the lesson number and a letter: 1A is the first deliverable of Lesson 1, 1B the second. Students use these names ("help me with 1b"), and so should you.
+
+You can pull deliverables into the chat. Write [[show:ID]] on a line of its own at the end of your reply, one line per deliverable, where ID is the id listed beside that deliverable in the lessons below. Those lines are not shown as text. Each one becomes a button with the deliverable's short name just above the student's reply box. When the student opens a button, their reply box becomes that deliverable: they write their answer there, it is saved as their real work, and they press "Submit to AIDA" to send it to you.
+
+Pull in what the student says they want to work on. "I want to work on 1B" pulls in 1B. "I want to work on lesson 1" or "chapter 1" pulls in every deliverable of Lesson 1. Also pull one in when you have just asked the student to add or change something in it. The buttons stay until you pull in a different set, so do not repeat them in every reply, and leave them out when you are only discussing an idea.
+
+You are told what the student changed along with their next message, so never ask them to paste or repeat it. The deliverable is where they write; you still never write the answer for them.`;
+
 const clean = (text) => String(text || "").replace(/\{\{deliverable:[^}]*\}\}/g, "").trim();
 
 function lessonBlock(l) {
@@ -24,14 +39,14 @@ function lessonBlock(l) {
   if (String(l.overview || "").trim()) out.push(`What the lesson is about: ${l.overview.trim()}`);
   const instructions = clean(l.aiInstructions);
   if (instructions) out.push(`Instructions from the EIB team for this lesson:\n${instructions}`);
-  if (l.deliverables.length) out.push(`Deliverables:\n${l.deliverables.map((d) => `- ${d.title} [${TYPE_NOTE[d.type] || d.type}]${d.instructions.trim() ? `: ${d.instructions.trim()}` : ""}`).join("\n")}`);
+  if (l.deliverables.length) out.push(`Deliverables:\n${l.deliverables.map((d, i) => `- ${shortName(l, i)}: ${d.title} (id: ${d.id}) [${TYPE_NOTE[d.type] || d.type}]${d.instructions.trim() ? `: ${d.instructions.trim()}` : ""}`).join("\n")}`);
   return out.join("\n");
 }
 
 export function sharedText({ settings, lessons }) {
   const prompt = String(settings?.prompt || "").trim() || DEFAULT_PROMPT;
   const general = String(settings?.general || "").trim();
-  return [prompt, general ? `GENERAL CONTEXT FROM THE EIB TEAM\n\n${general}` : "", lessons.length ? `<program_lessons>\n${lessons.map(lessonBlock).join("\n\n")}\n</program_lessons>` : ""].filter(Boolean).join("\n\n");
+  return [prompt, CARD_NOTE, general ? `GENERAL CONTEXT FROM THE EIB TEAM\n\n${general}` : "", lessons.length ? `<program_lessons>\n${lessons.map(lessonBlock).join("\n\n")}\n</program_lessons>` : ""].filter(Boolean).join("\n\n");
 }
 
 /**
@@ -43,10 +58,10 @@ export function buildContext({ lesson, lessons, payloads = {} }) {
   const sections = lessons
     .filter((l) => l.deliverables.length)
     .map((l) => {
-      const answers = l.deliverables.map((d) => {
+      const answers = l.deliverables.map((d, i) => {
         const text = answerMd(d, payloads[partKey(l.id, d.id)]);
         parts[partKey(l.id, d.id)] = text;
-        return `### ${d.title}\n${text}`;
+        return `### ${shortName(l, i)}: ${d.title}\n${text}`;
       });
       return `## Lesson ${l.number}: ${l.title}${l.id === lesson.id ? " (the lesson they are on now)" : ""}\n\n${answers.join("\n\n")}`;
     });
@@ -67,8 +82,8 @@ export function changedWork({ parts, sent = {}, lessons }) {
     if (sent[key] === hash(text)) continue;
     const [lessonId, deliverableId] = key.split(":");
     const l = lessons.find((x) => x.id === lessonId);
-    const d = l?.deliverables.find((x) => x.id === deliverableId);
-    if (d) blocks.push(`### ${d.title} (Lesson ${l.number})\n${text}`);
+    const i = l ? l.deliverables.findIndex((x) => x.id === deliverableId) : -1;
+    if (i >= 0) blocks.push(`### ${shortName(l, i)}: ${l.deliverables[i].title}\n${text}`);
   }
   return blocks.length ? `<updated_work note="The student has changed these answers since your last reply. These are the latest versions and replace any earlier ones.">\n${blocks.join("\n\n")}\n</updated_work>` : "";
 }

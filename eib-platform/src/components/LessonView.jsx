@@ -442,7 +442,7 @@ export default function LessonView({ user }) {
           </LessonLayout>
         )}
       </div>
-      {aidaLesson && <AidaPanel lesson={aidaLesson} onClose={closeAida} beforeSend={saved} />}
+      {aidaLesson && <AidaPanel lesson={aidaLesson} lessons={lessons} submissions={submissions} onChangePayload={changePayload} onClose={closeAida} beforeSend={saved} />}
     </div>
   );
 }

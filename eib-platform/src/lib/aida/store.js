@@ -1,6 +1,6 @@
 // AIDA's own records.
 //
-//   settings "aida"       { mode, dailyLimit, general, prompt }
+//   settings "aida"       { mode, dailyLimit, hours, general, prompt }
 //   aida_conversations    one document per student per lesson, the messages inside it, fetched by id
 //                         (never by scanning: the store filters whole collections in memory)
 //   aida_usage            one document per person per Toronto day: messages, tokens, cost
@@ -13,9 +13,40 @@ const now = () => new Date().toISOString();
 /** "2026-11-19" in Toronto, whatever the server's clock zone. */
 export const today = () => new Date().toLocaleDateString("en-CA", { timeZone: TZ });
 
+/* Opening hours: students can use AIDA only on the chosen days between two times, Toronto time.
+   days are 0 (Sunday) to 6 (Saturday); times are "HH:MM" on a 24-hour clock. */
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const DEFAULT_HOURS = { enabled: false, days: [2], start: "16:00", end: "17:30" };
+const isTime = (v) => /^([01]\d|2[0-3]):[0-5]\d$/.test(String(v || ""));
+function normalizeHours(h) {
+  const days = [...new Set((Array.isArray(h?.days) ? h.days : DEFAULT_HOURS.days).map(Number).filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))].sort();
+  const ok = isTime(h?.start) && isTime(h?.end) && h.start < h.end;
+  return { enabled: Boolean(h?.enabled), days, start: ok ? h.start : DEFAULT_HOURS.start, end: ok ? h.end : DEFAULT_HOURS.end };
+}
+const clock = (t) => {
+  const [h, m] = t.split(":").map(Number);
+  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+};
+/** "Tuesday, 4:00 PM to 5:30 PM" */
+export function hoursText(hours) {
+  const days = hours.days.map((d) => DAY_NAMES[d]);
+  const list = days.length > 1 ? `${days.slice(0, -1).join(", ")} and ${days[days.length - 1]}` : days[0] || "no day";
+  return `${list}, ${clock(hours.start)} to ${clock(hours.end)}`;
+}
+/** Empty when AIDA is open right now; otherwise the sentence a student is shown. */
+export function closedNote(settings, at = new Date()) {
+  const hours = settings.hours;
+  if (!hours?.enabled) return "";
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", { timeZone: TZ, weekday: "long", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(at).map((p) => [p.type, p.value]));
+  const now = `${parts.hour}:${parts.minute}`;
+  const open = hours.days.includes(DAY_NAMES.indexOf(parts.weekday)) && now >= hours.start && now < hours.end;
+  return open ? "" : `AIDA is open ${hoursText(hours)} (Toronto time). It is closed right now.`;
+}
+
 export async function getAidaSettings() {
   const s = (await getSetting("aida")) || {};
   return {
+    hours: normalizeHours(s.hours),
     mode: AIDA_MODES.includes(s.mode) ? s.mode : "off",
     dailyLimit: Number.isFinite(Number(s.dailyLimit)) && Number(s.dailyLimit) > 0 ? Math.round(Number(s.dailyLimit)) : DEFAULT_DAILY_LIMIT,
     general: String(s.general || ""),
@@ -29,6 +60,12 @@ export async function saveAidaSettings(patch) {
   const next = { ...current };
   if (patch.mode !== undefined && AIDA_MODES.includes(patch.mode)) next.mode = patch.mode;
   if (patch.dailyLimit !== undefined && Number(patch.dailyLimit) > 0) next.dailyLimit = Math.min(1000, Math.round(Number(patch.dailyLimit)));
+  if (patch.hours !== undefined) {
+    const h = { ...current.hours, ...patch.hours };
+    // times that do not make a window (end before start) leave the saved ones as they were
+    const valid = isTime(h.start) && isTime(h.end) && h.start < h.end;
+    next.hours = normalizeHours(valid ? h : { ...h, start: current.hours.start, end: current.hours.end });
+  }
   if (patch.general !== undefined) next.general = String(patch.general);
   if (patch.prompt !== undefined) next.prompt = String(patch.prompt);
   await setSetting("aida", next);

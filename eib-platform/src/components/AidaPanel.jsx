@@ -1,17 +1,20 @@
 "use client";
 
 // AIDA for a student: a panel down the right side of the Lessons page, opened from a lesson card.
-// The student keeps their deliverables in view and types their own work; AIDA can read it, never change it.
+// AIDA can read their work, never change it. When AIDA pulls deliverables into the chat they appear as
+// buttons above the reply box; opening one turns the reply box into that deliverable (see AidaChat.jsx).
 
 import { useEffect, useState } from "react";
 import { X, RotateCcw, Sparkles } from "lucide-react";
 import { COLORS, Loading, Notice } from "./ui";
 import { api } from "@/lib/api";
 import AidaChat from "./AidaChat";
+import { DeliverableInput } from "./DeliverableInputs";
 
-export default function AidaPanel({ lesson, onClose, beforeSend }) {
+export default function AidaPanel({ lesson, lessons = [], submissions = {}, onChangePayload, onClose, beforeSend }) {
   const [messages, setMessages] = useState(null);
   const [remaining, setRemaining] = useState(null);
+  const [closed, setClosed] = useState("");
   const [error, setError] = useState(null);
   const url = `/api/aida/chat?lesson=${encodeURIComponent(lesson.id)}`;
 
@@ -23,6 +26,7 @@ export default function AidaPanel({ lesson, onClose, beforeSend }) {
       .then((d) => {
         setMessages(d.messages.map(({ role, content }) => ({ role, content })));
         setRemaining(d.remaining);
+        setClosed(d.closed || "");
       })
       .catch((e) => setError(e.message));
   }, [url]);
@@ -33,7 +37,8 @@ export default function AidaPanel({ lesson, onClose, beforeSend }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  // Answers still being saved must reach the server first: AIDA reads the saved copy.
+  // Answers still being saved must reach the server first: AIDA reads the saved copy, and is sent
+  // only what changed since its last reply.
   const post = async (text) => {
     await beforeSend?.();
     const res = await fetch("/api/aida/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lessonId: lesson.id, message: text }) });
@@ -48,6 +53,23 @@ export default function AidaPanel({ lesson, onClose, beforeSend }) {
     } catch (e) {
       setError(e.message);
     }
+  };
+
+  // A deliverable AIDA pulled into the chat: its short name for the button above the reply box, and the
+  // student's own answer to write in. Saved exactly as on the lesson card.
+  const deliverableOf = (id) => {
+    for (const l of lessons) {
+      const i = l.deliverables.findIndex((d) => d.id === id);
+      if (i < 0) continue;
+      const item = l.deliverables[i];
+      return {
+        label: `${l.number}${String.fromCharCode(65 + i)}`,
+        title: item.title,
+        task: item.instructions,
+        editor: <DeliverableInput item={item} payload={submissions[`${l.id}:${id}`]?.payload} onChange={(payload) => onChangePayload?.(l.id, id, payload)} />,
+      };
+    }
+    return null;
   };
 
   return (
@@ -84,8 +106,9 @@ export default function AidaPanel({ lesson, onClose, beforeSend }) {
           messages={messages}
           setMessages={setMessages}
           post={post}
-          emptyHint="Ask about your work for this lesson. For example: “What is the weakest part of my answer?”"
-          disabledReason={remaining === 0 ? "You have reached today's limit for AIDA. It resets tomorrow." : ""}
+          deliverableOf={deliverableOf}
+          emptyHint="Ask about your work, or say what you want to work on. For example: “I want to work on 1B.”"
+          disabledReason={closed ? closed : remaining === 0 ? "You have reached today's limit for AIDA. It resets tomorrow." : ""}
         />
       )}
     </aside>

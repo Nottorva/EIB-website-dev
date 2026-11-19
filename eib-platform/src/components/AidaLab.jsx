@@ -50,6 +50,15 @@ export default function AidaLab() {
     }
   };
 
+  // The deliverables AIDA pulls in appear as buttons above the reply box. A student can open one and
+  // write in it; here they are only named.
+  const deliverableOf = (id) => {
+    for (const l of data.lessons) {
+      const i = l.deliverables.findIndex((d) => d.id === id);
+      if (i >= 0) return { label: `${l.number}${String.fromCharCode(65 + i)}`, title: l.deliverables[i].title };
+    }
+    return null;
+  };
   const who = data?.students.find((s) => s.id === studentId);
   const whose = who ? `${who.name}'s` : "blank";
 
@@ -108,7 +117,7 @@ export default function AidaLab() {
             )}
 
             <div style={{ ...card, padding: 0, overflow: "hidden", display: "flex", flexDirection: "column", height: "min(680px, 74vh)" }}>
-              <AidaChat messages={messages} setMessages={setMessages} post={post} emptyHint={`This is the AIDA students get. It is reading ${whose} deliverables. Nothing here is saved.`} />
+              <AidaChat messages={messages} setMessages={setMessages} post={post} deliverableOf={deliverableOf} emptyHint={`This is the AIDA students get. It is reading ${whose} deliverables. Nothing here is saved. When AIDA pulls in deliverables, a student can open the buttons above the reply box and write in them; here they are only shown.`} />
             </div>
           </div>
         )}

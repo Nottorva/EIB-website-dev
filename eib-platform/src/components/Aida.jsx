@@ -15,6 +15,7 @@ const mono = { fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monos
 const card = { background: COLORS.card, borderRadius: 18, padding: "24px 26px", boxShadow: "0 1px 3px rgba(15,23,42,0.05)" };
 const hint = { fontSize: 12.5, color: COLORS.faint, lineHeight: 1.5 };
 const rowsFor = (text, min = 5) => Math.min(18, Math.max(min, String(text).split("\n").length + 1));
+const DAYS = [[1, "Mon"], [2, "Tue"], [3, "Wed"], [4, "Thu"], [5, "Fri"], [6, "Sat"], [0, "Sun"]];
 const MODES = [
   { id: "off", label: "Off", note: "No student sees AIDA." },
   { id: "test", label: "Test account only", note: "Only the Test student sees AIDA on the Lessons page." },
@@ -38,6 +39,12 @@ export default function Aida() {
   const setLimit = (dailyLimit) => {
     setData((d) => ({ ...d, settings: { ...d.settings, dailyLimit } }));
     if (Number(dailyLimit) > 0) saver.schedule("limit", () => api.put(ADMIN, { settings: { dailyLimit: Number(dailyLimit) } }));
+  };
+  // Opening hours save at once; a time that is still being typed (or an end before the start) waits.
+  const setHours = (fields) => {
+    const hours = { ...data.settings.hours, ...fields };
+    setData((d) => ({ ...d, settings: { ...d.settings, hours } }));
+    if (hours.start && hours.end && hours.start < hours.end) saver.schedule("hours", () => api.put(ADMIN, { settings: { hours } }));
   };
   const patchSettings = (fields) => {
     setData((d) => ({ ...d, settings: { ...d.settings, ...fields } }));
@@ -98,6 +105,41 @@ export default function Aida() {
                 <div><b style={{ color: COLORS.text }}>So far:</b> {data.usage.total.messages} messages, {money(data.usage.total.cost)} USD</div>
                 <div style={hint}>{data.live ? `Model: ${data.model}` : "No AI key set: sandbox replies"}</div>
               </div>
+            </div>
+
+            <div style={card}>
+              <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 16, fontWeight: 800, color: COLORS.text, cursor: "pointer" }}>
+                <input type="checkbox" checked={data.settings.hours.enabled} onChange={(e) => setHours({ enabled: e.target.checked })} style={{ width: 18, height: 18, accentColor: COLORS.indigo }} />
+                Only open at set hours
+              </label>
+              <div style={{ ...hint, margin: "4px 0 0 28px" }}>{data.settings.hours.enabled ? "Students can use AIDA only on these days, between these times (Toronto time). Outside them they can read their chat but not send." : "Off: students can use AIDA at any time, up to their daily limit."}</div>
+              {data.settings.hours.enabled && (
+                <div style={{ display: "flex", gap: 22, flexWrap: "wrap", alignItems: "flex-end", margin: "14px 0 0 28px" }}>
+                  <div>
+                    <div style={{ fontSize: 12.5, fontWeight: 800, color: COLORS.sub, marginBottom: 6 }}>Days</div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {DAYS.map(([d, name]) => {
+                        const on = data.settings.hours.days.includes(d);
+                        return (
+                          <button key={d} type="button" aria-pressed={on} onClick={() => setHours({ days: on ? data.settings.hours.days.filter((x) => x !== d) : [...data.settings.hours.days, d] })} style={{ border: `1px solid ${on ? COLORS.indigo : COLORS.border}`, background: on ? COLORS.indigo : "#fff", color: on ? "#fff" : COLORS.sub, borderRadius: 9, padding: "8px 12px", fontSize: 13.5, fontWeight: 800, fontFamily: "inherit", cursor: "pointer" }}>
+                            {name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12.5, fontWeight: 800, color: COLORS.sub }}>
+                    From
+                    <input type="time" value={data.settings.hours.start} onChange={(e) => setHours({ start: e.target.value })} style={{ ...fieldStyle, width: 140, padding: "8px 12px", fontSize: 14 }} />
+                  </label>
+                  <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12.5, fontWeight: 800, color: COLORS.sub }}>
+                    To
+                    <input type="time" value={data.settings.hours.end} onChange={(e) => setHours({ end: e.target.value })} style={{ ...fieldStyle, width: 140, padding: "8px 12px", fontSize: 14 }} />
+                  </label>
+                  {!(data.settings.hours.start < data.settings.hours.end) && <span style={{ fontSize: 13, fontWeight: 700, color: COLORS.red }}>The end time must be after the start time.</span>}
+                  {data.settings.hours.days.length === 0 && <span style={{ fontSize: 13, fontWeight: 700, color: COLORS.red }}>No day is selected, so AIDA is closed all week.</span>}
+                </div>
+              )}
             </div>
 
             <div style={card}>

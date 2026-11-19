@@ -30,7 +30,7 @@ export const aidaLive = () => Boolean(aidaConfig().anthropicKey);
  */
 export async function runChat({ shared, context, messages, onText }) {
   const c = client();
-  if (!c) return mockChat({ context, messages, onText });
+  if (!c) return mockChat({ shared, context, messages, onText });
   const cfg = aidaConfig();
   const last = messages.length - 1;
   const stream = c.messages.stream({
@@ -62,10 +62,10 @@ export async function runChat({ shared, context, messages, onText }) {
   return { text, usage, stop: final.stop_reason };
 }
 
-async function mockChat({ context, messages, onText }) {
+async function mockChat({ shared, context, messages, onText }) {
   const said = messages[messages.length - 1].text;
   const lesson = (context.match(/opened you from (Lesson .+?)\. That is/) || [0, "this lesson"])[1];
-  const text = `[Sandbox reply, no AI key set] I am looking at ${lesson}. I can see ${(context.match(/^### /gm) || []).length} deliverable(s). You said: ${said.replace(/<updated_work[\s\S]*<\/updated_work>\s*/g, "").slice(0, 200)}`;
+  const text = `[Sandbox reply, no AI key set] I am looking at ${lesson}. I can see ${(context.match(/^### /gm) || []).length} deliverable(s). You said: ${said.replace(/<updated_work[\s\S]*<\/updated_work>\s*/g, "").slice(0, 200)}${/show me/i.test(said) ? `\n[[show:${(shared.match(/\(id: ([^)]+)\)/) || [0, "none"])[1]}]]` : ""}`;
   for (const piece of text.match(/.{1,40}/gs) || []) onText(piece);
   return { text, usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, stop: "end_turn" };
 }

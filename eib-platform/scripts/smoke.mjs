@@ -631,10 +631,11 @@ head("AIDA");
   check("what AIDA sees: all of the student's work, the lesson they are on, no name", [true, true, true, false], [
     asAmara.context.includes("my entry") && asAmara.context.includes("Commuters"),
     asAmara.context.includes("The student opened you from Lesson 2: Customer Discovery"),
-    asAmara.context.includes("### Pitch Deck"),
+    asAmara.context.includes("### 4A: Pitch Deck"),
     /Amara|amara\.chen/.test(asAmara.context + asAmara.shared),
   ]);
   check("the shared part holds no student's answers", false, asAmara.shared.includes("my entry"));
+  check("AIDA is told each deliverable's short name and id, and how to pull one into the chat", [true, true, true], [asAmara.shared.includes("- 1A: Problem Journal Entry (id: del_journal)"), asAmara.shared.includes("- 1B: Problem Validation Worksheet (id: del_worksheet)"), asAmara.shared.includes("[[show:ID]]")]);
   const blank = (await req(admin, "GET", `${A}?preview=1&lesson=lesson_2`)).json;
   check("what AIDA sees with no student: no answers", [false, false, true], [blank.context.includes("my entry"), blank.context.includes("Commuters"), blank.context.includes("_Not completed yet._")]);
 
@@ -651,14 +652,27 @@ head("AIDA");
   check("student chats: a reply about that lesson", [200, true], [r1.status, r1.text.includes("SMOKE-HELLO") && r1.text.includes("Lesson 2")]);
   const convo = (await req(student, "GET", "/api/aida/chat?lesson=lesson_2")).json;
   check("the conversation is kept: question, answer, one fewer left today", [2, "SMOKE-HELLO what is weak here?", 59], [convo.messages.length, convo.messages[0]?.content, convo.remaining]);
+  check("AIDA can pull a deliverable into the chat", true, (await chat(student, "lesson_3", "show me my work")).text.includes("[[show:del_journal]]"));
+  await req(student, "PUT", "/api/submissions", { lessonId: "lesson_1", deliverableId: "del_journal", payload: { text: "SMOKE-CARD-EDIT new journal answer" } });
+  await chat(student, "lesson_3", "I changed it");
+  check("an answer edited mid-chat reaches AIDA as a change, and the chat shows only what was typed", "I changed it", (await req(student, "GET", "/api/aida/chat?lesson=lesson_3")).json.messages[2]?.content);
   check("another lesson is another conversation", 0, (await req(student, "GET", "/api/aida/chat?lesson=lesson_1")).json.messages.length);
   check("empty, too long, unknown lesson -> 400, 400, 404", [400, 400, 404], [(await chat(student, "lesson_2", "  ")).status, (await chat(student, "lesson_2", "x".repeat(2001))).status, (await chat(student, "nope", "hi")).status]);
+  // opening hours (Toronto time): closed on every day but today, then open all of today
+  const todayIs = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].indexOf(new Date().toLocaleDateString("en-CA", { timeZone: "America/Toronto", weekday: "long" }));
+  const hrs = (await req(admin, "PUT", A, { settings: { hours: { enabled: true, days: [(todayIs + 1) % 7], start: "16:00", end: "17:30" } } })).json?.settings.hours;
+  const shut = await chat(student, "lesson_2", "are you open?");
+  check("set hours, another day: chat refused with the hours, the old chat still readable", [true, 403, true, true, 2], [hrs?.enabled, shut.status, /4:00 PM to 5:30 PM/.test(shut.json?.error || ""), /closed right now/.test((await req(student, "GET", "/api/aida/chat?lesson=lesson_2")).json.closed), (await req(student, "GET", "/api/aida/chat?lesson=lesson_2")).json.messages.length]);
+  await req(admin, "PUT", A, { settings: { hours: { days: [todayIs], start: "00:00", end: "23:59" } } });
+  check("set hours, today all day: open", ["", 200], [(await req(student, "GET", "/api/aida/chat?lesson=lesson_2")).json.closed, (await chat(student, "lesson_2", "open now?")).status]);
+  check("an end time before the start is not saved", "23:59", (await req(admin, "PUT", A, { settings: { hours: { start: "18:00", end: "09:00" } } })).json?.settings.hours.end);
+  await req(admin, "PUT", A, { settings: { hours: { enabled: false, days: [2], start: "16:00", end: "17:30" } } });
   await req(admin, "PUT", A, { settings: { dailyLimit: 1 } });
   check("daily limit reached -> 429", 429, (await chat(student, "lesson_2", "one more")).status);
   await req(admin, "PUT", A, { settings: { dailyLimit: 60 } });
   check("new chat clears the panel", [200, 0], [await code(student, "DELETE", "/api/aida/chat?lesson=lesson_2"), (await req(student, "GET", "/api/aida/chat?lesson=lesson_2")).json.messages.length]);
   const usage = (await req(admin, "GET", A)).json.usage;
-  check("usage is counted (student message + test message)", 2, usage.today.messages);
+  check("usage is counted (student messages + chat page message)", 5, usage.today.messages);
 
   await req(admin, "PUT", A, { settings: { mode: "off", general: "" } });
   await req(admin, "PUT", A, { lesson: { id: "lesson_2", aiInstructions: "" } });

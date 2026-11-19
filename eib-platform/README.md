@@ -526,9 +526,18 @@ model: `docs/ai-cofounder-plan.md`. Code: `src/lib/aida/`, routes `/api/aida/cha
   newest message). The student's work is frozen when a conversation starts; answers they change afterwards
   are attached to their next message as `<updated_work>`, so nothing already sent is ever edited. Each reply
   logs `[eib aida] ... cache_read=` so a broken cache shows up in the Vercel logs.
+- **Deliverables in the chat** (`AidaChat.jsx`, the note in `context.js`): every deliverable has a short name,
+  lesson number plus a letter (1A, 1B). AIDA pulls deliverables in by ending a reply with `[[show:ID]]` lines
+  (never shown as text); they appear as buttons just above the student's reply box and stay until AIDA pulls
+  in another set. Opening one turns the reply box into that deliverable (the same input and the same save as
+  on the lesson card) and Send becomes "Submit to AIDA". AIDA is sent only the answers that changed.
 - **Storage**: `aida_conversations` (one document per student per lesson, id `aida_<student>_<lesson>`;
   "New chat" keeps the old one under another id), `aida_usage` (one per person per Toronto day), and the
   `aida` setting. Deleting a student's account or wiping the test account removes theirs.
+- **Opening hours** (`closedNote` in `store.js`): "Only open at set hours" on `/aida`, with a day-of-week
+  picker and a from/to time, read in Toronto time. Outside them a student can open the panel and read their
+  chat, the reply box is disabled with the hours, and the chat route answers 403. Applies to the test account
+  too; `/aida/chat` is never limited.
 - **Limits**: 2,000 characters a message, the daily count, 80 messages a conversation, 1,500 tokens a reply.
 - **Environment**: `AIDA_ANTHROPIC_API_KEY` (falls back to `ANTHROPIC_API_KEY`), `AIDA_MODEL` (default
   `claude-sonnet-5-5`). With no key a sandbox stand-in answers, which is what `npm run smoke` exercises.
