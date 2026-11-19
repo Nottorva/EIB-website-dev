@@ -1,7 +1,7 @@
 // GET /api/lessons/export            every lesson the caller can see
 // GET /api/lessons/export?lesson=ID  one lesson
-// Downloads a Markdown file: each lesson's AI instructions followed by the
-// caller's own deliverables for it (see lib/data/exportMd.js). Students get
+// Downloads a Markdown file: each lesson's tasks with the caller's own
+// answers to them (see lib/data/exportMd.js). Students get
 // their answers; staff get the same file with the answers blank.
 import { guarded, HttpError } from "@/lib/auth";
 import { listLessons } from "@/lib/data/lessons";
@@ -15,14 +15,13 @@ export const GET = guarded(null, async ({ req, user }) => {
   const lessonId = new URL(req.url).searchParams.get("lesson");
   const [all, cohortYear] = await Promise.all([listLessons(), getCohortYear()]);
   // the same lessons the Lessons page shows this person
-  const visible = user.role === "superAdmin" ? all : all.filter((l) => l.studentVisible);
-  let lessons = visible;
+  let lessons = user.role === "superAdmin" ? all : all.filter((l) => l.studentVisible);
   if (lessonId) {
     lessons = lessons.filter((l) => l.id === lessonId);
     if (!lessons.length) throw new HttpError(404, "Lesson not found.");
   }
   const submissions = user.role === "student" ? await listSubmissions({ studentId: user.id }) : [];
-  return new Response(exportMarkdown({ user, lessons, submissions, cohortYear, allLessons: visible }), {
+  return new Response(exportMarkdown({ user, lessons, submissions, cohortYear }), {
     headers: {
       "Content-Type": "text/markdown; charset=utf-8",
       "Content-Disposition": `attachment; filename="${exportFileName(lessons, Boolean(lessonId))}"`,

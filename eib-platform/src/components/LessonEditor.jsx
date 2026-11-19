@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { BookOpen, Eye, Presentation, UserCheck, Users, FileText, Trash2, Plus, Pencil, ExternalLink, Upload, CalendarCog, Send, CircleCheck, Sparkles } from "lucide-react";
+import { BookOpen, Eye, Presentation, UserCheck, Users, FileText, Trash2, Plus, Pencil, ExternalLink, Upload, CalendarCog, Send, CircleCheck } from "lucide-react";
 import { MENTOR_DEFAULTS, STUDENT_DEFAULTS } from "@/lib/sessionDefaults";
 import { fmtDate } from "@/lib/format";
 import {
@@ -437,7 +436,6 @@ function MentorToggle({ value, onChange }) {
 
 /* ---------- Lesson card ---------- */
 function LessonCard({ lesson, onPatch, onDelete }) {
-  const router = useRouter();
   const [activeModal, setActiveModal] = useState(null);
   const [editingDeliverableId, setEditingDeliverableId] = useState(null);
 
@@ -530,7 +528,6 @@ function LessonCard({ lesson, onPatch, onDelete }) {
         <Pill icon={Eye} label="Student Overview" onClick={() => setActiveModal("studentOverview")} />
         <Pill icon={Presentation} label="Slides" onClick={() => setActiveModal("slides")} />
         <Pill icon={FileText} label="Teaching Plan" onClick={() => setActiveModal("teachingPlan")} />
-        <Pill icon={Sparkles} label={lesson.aiInstructions?.trim() ? "AI Instructions" : "AI Instructions: empty"} onClick={() => router.push(`/aida?lesson=${encodeURIComponent(lesson.id)}`)} />
         <MentorToggle value={lesson.mentorEnabled ? (lesson.mentorSeats === 2 ? 2 : 1) : 0} onChange={(seats) => onPatch(seats ? { mentorEnabled: true, mentorSeats: seats } : { mentorEnabled: false })} />
         <PublishButton published={Boolean(lesson.studentVisible)} onToggle={(on) => onPatch({ studentVisible: on })} />
       </div>

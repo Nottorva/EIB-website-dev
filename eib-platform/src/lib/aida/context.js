@@ -1,76 +1,63 @@
-// What AIDA is given on each request, in two parts:
+// What AIDA is given on each request, in two parts. AIDA reads everything: every published lesson's
+// instructions and tasks, and every deliverable the student has written.
 //
-//   shared   the core prompt, the general context and the program outline. The same for every student,
-//            so Anthropic caches it once for the whole class.
-//   context  one lesson for one student: the lesson's AI instructions (inline deliverables filled in with
-//            that student's answers), the lesson's own deliverables with the student's answers, and any
-//            deliverables from other lessons the super admin linked on the AIDA page.
+//   shared   the core prompt, the general context, and every lesson (its overview, the AI instructions
+//            written on the AIDA page, and each deliverable's task). The same for every student, so
+//            Anthropic caches it once for the whole class.
+//   context  one student: which lesson they opened AIDA from, and all of their answers, lesson by lesson.
 //
-// Nothing here names the student. `parts` maps every deliverable AIDA was shown to the answer text it
-// saw, so a later message can send only what the student has changed since (see store.js).
+// Nothing here names the student. `parts` maps every deliverable to the answer text AIDA saw, so a
+// later message can send only what the student has changed since (see the chat route).
 
 import { createHash } from "node:crypto";
-import { answerMd, resolveInline, findDeliverable, INLINE_TOKEN } from "../data/exportMd";
+import { answerMd } from "../data/exportMd";
 import { DEFAULT_PROMPT } from "./prompt";
 
 export const hash = (text) => createHash("sha1").update(String(text)).digest("hex").slice(0, 16);
 const partKey = (lessonId, deliverableId) => `${lessonId}:${deliverableId}`;
+const TYPE_NOTE = { text: "written answer", link: "a link; you cannot open it", table: "table", checklist: "checklist" };
+// Older instructions may still carry the inline-deliverable markers that the AIDA page once offered.
+const clean = (text) => String(text || "").replace(/\{\{deliverable:[^}]*\}\}/g, "").trim();
+
+function lessonBlock(l) {
+  const out = [`## Lesson ${l.number}: ${l.title}`];
+  if (String(l.overview || "").trim()) out.push(`What the lesson is about: ${l.overview.trim()}`);
+  const instructions = clean(l.aiInstructions);
+  if (instructions) out.push(`Instructions from the EIB team for this lesson:\n${instructions}`);
+  if (l.deliverables.length) out.push(`Deliverables:\n${l.deliverables.map((d) => `- ${d.title} [${TYPE_NOTE[d.type] || d.type}]${d.instructions.trim() ? `: ${d.instructions.trim()}` : ""}`).join("\n")}`);
+  return out.join("\n");
+}
 
 export function sharedText({ settings, lessons }) {
   const prompt = String(settings?.prompt || "").trim() || DEFAULT_PROMPT;
   const general = String(settings?.general || "").trim();
-  const outline = lessons.map((l) => `Lesson ${l.number}: ${l.title}`).join("\n");
-  return [prompt, general ? `GENERAL CONTEXT FROM THE EIB TEAM\n\n${general}` : "", outline ? `<program_outline>\n${outline}\n</program_outline>` : ""].filter(Boolean).join("\n\n");
-}
-
-const TYPE_NOTE = { text: "written answer", link: "a link; you cannot open it", table: "table", checklist: "checklist" };
-
-function deliverableBlock(lesson, d, payload, { withLesson = false } = {}) {
-  const out = [`### ${d.title}${withLesson ? ` (Lesson ${lesson.number}: ${lesson.title})` : ""} [${TYPE_NOTE[d.type] || d.type}]`];
-  if (d.instructions.trim()) out.push(`The task: ${d.instructions.trim()}`);
-  out.push("The student's current answer:", answerMd(d, payload));
-  return out.join("\n");
+  return [prompt, general ? `GENERAL CONTEXT FROM THE EIB TEAM\n\n${general}` : "", lessons.length ? `<program_lessons>\n${lessons.map(lessonBlock).join("\n\n")}\n</program_lessons>` : ""].filter(Boolean).join("\n\n");
 }
 
 /**
- * The context for one lesson and one student's payloads.
+ * One student's side: the lesson they are on and all of their work.
  * `payloads` maps "lessonId:deliverableId" to the stored payload (missing = not started).
  */
 export function buildContext({ lesson, lessons, payloads = {} }) {
   const parts = {};
-  const payloadOf = (lessonId, deliverableId) => payloads[partKey(lessonId, deliverableId)];
-  const note = (l, d) => { parts[partKey(l.id, d.id)] = answerMd(d, payloadOf(l.id, d.id)); };
-
-  for (const m of String(lesson.aiInstructions || "").matchAll(INLINE_TOKEN)) {
-    const hit = findDeliverable(lessons, m[1]);
-    if (hit) note(hit.lesson, hit.deliverable);
-  }
-  const instructions = resolveInline(lesson.aiInstructions, lessons, payloadOf).trim();
-
-  const own = lesson.deliverables.map((d) => { note(lesson, d); return deliverableBlock(lesson, d, payloadOf(lesson.id, d.id)); });
-
-  const linked = [];
-  for (const link of lesson.aidaLinks || []) {
-    const from = lessons.find((l) => l.id === link.lessonId);
-    const d = from?.deliverables.find((x) => x.id === link.deliverableId);
-    if (!d || (from.id === lesson.id)) continue;
-    note(from, d);
-    linked.push(deliverableBlock(from, d, payloadOf(from.id, d.id), { withLesson: true }));
-  }
-
+  const sections = lessons
+    .filter((l) => l.deliverables.length)
+    .map((l) => {
+      const answers = l.deliverables.map((d) => {
+        const text = answerMd(d, payloads[partKey(l.id, d.id)]);
+        parts[partKey(l.id, d.id)] = text;
+        return `### ${d.title}\n${text}`;
+      });
+      return `## Lesson ${l.number}: ${l.title}${l.id === lesson.id ? " (the lesson they are on now)" : ""}\n\n${answers.join("\n\n")}`;
+    });
   const text = [
-    `<current_lesson>\nLesson ${lesson.number}: ${lesson.title}`,
-    String(lesson.overview || "").trim() ? `What the lesson is about: ${lesson.overview.trim()}` : "",
-    instructions ? `<instructions_for_this_lesson>\n${instructions}\n</instructions_for_this_lesson>` : "",
-    own.length ? `<deliverables_for_this_lesson>\n${own.join("\n\n")}\n</deliverables_for_this_lesson>` : "This lesson has no deliverables.",
-    "</current_lesson>",
-    linked.length ? `<student_work_from_other_lessons>\n${linked.join("\n\n")}\n</student_work_from_other_lessons>` : "",
-  ].filter(Boolean).join("\n\n");
-
+    `<current_lesson>\nThe student opened you from Lesson ${lesson.number}: ${lesson.title}. That is what they are working on now.\n</current_lesson>`,
+    sections.length ? `<student_work note="Everything this student has written in their deliverables so far.">\n${sections.join("\n\n")}\n</student_work>` : "There are no deliverables in the program yet.",
+  ].join("\n\n");
   return { text, parts };
 }
 
-/** Changes when the lesson's instructions, deliverables or links change (not when the student's answers do). */
+/** Changes when the lessons or their deliverables change (not when the student's answers do). */
 export const contextKey = ({ lesson, lessons }) => hash(buildContext({ lesson, lessons }).text);
 
 /** The deliverables whose answer text differs from what AIDA last saw, as a block for the next message. */

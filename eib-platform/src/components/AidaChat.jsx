@@ -1,7 +1,7 @@
 "use client";
 
 // The AIDA conversation box: the messages, the input, and the reply appearing as it is written.
-// Used by the student panel on the Lessons page and by the Test tab on the AIDA page; each passes
+// Used by the student panel on the Lessons page and by the super admin's Chat with AIDA page; each passes
 // `post(text, history)`, which returns the fetch for its own route.
 
 import { useEffect, useRef, useState } from "react";

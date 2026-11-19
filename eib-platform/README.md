@@ -502,30 +502,30 @@ service account; the variables in `.env.example` on Vercel. The agent's own coll
 ## AIDA (the students' AI cofounder)
 
 AIDA (Artificial Intelligence Deliverable Assistant) is a chat panel a student opens from a lesson on the
-Lessons page ("Ask AIDA"). It reads that student's deliverables and coaches them on the lesson; it has no
-tools and cannot write or change anything. Plan and cost model: `docs/ai-cofounder-plan.md`. Code:
-`src/lib/aida/`, routes `/api/aida/chat` (students) and `/api/aida/admin` (super admin), page `/aida`.
+Lessons page ("Ask AIDA"). It reads everything: every published lesson's instructions and tasks, and all of
+that student's deliverables. It coaches; it has no tools and cannot write or change anything. Plan and cost
+model: `docs/ai-cofounder-plan.md`. Code: `src/lib/aida/`, routes `/api/aida/chat` (students) and
+`/api/aida/admin` (super admin), pages `/aida` and `/aida/chat`.
 
-- **The AIDA page** (super admin, top bar). A strip at the top sets who can use it (**Off** / **Test account
-  only** / **On for students**; a fresh database starts Off), the messages each student may send per day
-  (default 60), and shows usage and cost. Two tabs:
-  - **Context**: the general context (sent on every lesson), the core behaviour prompt (collapsed; "Reset to
-    the original" restores `src/lib/aida/prompt.js`), and every lesson's AI instructions in one list. The
-    Lesson Editor's "AI Instructions" button opens this page at that lesson; a save from the editor never
-    changes the instructions. Under each lesson: **Insert a deliverable inline** puts
-    `{{deliverable:ID|label}}` at the cursor, which becomes the student's answer at that spot, and **Link a
-    deliverable from another lesson** adds it to what AIDA reads for this lesson (`aidaLinks` on the lesson).
-    A lesson's own deliverables are always included. "Export as MD" fills inline deliverables the same way.
-  - **Test**: pick a lesson and whose deliverables to read (any student, the test account, or nobody), then
-    talk to AIDA. "Show what AIDA sees" prints the exact text it is given. Nothing on this tab is saved.
-- **What is sent to Claude** (`context.js`): the core prompt, the general context and the list of published
-  lessons (identical for the whole class), then one lesson with that student's answers. Never the student's
-  name, email or id, never grades or feedback, never another student's work. The student is always the
-  signed-in one; the browser sends only the lesson id and the message.
-- **Caching** (`client.js`): three markers with a 1-hour lifetime (shared text, the student's lesson context,
-  the newest message). The lesson context is frozen when a conversation starts; answers the student changes
-  afterwards are attached to their next message as `<updated_work>`, so nothing already sent is ever edited.
-  Each reply logs `[eib aida] ... cache_read=` so a broken cache shows up in the Vercel logs.
+- **`/aida`** (super admin, top bar): everything AIDA is told. A strip at the top sets who can use it
+  (**Off** / **Test account only** / **On for students**; a fresh database starts Off), the messages each
+  student may send per day (default 60), and shows usage and cost. Below it, the context blocks: the general
+  context, the core behaviour prompt (collapsed; "Reset to the original" restores `src/lib/aida/prompt.js`),
+  and one block of AI instructions per lesson. This is the only place AI instructions exist: the Lesson
+  Editor has no button for them, a save from the editor never changes them, students never receive them and
+  "Export as MD" does not carry them (it is the student's own work only).
+- **`/aida/chat`** (super admin, the "Chat with AIDA" button): the same AIDA students get. Pick the lesson it
+  is opened from and whose deliverables it reads (any student, the test account, or nobody). "Show what AIDA
+  sees" prints the exact text it is given. Nothing on this page is saved.
+- **What is sent to Claude** (`context.js`): first the part that is identical for the whole class (the core
+  prompt, the general context, every published lesson with its overview, AI instructions and deliverable
+  tasks), then one student's part (the lesson they opened AIDA from, and every answer they have written).
+  Never the student's name, email or id, never grades or feedback, never another student's work. The student
+  is always the signed-in one; the browser sends only the lesson id and the message.
+- **Caching** (`client.js`): three markers with a 1-hour lifetime (the shared part, the student's work, the
+  newest message). The student's work is frozen when a conversation starts; answers they change afterwards
+  are attached to their next message as `<updated_work>`, so nothing already sent is ever edited. Each reply
+  logs `[eib aida] ... cache_read=` so a broken cache shows up in the Vercel logs.
 - **Storage**: `aida_conversations` (one document per student per lesson, id `aida_<student>_<lesson>`;
   "New chat" keeps the old one under another id), `aida_usage` (one per person per Toronto day), and the
   `aida` setting. Deleting a student's account or wiping the test account removes theirs.

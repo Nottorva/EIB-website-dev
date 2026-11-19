@@ -1,11 +1,11 @@
 // The AIDA page (super admin).
 //
-// GET                              everything the page needs: settings, every lesson's AI instructions and
-//                                  linked deliverables, the students to test as, and usage
+// GET                              everything the pages need: settings, every lesson's AI instructions,
+//                                  the students whose work can be read on /aida/chat, and usage
 // GET  ?preview=1&lesson=&student= exactly what AIDA is given for that lesson and that student's work
 // PUT  { settings }                mode, daily limit, general context, core prompt
-// PUT  { lesson: { id, aiInstructions, aidaLinks } }
-// POST { lessonId, studentId, messages }   the Test tab: a reply, streamed; nothing is saved
+// PUT  { lesson: { id, aiInstructions } }
+// POST { lessonId, studentId, messages }   /aida/chat: a reply, streamed; nothing is saved
 import { guarded, readJson, HttpError } from "@/lib/auth";
 import { listLessons, updateLessonAida } from "@/lib/data/lessons";
 import { listUsers } from "@/lib/data/users";
@@ -19,13 +19,15 @@ import { runChat, streamResponse, aidaLive } from "@/lib/aida/client";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
-// What AIDA would be given for this lesson, seen as this student (or with no work at all).
+// What AIDA would be given when opened from this lesson, reading this student's work (or none).
+// Published lessons, plus the chosen one if it is still a draft, so a lesson can be tried before it goes out.
 async function assemble(lessonId, studentId) {
   const [lessons, settings] = await Promise.all([listLessons(), getAidaSettings()]);
   const lesson = lessons.find((l) => l.id === lessonId);
   if (!lesson) throw new HttpError(404, "Lesson not found.");
   const payloads = studentId ? payloadMap(await listSubmissions({ studentId })) : {};
-  return { shared: sharedText({ settings, lessons: lessons.filter((l) => l.studentVisible || l.id === lesson.id) }), context: buildContext({ lesson, lessons, payloads }).text };
+  const visible = lessons.filter((l) => l.studentVisible || l.id === lesson.id);
+  return { shared: sharedText({ settings, lessons: visible }), context: buildContext({ lesson, lessons: visible, payloads }).text };
 }
 
 export const GET = guarded(["superAdmin"], async ({ req }) => {
@@ -38,7 +40,7 @@ export const GET = guarded(["superAdmin"], async ({ req }) => {
     live: aidaLive(),
     model: aidaConfig().model,
     usage,
-    lessons: lessons.map((l) => ({ id: l.id, number: l.number, title: l.title, studentVisible: l.studentVisible, aiInstructions: l.aiInstructions || "", aidaLinks: l.aidaLinks || [], deliverables: l.deliverables.map((d) => ({ id: d.id, title: d.title, type: d.type })) })),
+    lessons: lessons.map((l) => ({ id: l.id, number: l.number, title: l.title, studentVisible: l.studentVisible, aiInstructions: l.aiInstructions || "" })),
     students: students.filter((u) => !u.suspended).map((u) => ({ id: u.id, name: u.name, isTest: u.isTest === true })).sort((a, b) => Number(b.isTest) - Number(a.isTest) || a.name.localeCompare(b.name)),
   });
 });
@@ -50,7 +52,7 @@ export const PUT = guarded(["superAdmin"], async ({ req }) => {
   if (body.lesson) {
     const saved = await updateLessonAida(body.lesson.id, body.lesson);
     if (!saved) throw new HttpError(404, "Lesson not found.");
-    out.lesson = { id: saved.id, aiInstructions: saved.aiInstructions, aidaLinks: saved.aidaLinks };
+    out.lesson = { id: saved.id, aiInstructions: saved.aiInstructions };
   }
   return Response.json(out);
 });

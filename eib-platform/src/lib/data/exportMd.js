@@ -1,8 +1,7 @@
-// "Export as MD": a Markdown file a student drops into a Claude project (or
-// any prompt) to keep working on their venture. For each lesson it is the
-// AI instructions the super admin wrote in the Lesson Editor, followed by
-// that student's own answers to the lesson's deliverables. One lesson, or
-// every lesson the student can see, in lesson order.
+// "Export as MD": a Markdown file of a student's own work, to keep or to take
+// elsewhere. For each lesson: every deliverable's task and that student's
+// answer. One lesson, or every lesson the student can see, in lesson order.
+// (answerMd is also how AIDA reads an answer; see lib/aida/context.js.)
 
 import { fmtLongDateYear } from "../format";
 
@@ -31,36 +30,11 @@ export function answerMd(d, payload) {
   return EMPTY;
 }
 
-// AI instructions may carry inline deliverables, written on the AIDA page as
-// {{deliverable:ID|Label}}. Each becomes that student's answer, in place. The
-// deliverable can belong to any lesson in `allLessons`.
-export const INLINE_TOKEN = /\{\{deliverable:([^|}\s]+)(?:\|[^}]*)?\}\}/g;
-export function findDeliverable(allLessons, deliverableId) {
-  for (const lesson of allLessons) {
-    const deliverable = lesson.deliverables.find((d) => d.id === deliverableId);
-    if (deliverable) return { lesson, deliverable };
-  }
-  return null;
-}
-export function resolveInline(text, allLessons, payloadOf) {
-  return String(text || "").replace(INLINE_TOKEN, (_, id) => {
-    const hit = findDeliverable(allLessons, id);
-    if (!hit) return "";
-    return `
-[The student's answer to "${hit.deliverable.title}" (Lesson ${hit.lesson.number})]
-${answerMd(hit.deliverable, payloadOf(hit.lesson.id, id))}
-[End of answer]
-`;
-  });
-}
-
 const lessonName = (lesson) => `Lesson ${lesson.number}: ${lesson.title}`;
 
 // One lesson's section. `payloads` maps deliverableId -> the student's payload.
-export function lessonMarkdown(lesson, payloads = {}, inline = (t) => t) {
+export function lessonMarkdown(lesson, payloads = {}) {
   const out = [`## ${lessonName(lesson)}`, ""];
-  const instructions = inline(String(lesson.aiInstructions || "")).trim();
-  if (instructions) out.push(instructions, "");
   if (lesson.deliverables.length) {
     out.push(`### My work for Lesson ${lesson.number}`, "");
     for (const d of lesson.deliverables) {
@@ -73,20 +47,19 @@ export function lessonMarkdown(lesson, payloads = {}, inline = (t) => t) {
 }
 
 // The whole file: a short header, then each lesson's section. Lessons with
-// neither instructions nor deliverables are left out.
-export function exportMarkdown({ user, lessons, submissions, cohortYear, allLessons = lessons }) {
+// no deliverables are left out.
+export function exportMarkdown({ user, lessons, submissions, cohortYear }) {
   const byLesson = {};
   for (const s of submissions) (byLesson[s.lessonId] ||= {})[s.deliverableId] = s.payload;
-  const inline = (text) => resolveInline(text, allLessons, (lessonId, deliverableId) => byLesson[lessonId]?.[deliverableId]);
-  const sections = lessons.filter((l) => String(l.aiInstructions || "").trim() || l.deliverables.length).map((l) => lessonMarkdown(l, byLesson[l.id], inline));
+  const sections = lessons.filter((l) => l.deliverables.length).map((l) => lessonMarkdown(l, byLesson[l.id]));
   const head = [
     `# EIB venture context: ${user.name}`,
     "",
     `Exported from the EIB platform on ${fmtLongDateYear(new Date())}${cohortYear ? ` (cohort ${cohortYear})` : ""}.`,
     "",
     lessons.length === 1
-      ? `This file covers ${lessonName(lessons[0])}: the instructions for that lesson, followed by my own work on it.`
-      : "This file goes lesson by lesson: the instructions for each lesson, followed by my own work on it. Together they describe the venture I am building in EIB (Entrepreneurship, Innovation & Business).",
+      ? `This file covers ${lessonName(lessons[0])}: each task, followed by my own work on it.`
+      : "This file goes lesson by lesson: each task, followed by my own work on it. Together they describe the venture I am building in EIB (Entrepreneurship, Innovation & Business).",
     "",
   ];
   return [...head, sections.join("\n---\n\n")].join("\n").trimEnd() + "\n";

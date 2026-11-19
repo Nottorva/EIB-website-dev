@@ -51,13 +51,6 @@ export function normalizeDeliverable(d) {
   };
 }
 
-export function normalizeAidaLinks(links) {
-  const seen = new Set();
-  return (Array.isArray(links) ? links : [])
-    .map((l) => ({ lessonId: String(l?.lessonId || ""), deliverableId: String(l?.deliverableId || "") }))
-    .filter((l) => l.lessonId && l.deliverableId && !seen.has(`${l.lessonId}:${l.deliverableId}`) && seen.add(`${l.lessonId}:${l.deliverableId}`));
-}
-
 export function normalizeLesson(input, id) {
   return {
     id,
@@ -93,12 +86,9 @@ export function normalizeLesson(input, id) {
     // Shown on the CRM's Sessions tab; the super admin writes it. Never sent
     // to students (see the lessons routes).
     mentorBrief: String(input.mentorBrief ?? ""),
-    // The core of this lesson's "Export as MD" file (see exportMd.js). Written
-    // by the super admin; reaches students only inside the exported file.
+    // What AIDA is told about this lesson (see lib/aida/context.js). Written by
+    // the super admin on the AIDA page only; never sent to students.
     aiInstructions: String(input.aiInstructions ?? ""),
-    // Deliverables from any lesson that AIDA also reads for this lesson, on top
-    // of the lesson's own. Edited on the AIDA page (see lib/aida/context.js).
-    aidaLinks: normalizeAidaLinks(input.aidaLinks),
     // Public website fields. Only `published` lessons appear on the site, and
     // only through toPublicLesson() below (never deliverables or links).
     published: Boolean(input.published),
@@ -124,21 +114,17 @@ export async function createLesson(input) {
   return insert("lessons", lesson);
 }
 
-// The Lesson Editor saves the whole lesson. The AI instructions and AIDA's
-// linked deliverables are edited on the AIDA page only, so a save from the
-// editor keeps whatever is stored for those two.
+// The Lesson Editor saves the whole lesson. The AI instructions are written on
+// the AIDA page only, so a save from the editor keeps whatever is stored.
 export async function saveLesson(id, input) {
   const existing = await findById("lessons", id);
   if (!existing) return null;
-  return replaceOne("lessons", id, normalizeLesson({ ...input, aiInstructions: existing.aiInstructions, aidaLinks: existing.aidaLinks }, id));
+  return replaceOne("lessons", id, normalizeLesson({ ...input, aiInstructions: existing.aiInstructions }, id));
 }
 
-// The AIDA page: a lesson's AI instructions and its linked deliverables.
-export async function updateLessonAida(id, { aiInstructions, aidaLinks }) {
-  const patch = {};
-  if (aiInstructions !== undefined) patch.aiInstructions = String(aiInstructions);
-  if (aidaLinks !== undefined) patch.aidaLinks = normalizeAidaLinks(aidaLinks);
-  return updateOne("lessons", id, patch);
+// The AIDA page: a lesson's AI instructions.
+export async function updateLessonAida(id, { aiInstructions }) {
+  return updateOne("lessons", id, { aiInstructions: String(aiInstructions ?? "") });
 }
 
 // Student leaders may change where and when a lesson meets, nothing else.
@@ -147,7 +133,7 @@ export const MENTOR_SESSION_KEYS = ["mentorLocation", "mentorStartTime", "mentor
 
 // Students never receive the mentor-facing fields.
 export function forStudent(lesson) {
-  const { mentorBrief, mentorLocation, mentorStartTime, mentorEndTime, teachingPlanFile, aiInstructions, aidaLinks, ...rest } = lesson;
+  const { mentorBrief, mentorLocation, mentorStartTime, mentorEndTime, teachingPlanFile, aiInstructions, ...rest } = lesson;
   return rest;
 }
 

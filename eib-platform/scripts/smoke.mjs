@@ -214,8 +214,8 @@ head("lesson view, submissions, grading");
   check("grading: class list is id + name only", true, gr.json?.students.every((s) => Object.keys(s).join() === "id,name"));
   check("grading: student -> 403", 403, await code(student, "GET", "/api/grading"));
 
-  // Export as MD: the lesson's AI instructions, then the student's own answers
-  // (AI instructions are written on the AIDA page; the Lesson Editor's save leaves them alone.)
+  // AI instructions are written on the AIDA page; the Lesson Editor's save leaves them alone.
+  // Export as MD: the student's own answers, never the AI instructions.
   const put = await req(admin, "PUT", "/api/aida/admin", { lesson: { id: "lesson_1", aiInstructions: "Coach me on problem discovery. SMOKE-AI-1" } });
   check("admin saves AI instructions on a lesson", [200, "Coach me on problem discovery. SMOKE-AI-1"], [put.status, put.json?.lesson?.aiInstructions]);
   const l1 = (await req(admin, "GET", "/api/lessons/lesson_1")).json;
@@ -229,13 +229,13 @@ head("lesson view, submissions, grading");
   const one = await fetch(`${BASE}/api/lessons/export?lesson=lesson_1`, { headers: { Cookie: student } });
   const oneText = await one.text();
   check("export one lesson -> markdown download", [200, true, true], [one.status, (one.headers.get("content-type") || "").startsWith("text/markdown"), /attachment; filename="EIB-lesson-1-problem-identification\.md"/.test(one.headers.get("content-disposition") || "")]);
-  check("export: instructions first, then the student's answers", true, oneText.indexOf("SMOKE-AI-1") > 0 && oneText.indexOf("SMOKE-AI-1") < oneText.indexOf("#### Problem Journal Entry") && oneText.includes("my entry"));
+  check("export: the student's answers, without the AI instructions", [true, false], [oneText.includes("#### Problem Journal Entry") && oneText.includes("my entry"), oneText.includes("SMOKE-AI-1")]);
   check("export: table answer as a markdown table, blank rows dropped, pipes escaped", true, oneText.includes("| Who is affected | How often | Evidence |") && oneText.includes("| Commuters | Daily \\| twice | Survey |") && !oneText.includes("|  |  |  |"));
   check("export: one lesson only", false, oneText.includes("Customer Discovery"));
   const allMd = await (await fetch(`${BASE}/api/lessons/export`, { headers: { Cookie: student } })).text();
   check("export all: every lesson in order, unanswered marked", true, allMd.indexOf("## Lesson 1: Problem Identification") < allMd.indexOf("## Lesson 2: Customer Discovery") && allMd.includes("_Not completed yet._") && /- \[[x ]\] Interviewed at least 3 people/.test(allMd));
   const staffMd = await (await fetch(`${BASE}/api/lessons/export?lesson=lesson_1`, { headers: { Cookie: leader } })).text();
-  check("export for staff carries no student's answers", [true, false], [staffMd.includes("SMOKE-AI-1"), staffMd.includes("my entry")]);
+  check("export for staff: the tasks, no student's answers, no AI instructions", [true, false, false], [staffMd.includes("#### Problem Journal Entry"), staffMd.includes("my entry"), staffMd.includes("SMOKE-AI-1")]);
   check("export: unknown lesson -> 404, stranger -> 401", [404, 401], [await code(student, "GET", "/api/lessons/export?lesson=nope"), await code(stranger, "GET", "/api/lessons/export")]);
 }
 
@@ -619,31 +619,30 @@ head("AIDA");
 {
   const A = "/api/aida/admin";
   const chat = (cookie, lessonId, message) => req(cookie, "POST", "/api/aida/chat", { lessonId, message });
-  check("AIDA page: admin 200; admin API: student and leader -> 403", [200, 403, 403], [await code(admin, "GET", "/aida"), await code(student, "GET", A), await code(leader, "GET", A)]);
+  check("AIDA pages: admin 200; admin API: student and leader -> 403", [200, 200, 403, 403], [await code(admin, "GET", "/aida"), await code(admin, "GET", "/aida/chat"), await code(student, "GET", A), await code(leader, "GET", A)]);
   const first = (await req(admin, "GET", A)).json;
-  check("AIDA starts off, with every lesson's instructions and deliverables", ["off", true, true], [first?.settings.mode, first?.lessons.some((l) => l.id === "lesson_1" && l.aiInstructions.includes("SMOKE-AI-1")), first?.lessons.find((l) => l.id === "lesson_2")?.deliverables.some((d) => d.id === "del_memo")]);
+  check("AIDA starts off, with every lesson's instructions", ["off", true, true], [first?.settings.mode, first?.lessons.some((l) => l.id === "lesson_1" && l.aiInstructions.includes("SMOKE-AI-1")), first?.lessons.length >= 4]);
   check("off: no Ask AIDA for the student, chat refused", [false, 403], [(await req(student, "GET", "/api/lessons/view")).json.aida, (await chat(student, "lesson_2", "hello")).status]);
 
-  // an inline deliverable in the text, and one linked from another lesson
-  const saved = await req(admin, "PUT", A, { lesson: { id: "lesson_2", aiInstructions: "Compare with their journal: {{deliverable:del_journal|Lesson 1: Problem Journal Entry}} SMOKE-INLINE", aidaLinks: [{ lessonId: "lesson_1", deliverableId: "del_worksheet" }, { lessonId: "lesson_1", deliverableId: "del_worksheet" }] } });
-  check("admin links a deliverable to a lesson (duplicates dropped)", [200, 1], [saved.status, saved.json?.lesson?.aidaLinks.length]);
+  // AIDA reads everything: every lesson's instructions, and all of the student's work
+  await req(admin, "PUT", A, { lesson: { id: "lesson_2", aiInstructions: "SMOKE-AI-2 push on interview evidence {{deliverable:del_journal|old marker}}" } });
   const asAmara = (await req(admin, "GET", `${A}?preview=1&lesson=lesson_2&student=user_amara`)).json;
-  check("what AIDA sees: inline answer in place, linked answer, own deliverables, no name", [true, true, true, false], [
-    asAmara.context.indexOf("my entry") > asAmara.context.indexOf("Compare with their journal") && asAmara.context.indexOf("my entry") < asAmara.context.indexOf("SMOKE-INLINE"),
-    asAmara.context.includes("Commuters"),
-    asAmara.context.includes("Customer Interview Log"),
+  check("what AIDA sees: every lesson's instructions and tasks, the same for all", [true, true, true, false], [asAmara.shared.includes("SMOKE-AI-1"), asAmara.shared.includes("SMOKE-AI-2"), asAmara.shared.includes("Paste a link to your pitch deck"), asAmara.shared.includes("{{deliverable")]);
+  check("what AIDA sees: all of the student's work, the lesson they are on, no name", [true, true, true, false], [
+    asAmara.context.includes("my entry") && asAmara.context.includes("Commuters"),
+    asAmara.context.includes("The student opened you from Lesson 2: Customer Discovery"),
+    asAmara.context.includes("### Pitch Deck"),
     /Amara|amara\.chen/.test(asAmara.context + asAmara.shared),
   ]);
+  check("the shared part holds no student's answers", false, asAmara.shared.includes("my entry"));
   const blank = (await req(admin, "GET", `${A}?preview=1&lesson=lesson_2`)).json;
   check("what AIDA sees with no student: no answers", [false, false, true], [blank.context.includes("my entry"), blank.context.includes("Commuters"), blank.context.includes("_Not completed yet._")]);
-  const md = await (await fetch(`${BASE}/api/lessons/export?lesson=lesson_2`, { headers: { Cookie: student } })).text();
-  check("export fills the inline deliverable with the student's answer", [true, false], [md.includes("my entry"), md.includes("{{deliverable")]);
 
   await req(admin, "PUT", A, { settings: { general: "SMOKE-GENERAL house rule" } });
   check("general context reaches every lesson", true, (await req(admin, "GET", `${A}?preview=1&lesson=lesson_1`)).json.shared.includes("SMOKE-GENERAL house rule"));
 
   const trial = await req(admin, "POST", A, { lessonId: "lesson_2", studentId: "user_amara", messages: [{ role: "user", content: "SMOKE-TEST-TAB" }] });
-  check("Test tab: admin gets a reply; a student cannot use it", [200, true, 403], [trial.status, trial.text.includes("SMOKE-TEST-TAB") && trial.text.includes("Lesson 2"), (await req(student, "POST", A, { lessonId: "lesson_2", messages: [{ role: "user", content: "x" }] })).status]);
+  check("Chat with AIDA: admin gets a reply; a student cannot use it", [200, true, 403], [trial.status, trial.text.includes("SMOKE-TEST-TAB") && trial.text.includes("Lesson 2"), (await req(student, "POST", A, { lessonId: "lesson_2", messages: [{ role: "user", content: "x" }] })).status]);
 
   check("test-account-only mode: an ordinary student still has no AIDA", ["test", false], [(await req(admin, "PUT", A, { settings: { mode: "test" } })).json?.settings.mode, (await req(student, "GET", "/api/lessons/view")).json.aida]);
   await req(admin, "PUT", A, { settings: { mode: "on" } });
@@ -662,7 +661,7 @@ head("AIDA");
   check("usage is counted (student message + test message)", 2, usage.today.messages);
 
   await req(admin, "PUT", A, { settings: { mode: "off", general: "" } });
-  await req(admin, "PUT", A, { lesson: { id: "lesson_2", aiInstructions: "", aidaLinks: [] } });
+  await req(admin, "PUT", A, { lesson: { id: "lesson_2", aiInstructions: "" } });
   check("switched off again: chat refused", 403, (await chat(student, "lesson_2", "hello")).status);
 }
 

@@ -51,8 +51,8 @@ export const POST = guarded(["student"], async ({ req, user }) => {
 
   const payloads = payloadMap(await listSubmissions({ studentId: user.id }));
   const built = buildContext({ lesson, lessons, payloads });
-  // The lesson context is frozen when a conversation starts (so it stays cached) and rebuilt only if
-  // the lesson itself was edited. Answers the student changes afterwards ride along with their message.
+  // The student's work is frozen when a conversation starts (so it stays cached) and rebuilt only if
+  // the lessons themselves were edited. Answers the student changes afterwards ride along with their message.
   const key = contextKey({ lesson, lessons });
   if (conv.contextKey !== key || !conv.context) {
     conv.contextKey = key;
