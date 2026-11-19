@@ -3,7 +3,7 @@
 // Chat with AIDA (super admin), at /aida/chat. The same AIDA students get: pick the lesson it is opened
 // from and whose deliverables it reads, then talk to it. Nothing here is saved.
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Sparkles, RotateCcw, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { COLORS, Notice, Loading, FieldLabel, fieldStyle } from "./ui";
@@ -26,6 +26,7 @@ export default function AidaLab() {
   const [preview, setPreview] = useState(null);
   const [work, setWork] = useState({}); // the chosen student's saved answers
   const [edits, setEdits] = useState({}); // trial changes made here
+  const told = useRef({}); // each trial change as AIDA was last sent it
 
   useEffect(() => {
     api
@@ -45,6 +46,7 @@ export default function AidaLab() {
   useEffect(() => {
     setEdits({});
     setWork({});
+    told.current = {};
     if (!studentId) return;
     api
       .get(`/api/submissions?studentId=${encodeURIComponent(studentId)}`)
@@ -52,7 +54,12 @@ export default function AidaLab() {
       .catch((e) => setError(e.message));
   }, [studentId]);
 
-  const post = (text, history) => fetch(ADMIN, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lessonId, studentId, edits, messages: [...history, { role: "user", content: text }] }) });
+  // AIDA is told which answers changed since its last reply, as it is for a student.
+  const post = (text, history) => {
+    const changed = Object.keys(edits).filter((key) => JSON.stringify(edits[key]) !== (key in told.current ? told.current[key] : JSON.stringify(work[key] ?? null)));
+    for (const key of changed) told.current[key] = JSON.stringify(edits[key]);
+    return fetch(ADMIN, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lessonId, studentId, edits, changed, messages: [...history, { role: "user", content: text }] }) });
+  };
   const togglePreview = async () => {
     if (preview) return setPreview(null);
     try {
@@ -75,16 +82,20 @@ export default function AidaLab() {
         title: item.title,
         task: item.instructions,
         editor: <DeliverableInput item={item} payload={key in edits ? edits[key] : work[key]} onChange={(payload) => setEdits((e) => ({ ...e, [key]: payload }))} />,
+        stamp: JSON.stringify((key in edits ? edits[key] : work[key]) ?? null),
       };
     }
     return null;
   };
+  // The list beside the chat: every deliverable, chapter by chapter. Picking one puts its button above
+  // the reply box without having to ask AIDA for it.
+  const catalog = (data?.lessons || []).filter((l) => l.studentVisible || l.id === lessonId).map((l) => ({ id: l.id, label: l.chapterLabel || `Lesson ${l.number}`, title: l.title, items: l.deliverables.map((d, i) => ({ id: d.id, label: `${l.number}${String.fromCharCode(65 + i)}`, title: d.title })) }));
   const who = data?.students.find((s) => s.id === studentId);
   const whose = who ? `${who.name}'s` : "blank";
 
   return (
     <div style={{ background: COLORS.bg, minHeight: "100%" }}>
-      <div style={{ maxWidth: 980, margin: "0 auto", padding: "28px 24px 60px" }}>
+      <div style={{ maxWidth: 1180, margin: "0 auto", padding: "28px 24px 60px" }}>
         <Link href="/aida" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13.5, fontWeight: 800, color: COLORS.indigo, textDecoration: "none", marginBottom: 12 }}>
           <ArrowLeft size={15} /> AIDA's context
         </Link>
@@ -137,7 +148,7 @@ export default function AidaLab() {
             )}
 
             <div style={{ ...card, padding: 0, overflow: "hidden", display: "flex", flexDirection: "column", height: "min(680px, 74vh)" }}>
-              <AidaChat messages={messages} setMessages={setMessages} post={post} deliverableOf={deliverableOf} editorNote="A test copy. Nothing you type here is saved to the student's work." emptyHint={`This is the AIDA students get. It is reading ${whose} deliverables. Nothing here is saved.`} />
+              <AidaChat messages={messages} setMessages={setMessages} post={post} deliverableOf={deliverableOf} catalog={catalog} currentGroup={lessonId} wide editorNote="A test copy. Nothing you type here is saved to the student's work." emptyHint={`This is the AIDA students get. It is reading ${whose} deliverables. Nothing here is saved.`} />
             </div>
           </div>
         )}

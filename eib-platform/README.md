@@ -529,9 +529,10 @@ model: `docs/ai-cofounder-plan.md`. Code: `src/lib/aida/`, routes `/api/aida/cha
   are attached to their next message as `<updated_work>`, so nothing already sent is ever edited. Each reply
   logs `[eib aida] ... cache_read=` so a broken cache shows up in the Vercel logs.
 - **Deliverables in the chat** (`AidaChat.jsx`, the note in `context.js`): every deliverable has a short name,
-  lesson number plus a letter (1A, 1B). AIDA pulls deliverables in by ending a reply with `[[show:ID]]` lines
-  (never shown as text); they appear as buttons just above the student's reply box and stay until AIDA pulls
-  in another set. Opening one turns the reply box into that deliverable (the same input and the same save as
+  lesson number plus a letter (1A, 1B). Buttons for them sit just above the reply box. A student puts one
+  there by picking it from the Deliverables list (grouped by chapter: a column left of the chat on
+  `/aida/chat`, a drop-down in the student panel), or AIDA pulls it in by ending a reply with `[[show:ID]]`
+  lines (never shown as text). Opening one turns the reply box into that deliverable (the same input and the same save as
   on the lesson card) and Send becomes "Submit to AIDA". AIDA is sent only the answers that changed.
 - **Storage**: `aida_conversations` (one document per student per lesson, id `aida_<student>_<lesson>`;
   "New chat" keeps the old one under another id), `aida_usage` (one per person per Toronto day), and the

@@ -15,7 +15,7 @@ import { listUsers } from "@/lib/data/users";
 import { listSubmissions } from "@/lib/data/submissions";
 import { aidaConfig, MAX_MESSAGE_CHARS } from "@/lib/aida/config";
 import { DEFAULT_PROMPT } from "@/lib/aida/prompt";
-import { sharedText, buildContext, payloadMap } from "@/lib/aida/context";
+import { sharedText, buildContext, changedWork, payloadMap } from "@/lib/aida/context";
 import { getAidaSettings, saveAidaSettings, usageSummary, recordUsage } from "@/lib/aida/store";
 import { runChat, streamResponse, aidaLive } from "@/lib/aida/client";
 
@@ -30,12 +30,16 @@ async function assemble(lessonId, studentId, edits) {
   if (!lesson) throw new HttpError(404, "Lesson not found.");
   const payloads = { ...(studentId ? payloadMap(await listSubmissions({ studentId })) : {}), ...(edits && typeof edits === "object" ? edits : {}) };
   const visible = lessons.filter((l) => l.studentVisible || l.id === lesson.id);
-  return { shared: sharedText({ settings, lessons: visible }), context: buildContext({ lesson, lessons: visible, payloads }).text };
+  const built = buildContext({ lesson, lessons: visible, payloads });
+  return { shared: sharedText({ settings, lessons: visible }), context: built.text, parts: built.parts, lessons: visible };
 }
 
 export const GET = guarded(["superAdmin"], async ({ req }) => {
   const q = new URL(req.url).searchParams;
-  if (q.get("preview")) return Response.json(await assemble(q.get("lesson"), q.get("student") || ""));
+  if (q.get("preview")) {
+    const { shared, context } = await assemble(q.get("lesson"), q.get("student") || "");
+    return Response.json({ shared, context });
+  }
   const [lessons, settings, students, usage] = await Promise.all([listLessons(), getAidaSettings(), listUsers({ role: "student" }), usageSummary()]);
   return Response.json({
     settings,
@@ -43,7 +47,7 @@ export const GET = guarded(["superAdmin"], async ({ req }) => {
     live: aidaLive(),
     model: aidaConfig().model,
     usage,
-    lessons: lessons.map((l) => ({ id: l.id, number: l.number, title: l.title, studentVisible: l.studentVisible, aiInstructions: l.aiInstructions || "", deliverables: l.deliverables })),
+    lessons: lessons.map((l) => ({ id: l.id, number: l.number, title: l.title, studentVisible: l.studentVisible, chapterLabel: l.chapterLabel, aiInstructions: l.aiInstructions || "", deliverables: l.deliverables })),
     students: students.filter((u) => !u.suspended).map((u) => ({ id: u.id, name: u.name, isTest: u.isTest === true })).sort((a, b) => Number(b.isTest) - Number(a.isTest) || a.name.localeCompare(b.name)),
   });
 });
@@ -62,12 +66,19 @@ export const PUT = guarded(["superAdmin"], async ({ req }) => {
 
 export const POST = guarded(["superAdmin"], async ({ req, user }) => {
   const body = await readJson(req);
-  if (body.preview) return Response.json(await assemble(body.lessonId, body.studentId || "", body.edits));
+  if (body.preview) {
+    const { shared, context } = await assemble(body.lessonId, body.studentId || "", body.edits);
+    return Response.json({ shared, context });
+  }
   const messages = (Array.isArray(body.messages) ? body.messages : [])
     .filter((m) => (m.role === "user" || m.role === "assistant") && String(m.content || "").trim())
     .map((m) => ({ role: m.role, text: String(m.content).slice(0, m.role === "user" ? MAX_MESSAGE_CHARS : 20000) }));
   if (!messages.length || messages[messages.length - 1].role !== "user") throw new HttpError(400, "Type a message first.");
-  const { shared, context } = await assemble(body.lessonId, body.studentId || "", body.edits);
+  const { shared, context, parts, lessons } = await assemble(body.lessonId, body.studentId || "", body.edits);
+  // The answers the super admin just changed are named in the message, as they are for a student.
+  const changed = Object.fromEntries((Array.isArray(body.changed) ? body.changed : []).filter((k) => k in parts).map((k) => [k, parts[k]]));
+  const updates = changedWork({ parts: changed, lessons });
+  if (updates) messages[messages.length - 1].text = `${updates}\n\n${messages[messages.length - 1].text}`;
   return streamResponse(async (send) => {
     const reply = await runChat({ shared, context, messages, onText: send });
     await recordUsage(user.id, reply.usage);

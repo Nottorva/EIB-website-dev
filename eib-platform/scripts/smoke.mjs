@@ -649,6 +649,8 @@ head("AIDA");
     trialEdit.context.includes("my entry"),
     (await req(admin, "GET", "/api/submissions?studentId=user_amara")).json.some((s) => JSON.stringify(s.payload).includes("SMOKE-TRIAL-EDIT")),
   ]);
+  const told = await req(admin, "POST", A, { lessonId: "lesson_2", studentId: "user_amara", edits: { "lesson_1:del_journal": { text: "SMOKE-TRIAL-EDIT" } }, changed: ["lesson_1:del_journal", "nope:nope"], messages: [{ role: "user", content: "I changed 1A" }] });
+  check("Chat with AIDA: AIDA is told which answer changed", true, told.text.includes("Changed answers received with this message: 1."));
   check("Chat with AIDA: admin gets a reply; a student cannot use it", [200, true, 403], [trial.status, trial.text.includes("SMOKE-TEST-TAB") && trial.text.includes("Lesson 2"), (await req(student, "POST", A, { lessonId: "lesson_2", messages: [{ role: "user", content: "x" }] })).status]);
 
   check("test-account-only mode: an ordinary student still has no AIDA", ["test", false], [(await req(admin, "PUT", A, { settings: { mode: "test" } })).json?.settings.mode, (await req(student, "GET", "/api/lessons/view")).json.aida]);
@@ -678,7 +680,7 @@ head("AIDA");
   await req(admin, "PUT", A, { settings: { dailyLimit: 60 } });
   check("new chat clears the panel", [200, 0], [await code(student, "DELETE", "/api/aida/chat?lesson=lesson_2"), (await req(student, "GET", "/api/aida/chat?lesson=lesson_2")).json.messages.length]);
   const usage = (await req(admin, "GET", A)).json.usage;
-  check("usage is counted (student messages + chat page message)", 5, usage.today.messages);
+  check("usage is counted (student messages + chat page messages)", 6, usage.today.messages);
 
   await req(admin, "PUT", A, { settings: { mode: "off", general: "" } });
   await req(admin, "PUT", A, { lesson: { id: "lesson_2", aiInstructions: "" } });

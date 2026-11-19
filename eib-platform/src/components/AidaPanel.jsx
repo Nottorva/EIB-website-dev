@@ -67,10 +67,14 @@ export default function AidaPanel({ lesson, lessons = [], submissions = {}, onCh
         title: item.title,
         task: item.instructions,
         editor: <DeliverableInput item={item} payload={submissions[`${l.id}:${id}`]?.payload} onChange={(payload) => onChangePayload?.(l.id, id, payload)} />,
+        stamp: JSON.stringify(submissions[`${l.id}:${id}`]?.payload ?? null),
       };
     }
     return null;
   };
+  // The list beside the chat: every deliverable, chapter by chapter. Picking one puts its button above
+  // the reply box without having to ask AIDA for it.
+  const catalog = lessons.map((l) => ({ id: l.id, label: l.chapterLabel || `Lesson ${l.number}`, title: l.title, items: l.deliverables.map((d, i) => ({ id: d.id, label: `${l.number}${String.fromCharCode(65 + i)}`, title: d.title })) }));
 
   return (
     <aside
@@ -107,7 +111,9 @@ export default function AidaPanel({ lesson, lessons = [], submissions = {}, onCh
           setMessages={setMessages}
           post={post}
           deliverableOf={deliverableOf}
-          emptyHint="Ask about your work, or say what you want to work on. For example: “I want to work on 1B.”"
+          catalog={catalog}
+          currentGroup={lesson.id}
+          emptyHint="Ask about your work, or pick a deliverable from the Deliverables list below to work on it here."
           disabledReason={closed ? closed : remaining === 0 ? "You have reached today's limit for AIDA. It resets tomorrow." : ""}
         />
       )}
