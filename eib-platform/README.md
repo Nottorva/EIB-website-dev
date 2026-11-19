@@ -516,7 +516,9 @@ model: `docs/ai-cofounder-plan.md`. Code: `src/lib/aida/`, routes `/api/aida/cha
   "Export as MD" does not carry them (it is the student's own work only).
 - **`/aida/chat`** (super admin, the "Chat with AIDA" button): the same AIDA students get. Pick the lesson it
   is opened from and whose deliverables it reads (any student, the test account, or nobody). "Show what AIDA
-  sees" prints the exact text it is given. Nothing on this page is saved.
+  sees" prints the exact text it is given. The deliverable buttons open that student's answer as a test copy:
+  edits are sent to AIDA with the message (`edits` in the request) and never written to the student's work.
+  Nothing on this page is saved.
 - **What is sent to Claude** (`context.js`): first the part that is identical for the whole class (the core
   prompt, the general context, every published lesson with its overview, AI instructions and deliverable
   tasks), then one student's part (the lesson they opened AIDA from, and every answer they have written).

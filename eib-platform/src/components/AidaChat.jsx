@@ -22,7 +22,7 @@ export const AIDA_MAX_CHARS = 2000;
 const visible = (content) => String(content).replace(CARD, "").replace(/\[\[[^\]]*\]?$/, "").replace(/\n{3,}/g, "\n\n").trim();
 const shownIn = (content) => [...new Set([...String(content).matchAll(CARD)].map((m) => m[1]))];
 
-export default function AidaChat({ messages, setMessages, post, emptyHint, disabledReason = "", deliverableOf }) {
+export default function AidaChat({ messages, setMessages, post, emptyHint, disabledReason = "", deliverableOf, editorNote = "This is your deliverable. It saves as you type." }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -150,7 +150,7 @@ export default function AidaChat({ messages, setMessages, post, emptyHint, disab
             </div>
             <div style={{ maxHeight: "38vh", overflow: "auto" }}>{open.editor}</div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 10 }}>
-              <span style={{ fontSize: 12, color: COLORS.faint }}>This is your deliverable. It saves as you type.</span>
+              <span style={{ fontSize: 12, color: COLORS.faint }}>{editorNote}</span>
               {sendButton("Submit to AIDA", () => send(`I've updated ${open.label}, "${open.title}". What do you think?`), busy || off)}
             </div>
           </div>

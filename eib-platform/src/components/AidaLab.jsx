@@ -9,6 +9,7 @@ import { Sparkles, RotateCcw, Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { COLORS, Notice, Loading, FieldLabel, fieldStyle } from "./ui";
 import { api } from "@/lib/api";
 import AidaChat from "./AidaChat";
+import { DeliverableInput } from "./DeliverableInputs";
 
 const ADMIN = "/api/aida/admin";
 const card = { background: COLORS.card, borderRadius: 18, padding: "20px 24px", boxShadow: "0 1px 3px rgba(15,23,42,0.05)" };
@@ -23,6 +24,8 @@ export default function AidaLab() {
   const [studentId, setStudentId] = useState("");
   const [messages, setMessages] = useState([]);
   const [preview, setPreview] = useState(null);
+  const [work, setWork] = useState({}); // the chosen student's saved answers
+  const [edits, setEdits] = useState({}); // trial changes made here
 
   useEffect(() => {
     api
@@ -39,23 +42,40 @@ export default function AidaLab() {
     setMessages([]);
     setPreview(null);
   }, [lessonId, studentId]);
+  useEffect(() => {
+    setEdits({});
+    setWork({});
+    if (!studentId) return;
+    api
+      .get(`/api/submissions?studentId=${encodeURIComponent(studentId)}`)
+      .then((rows) => setWork(Object.fromEntries(rows.map((s) => [`${s.lessonId}:${s.deliverableId}`, s.payload]))))
+      .catch((e) => setError(e.message));
+  }, [studentId]);
 
-  const post = (text, history) => fetch(ADMIN, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lessonId, studentId, messages: [...history, { role: "user", content: text }] }) });
+  const post = (text, history) => fetch(ADMIN, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lessonId, studentId, edits, messages: [...history, { role: "user", content: text }] }) });
   const togglePreview = async () => {
     if (preview) return setPreview(null);
     try {
-      setPreview(await api.get(`${ADMIN}?preview=1&lesson=${encodeURIComponent(lessonId)}&student=${encodeURIComponent(studentId)}`));
+      setPreview(await api.post(ADMIN, { preview: true, lessonId, studentId, edits }));
     } catch (e) {
       setError(e.message);
     }
   };
 
-  // The deliverables AIDA pulls in appear as buttons above the reply box. A student can open one and
-  // write in it; here they are only named.
+  // The deliverables AIDA pulls in appear as buttons above the reply box. Opening one shows the chosen
+  // student's answer as a test copy to edit and submit, exactly as the student would.
   const deliverableOf = (id) => {
     for (const l of data.lessons) {
       const i = l.deliverables.findIndex((d) => d.id === id);
-      if (i >= 0) return { label: `${l.number}${String.fromCharCode(65 + i)}`, title: l.deliverables[i].title };
+      if (i < 0) continue;
+      const item = l.deliverables[i];
+      const key = `${l.id}:${id}`;
+      return {
+        label: `${l.number}${String.fromCharCode(65 + i)}`,
+        title: item.title,
+        task: item.instructions,
+        editor: <DeliverableInput item={item} payload={key in edits ? edits[key] : work[key]} onChange={(payload) => setEdits((e) => ({ ...e, [key]: payload }))} />,
+      };
     }
     return null;
   };
@@ -117,7 +137,7 @@ export default function AidaLab() {
             )}
 
             <div style={{ ...card, padding: 0, overflow: "hidden", display: "flex", flexDirection: "column", height: "min(680px, 74vh)" }}>
-              <AidaChat messages={messages} setMessages={setMessages} post={post} deliverableOf={deliverableOf} emptyHint={`This is the AIDA students get. It is reading ${whose} deliverables. Nothing here is saved. When AIDA pulls in deliverables, a student can open the buttons above the reply box and write in them; here they are only shown.`} />
+              <AidaChat messages={messages} setMessages={setMessages} post={post} deliverableOf={deliverableOf} editorNote="A test copy. Nothing you type here is saved to the student's work." emptyHint={`This is the AIDA students get. It is reading ${whose} deliverables. Nothing here is saved.`} />
             </div>
           </div>
         )}
