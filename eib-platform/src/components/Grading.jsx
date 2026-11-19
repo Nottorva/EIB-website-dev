@@ -3,11 +3,12 @@
 // Grading. Two things live here:
 //   - GradeCard + useGrades: one submission's grade, feedback and release
 //     state. The Student Manager's Deliverables view uses the same pair.
-//   - Grading (default export): the /grading tool, which walks one
-//     deliverable student by student instead of one student at a time.
+//   - Grading (default export): the /grading tool. "By student" opens one
+//     student's whole record, chapter by chapter; "By deliverable" walks one
+//     deliverable student by student.
 
 import { useCallback, useEffect, useState } from "react";
-import { Send, ChevronLeft, ChevronRight } from "lucide-react";
+import { Send, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import { COLORS, TypeChip, PrimaryButton, PageTitle, SaveIndicator, Notice, Loading, EmptyState, SegmentedTabs, Avatar, StatusBadge, fieldStyle, useDangerConfirm } from "./ui";
 import { api, useDebouncedSaver } from "@/lib/api";
 import { fmtDate, fmtSmart } from "@/lib/format";
@@ -161,12 +162,92 @@ const isWaiting = (row) => row.state === "todo" || row.state === "draft";
 
 const navButton = (enabled) => ({ display: "flex", alignItems: "center", border: `1px solid ${COLORS.border}`, background: "#fff", color: enabled ? COLORS.sub : "#d7dbe4", borderRadius: 9, padding: 6, cursor: enabled ? "pointer" : "default" });
 
+/* One student's whole record: click a student, then a chapter, and every
+   deliverable in that chapter is there to grade in one place. */
+const rowButton = { width: "100%", display: "flex", alignItems: "center", gap: 10, border: "none", background: "transparent", cursor: "pointer", fontFamily: "inherit", textAlign: "left" };
+const waitingBadge = (n) => (n ? <StatusBadge status={{ ...STATES.todo, label: `${n} to grade` }} size="sm" /> : null);
+
+function ByStudent({ data, sub, change }) {
+  const [openStudent, setOpenStudent] = useState(null);
+  const [openChapters, setOpenChapters] = useState(() => new Set());
+
+  const cells = (student, lesson) =>
+    lesson.deliverables.map((deliverable, i) => {
+      const id = { studentId: student.id, lessonId: lesson.id, deliverableId: deliverable.id };
+      return { deliverable, id, sub: sub(id), state: stateOf(deliverable, sub(id)), label: `${lesson.number}${String.fromCharCode(65 + i)}` };
+    });
+  // Opening a student opens their first chapter with work waiting.
+  const pickStudent = (student) => {
+    if (openStudent === student.id) return setOpenStudent(null);
+    const first = data.lessons.find((l) => cells(student, l).some(isWaiting));
+    setOpenStudent(student.id);
+    setOpenChapters(new Set(first ? [first.id] : []));
+  };
+  const toggleChapter = (id) =>
+    setOpenChapters((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {data.students.map((student) => {
+        const isOpen = openStudent === student.id;
+        const chapters = data.lessons.map((lesson) => ({ lesson, cells: cells(student, lesson) }));
+        const all = chapters.flatMap((c) => c.cells);
+        const submitted = all.filter((c) => c.state !== "missing").length;
+        return (
+          <div key={student.id} data-student={student.id} style={{ background: "#fff", border: `1px solid ${isOpen ? COLORS.indigoBorder : COLORS.border}`, borderRadius: 14 }}>
+            <button type="button" aria-expanded={isOpen} onClick={() => pickStudent(student)} style={{ ...rowButton, padding: "10px 14px" }}>
+              {isOpen ? <ChevronDown size={16} color={COLORS.sub} /> : <ChevronRight size={16} color={COLORS.sub} />}
+              <Avatar name={student.name} size={30} />
+              <span style={{ flex: 1, minWidth: 0, fontSize: 14.5, fontWeight: 800, color: COLORS.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{student.name}</span>
+              <span style={{ fontSize: 12.5, fontWeight: 700, color: COLORS.faint, whiteSpace: "nowrap" }}>{submitted} of {all.length} submitted</span>
+              {waitingBadge(all.filter(isWaiting).length)}
+            </button>
+
+            {isOpen && (
+              <div style={{ padding: "0 14px 12px 40px", display: "flex", flexDirection: "column", gap: 4 }}>
+                {chapters.map(({ lesson, cells: list }) => {
+                  const chapterOpen = openChapters.has(lesson.id);
+                  return (
+                    <div key={lesson.id} data-chapter={lesson.id}>
+                      <button type="button" aria-expanded={chapterOpen} onClick={() => toggleChapter(lesson.id)} style={{ ...rowButton, padding: "8px 6px", borderRadius: 10 }}>
+                        {chapterOpen ? <ChevronDown size={15} color={COLORS.sub} /> : <ChevronRight size={15} color={COLORS.sub} />}
+                        <span style={{ flex: 1, minWidth: 0 }}>
+                          <span style={{ display: "block", fontSize: 14, fontWeight: 800, color: COLORS.text }}>{lesson.chapterLabel || `Lesson ${lesson.number}`}</span>
+                          <span style={{ display: "block", fontSize: 12.5, color: COLORS.faint }}>{lesson.title}</span>
+                        </span>
+                        <span style={{ fontSize: 12.5, fontWeight: 700, color: COLORS.faint, whiteSpace: "nowrap" }}>{list.filter((c) => c.state === "released").length} of {list.length} released</span>
+                        {waitingBadge(list.filter(isWaiting).length)}
+                      </button>
+                      {chapterOpen && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 10, margin: "4px 0 10px 21px" }}>
+                          {list.map((c) => (
+                            <GradeCard key={c.deliverable.id} deliverable={{ ...c.deliverable, title: `${c.label} · ${c.deliverable.title}` }} submission={c.sub} canGrade onChange={(fields) => change(c.id, fields)} onRelease={(released) => change(c.id, { released })} />
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function Grading() {
   const saver = useDebouncedSaver();
   const { subs, load, sub, change } = useGrades(saver);
   const [data, setData] = useState(null); // { students, lessons }
   const [error, setError] = useState(null);
   const [pick, setPick] = useState(null); // "lessonId:deliverableId"
+  const [mode, setMode] = useState("student");
   const [filter, setFilter] = useState("waiting");
   const [studentId, setStudentId] = useState(null);
   const [confirmDanger, confirmUI] = useDangerConfirm();
@@ -228,7 +309,7 @@ export default function Grading() {
     <div
       style={{ background: COLORS.bg, minHeight: "100%", padding: "28px 20px" }}
       onKeyDown={(e) => {
-        if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && current && !current.sub?.released && hasMark(current.sub)) {
+        if (mode === "deliverable" && e.key === "Enter" && (e.ctrlKey || e.metaKey) && current && !current.sub?.released && hasMark(current.sub)) {
           e.preventDefault();
           releaseAndNext(current);
         }
@@ -245,6 +326,8 @@ export default function Grading() {
           <EmptyState>No student accounts yet. They are created when decisions are released in the Student Manager.</EmptyState>
         ) : (
           <>
+            <SegmentedTabs value={mode} onChange={setMode} style={{ background: "#fff", marginBottom: 14, width: "fit-content" }} options={[{ id: "student", label: "By student" }, { id: "deliverable", label: "By deliverable" }]} />
+            {mode === "student" ? <ByStudent data={data} sub={sub} change={change} /> : <>
             <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 14 }}>
               <select aria-label="Deliverable" value={item.key} onChange={(e) => open(items.find((it) => it.key === e.target.value))} style={{ ...fieldStyle, flex: "1 1 280px", width: "auto", fontWeight: 800, background: "#fff", cursor: "pointer" }}>
                 {data.lessons.map((lesson) => (
@@ -322,6 +405,7 @@ export default function Grading() {
                 </div>
               </div>
             )}
+            </>}
           </>
         )}
       </div>

@@ -176,7 +176,9 @@ Things worth trying, in order:
    grade and feedback; they are a draft the student cannot see. Click
    **Release to student**. Switch back to Amara: grade and feedback appear.
    "Withdraw from student" hides them again. **Grading** (top bar) is the
-   faster route for a whole class: pick a deliverable, then grade student by
+   faster route for a whole class. **By student** (the default): click a
+   student, then a chapter, and every deliverable in that chapter is there
+   to grade. **By deliverable**: pick a deliverable, then grade student by
    student; **Release & next** (or Ctrl+Enter) releases and moves on.
 5. **Approve, then release.** Open the public Application form (link in the
    top bar). Sign in with the sandbox stand-in (any name, an @tfs.ca email)
