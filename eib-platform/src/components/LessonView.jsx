@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Eye, Presentation, UserCheck, MapPin, Clock, ChevronDown, ChevronUp, MessageCircle, FileText, User, Lightbulb, ExternalLink, Pencil, CalendarDays, EyeOff, Download } from "lucide-react";
+import { Eye, Presentation, UserCheck, MapPin, Clock, ChevronDown, ChevronUp, MessageCircle, FileText, User, Lightbulb, ExternalLink, Pencil, CalendarDays, EyeOff, Download, Sparkles } from "lucide-react";
 import { COLORS, Pill, ModalShell, HeaderButton, Notice, SaveIndicator, Loading, TypeChip, fieldStyle } from "./ui";
 import { api, useDebouncedSaver } from "@/lib/api";
 import { MENTOR_DEFAULTS, mentorWhere, mentorWhen } from "@/lib/sessionDefaults";
 import { DeliverableInput, DeliverablePreview, ExampleBlock } from "./DeliverableInputs";
 import PdfReader from "./PdfReader";
 import OfficeReader, { officeKind } from "./OfficeReader";
+import AidaPanel from "./AidaPanel";
 
 /* ---------- Modals ---------- */
 // Shown only when a resource button is clicked and no link has been set yet.
@@ -289,7 +290,7 @@ function Logistics({ lesson, editable, onChange, showMentor }) {
 }
 
 /* ---------- Lesson card ---------- */
-function LessonCard({ lesson, mode, submissions, onChangePayload, onChangeLogistics, onExport, superAdmin }) {
+function LessonCard({ lesson, mode, submissions, onChangePayload, onChangeLogistics, onExport, onAida, superAdmin }) {
   const [activeModal, setActiveModal] = useState(null);
   const eyebrow = lesson.chapterLabel || "Chapter";
 
@@ -318,6 +319,7 @@ function LessonCard({ lesson, mode, submissions, onChangePayload, onChangeLogist
         <Pill icon={Presentation} label="Slides" onClick={() => setActiveModal("slides")} />
         {mode === "leader" && <Pill icon={FileText} label="Teaching Plan" onClick={() => setActiveModal("plan")} />}
         <Pill icon={Download} label="Export as MD" onClick={() => onExport(lesson.id)} />
+        {onAida && <Pill icon={Sparkles} label="Ask AIDA" tone="default" onClick={() => onAida(lesson)} />}
         {lesson.mentorEnabled && <Pill icon={UserCheck} label={mentorNames(lesson).length > 1 ? `Mentors: ${mentorNames(lesson).join(" & ")}` : `Mentor: ${mentorNames(lesson)[0] || "Unassigned"}`} tone="amber" onClick={() => setActiveModal("mentor")} />}
       </div>
 
@@ -391,16 +393,31 @@ export default function LessonView({ user }) {
   // answers still being saved, so the file has what is on screen.
   const savingRef = useRef(saver.status);
   savingRef.current = saver.status;
-  const exportMd = async (lessonId) => {
+  const saved = async () => {
     for (let i = 0; i < 40 && savingRef.current === "saving"; i++) await new Promise((r) => setTimeout(r, 100));
+  };
+  const exportMd = async (lessonId) => {
+    await saved();
     window.location.href = `/api/lessons/export${lessonId ? `?lesson=${encodeURIComponent(lessonId)}` : ""}`;
   };
+
+  // AIDA, the AI cofounder: a side panel for one lesson at a time (students, when it is switched on).
+  const [aidaLesson, setAidaLesson] = useState(null);
+  const closeAida = useRef(() => setAidaLesson(null)).current;
+  // On a wide screen the page makes room for the panel, so the deliverables stay in view beside it.
+  const [wide, setWide] = useState(false);
+  useEffect(() => {
+    const fit = () => setWide(window.innerWidth >= 1000);
+    fit();
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, []);
 
   const mode = data?.mode || (user.role === "student" ? "student" : "leader");
   const lessons = data?.lessons || [];
 
   return (
-    <div style={{ background: COLORS.bg, minHeight: "100%" }}>
+    <div style={{ background: COLORS.bg, minHeight: "100%", paddingRight: aidaLesson && wide ? 440 : 0 }}>
       <div style={{ maxWidth: 1180, margin: "0 auto", padding: "36px 24px 80px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 22 }}>
           <span style={{ fontSize: 30, fontWeight: 800, color: COLORS.text }}>Lessons</span>
@@ -420,11 +437,12 @@ export default function LessonView({ user }) {
         ) : (
           <LessonLayout lessons={lessons}>
             {lessons.map((lesson) => (
-              <LessonCard key={lesson.id} lesson={lesson} mode={mode} submissions={submissions} onChangePayload={changePayload} onChangeLogistics={changeLogistics} onExport={exportMd} superAdmin={user.role === "superAdmin"} />
+              <LessonCard key={lesson.id} lesson={lesson} mode={mode} submissions={submissions} onChangePayload={changePayload} onChangeLogistics={changeLogistics} onExport={exportMd} onAida={data.aida ? setAidaLesson : null} superAdmin={user.role === "superAdmin"} />
             ))}
           </LessonLayout>
         )}
       </div>
+      {aidaLesson && <AidaPanel lesson={aidaLesson} onClose={closeAida} beforeSend={saved} />}
     </div>
   );
 }

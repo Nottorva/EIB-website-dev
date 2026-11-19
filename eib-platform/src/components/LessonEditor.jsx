@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { BookOpen, Eye, Presentation, UserCheck, Users, FileText, Trash2, Plus, Pencil, ExternalLink, Upload, CalendarCog, Send, CircleCheck, Sparkles } from "lucide-react";
 import { MENTOR_DEFAULTS, STUDENT_DEFAULTS } from "@/lib/sessionDefaults";
 import { fmtDate } from "@/lib/format";
@@ -115,25 +116,6 @@ function TeachingPlanModal({ eyebrow, lesson, onPatch, onClose }) {
   return (
     <ModalShell eyebrow={`${eyebrow} · Teaching Plan`} title={lesson.title} onClose={onClose} maxWidth={620}>
       <FileField label="Teaching plan" lesson={lesson} kind="teachingPlan" onPatch={onPatch} hint="Only student leaders see this button. Students never receive the teaching plan. It opens as a preview on the page (PDF or Word .docx)." />
-    </ModalShell>
-  );
-}
-
-/* ---------- AI instructions modal (the core of the lesson's Markdown export) ---------- */
-function AiInstructionsModal({ eyebrow, lesson, onPatch, onClose }) {
-  return (
-    <ModalShell eyebrow={`${eyebrow} · AI Instructions`} title={lesson.title} onClose={onClose} maxWidth={760}>
-      <FieldLabel>AI instructions</FieldLabel>
-      <textarea
-        value={lesson.aiInstructions || ""}
-        onChange={(e) => onPatch({ aiInstructions: e.target.value })}
-        placeholder="What an AI assistant should know and do for this lesson: what it is about, what good work looks like, and how to coach the student on it. Markdown is fine."
-        rows={16}
-        style={{ ...fieldStyle, resize: "vertical", lineHeight: 1.55, fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", fontSize: 13.5 }}
-      />
-      <div style={{ fontSize: 12.5, color: COLORS.faint, marginTop: 8, lineHeight: 1.5 }}>
-        This is the core of the lesson's "Export as MD" file. When a student exports, their own answers to this lesson's deliverables are added underneath. Students only ever see this text inside the file they download.
-      </div>
     </ModalShell>
   );
 }
@@ -455,6 +437,7 @@ function MentorToggle({ value, onChange }) {
 
 /* ---------- Lesson card ---------- */
 function LessonCard({ lesson, onPatch, onDelete }) {
+  const router = useRouter();
   const [activeModal, setActiveModal] = useState(null);
   const [editingDeliverableId, setEditingDeliverableId] = useState(null);
 
@@ -547,7 +530,7 @@ function LessonCard({ lesson, onPatch, onDelete }) {
         <Pill icon={Eye} label="Student Overview" onClick={() => setActiveModal("studentOverview")} />
         <Pill icon={Presentation} label="Slides" onClick={() => setActiveModal("slides")} />
         <Pill icon={FileText} label="Teaching Plan" onClick={() => setActiveModal("teachingPlan")} />
-        <Pill icon={Sparkles} label={lesson.aiInstructions?.trim() ? "AI Instructions" : "AI Instructions: empty"} onClick={() => setActiveModal("aiInstructions")} />
+        <Pill icon={Sparkles} label={lesson.aiInstructions?.trim() ? "AI Instructions" : "AI Instructions: empty"} onClick={() => router.push(`/aida?lesson=${encodeURIComponent(lesson.id)}`)} />
         <MentorToggle value={lesson.mentorEnabled ? (lesson.mentorSeats === 2 ? 2 : 1) : 0} onChange={(seats) => onPatch(seats ? { mentorEnabled: true, mentorSeats: seats } : { mentorEnabled: false })} />
         <PublishButton published={Boolean(lesson.studentVisible)} onToggle={(on) => onPatch({ studentVisible: on })} />
       </div>
@@ -592,7 +575,6 @@ function LessonCard({ lesson, onPatch, onDelete }) {
       {activeModal === "studentOverview" && <StudentOverviewModal eyebrow={eyebrow} lesson={lesson} onPatch={onPatch} onClose={() => setActiveModal(null)} />}
       {activeModal === "slides" && <SlidesModal eyebrow={eyebrow} lesson={lesson} onPatch={onPatch} onClose={() => setActiveModal(null)} />}
       {activeModal === "teachingPlan" && <TeachingPlanModal eyebrow={eyebrow} lesson={lesson} onPatch={onPatch} onClose={() => setActiveModal(null)} />}
-      {activeModal === "aiInstructions" && <AiInstructionsModal eyebrow={eyebrow} lesson={lesson} onPatch={onPatch} onClose={() => setActiveModal(null)} />}
       {activeModal === "addDeliverable" && <DeliverableEditorModal eyebrow={eyebrow} initial={null} onSave={saveDeliverable} onClose={() => setActiveModal(null)} />}
       {activeModal === "editDeliverable" && editingDeliverable && (
         <DeliverableEditorModal

@@ -7,6 +7,7 @@ import { listMentors, toPublicMentor } from "@/lib/data/mentors";
 import { listSubmissions, stripUnreleased } from "@/lib/data/submissions";
 import { getCohortYear } from "@/lib/data/settings";
 import { needsAgreement } from "@/lib/data/agreement";
+import { getAidaSettings, aidaOpenFor } from "@/lib/aida/store";
 
 export const GET = guarded(null, async ({ user }) => {
   if (await needsAgreement(user)) throw new HttpError(403, "Please sign the Student Agreement first.");
@@ -27,5 +28,8 @@ export const GET = guarded(null, async ({ user }) => {
   const mode = user.role === "student" ? "student" : "leader";
   const submissions = mode === "student" ? (await listSubmissions({ studentId: user.id })).map(stripUnreleased) : [];
 
-  return Response.json({ mode, cohortYear, lessons: withMentor, submissions, user: { id: user.id, name: user.name } });
+  // Whether this student gets the "Ask AIDA" button (/api/aida/chat checks again on every message).
+  const aida = aidaOpenFor(user, await getAidaSettings());
+
+  return Response.json({ mode, cohortYear, lessons: withMentor, submissions, aida, user: { id: user.id, name: user.name } });
 });

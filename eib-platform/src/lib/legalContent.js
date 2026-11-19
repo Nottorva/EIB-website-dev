@@ -13,7 +13,7 @@ export const LEGAL = {
   contactName: "Josef Marshall",
   contactEmail: "josefm2173@gmail.com",
   site: "joineib.ca",
-  updated: "October 29, 2026",
+  updated: "November 19, 2026",
   jurisdiction: "Ontario, Canada",
 };
 
@@ -60,6 +60,7 @@ export const PRIVACY = {
         "Google (sign-in). Google tells us who you are when you sign in. Google's own privacy policy governs your Google account.",
         "Vercel (hosting). The website and platform run on Vercel, which keeps server logs for the service.",
         "MongoDB Atlas (database). Applications, student records, mentor records and settings are stored in a MongoDB Atlas database.",
+        "Anthropic (AI assistant). AIDA, the AI coach inside the student platform, runs on Anthropic's Claude. When a student uses AIDA, the lesson content, what the student has written in their EIB deliverables and what they type to AIDA are sent to Anthropic to produce the reply. The student's name and email address are not sent. Anthropic processes and stores this in the United States, deletes it within 30 days under its standard terms (longer if its safety systems flag misuse), and does not use it to train its models. The conversations are also stored in our database so that EIB staff can review them.",
         "Cloudflare cdnjs (PDF viewer). The EIB Night slides page and the student onboarding page load a PDF-viewer script from cdnjs.cloudflare.com. Loading it tells Cloudflare your browser is requesting that file; no personal information from our site is sent with it.",
       ],
       p2: [

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Pencil, Users, ClipboardList, GraduationCap, FileText, Globe, Bot, ClipboardCheck, CheckCheck } from "lucide-react";
+import { Pencil, Users, ClipboardList, GraduationCap, FileText, Globe, Bot, ClipboardCheck, CheckCheck, Sparkles } from "lucide-react";
 import { getAccessState, authMode } from "@/lib/auth";
 import { ROLE_LABEL } from "@/lib/roles";
 
@@ -51,6 +51,13 @@ const TOOLS = [
     icon: GraduationCap,
     roles: ["superAdmin", "studentLeader", "student"],
     blurb: "Each week's session, its materials, and your deliverables.",
+  },
+  {
+    href: "/aida",
+    label: "AIDA",
+    icon: Sparkles,
+    roles: ["superAdmin"],
+    blurb: "The students' AI cofounder: every lesson's AI instructions in one place, and a tab to test it.",
   },
   {
     href: "/website",

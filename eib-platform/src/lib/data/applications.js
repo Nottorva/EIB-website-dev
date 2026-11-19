@@ -13,6 +13,7 @@
 import { findAll, findById, findOneBy, insert, updateOne, newId, removeOne } from "./store";
 import { upsertStudent, setSuspended, deleteUser } from "./users";
 import { deleteSubmissionsFor } from "./submissions";
+import { deleteAidaFor } from "../aida/store";
 import { deleteDraftByEmail } from "./drafts";
 
 export const APPLICATION_STATUSES = ["pending", "interview", "waitlist", "approved", "denied"];
@@ -100,6 +101,7 @@ export async function deleteApplicant(id) {
   const removed = { application: 1, account: 0, submissions: 0 };
   if (app.studentId) {
     removed.submissions = await deleteSubmissionsFor(app.studentId);
+    await deleteAidaFor(app.studentId);
     if (await deleteUser(app.studentId)) removed.account = 1;
   }
   await removeOne("applications", id);

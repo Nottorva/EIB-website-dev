@@ -215,9 +215,12 @@ head("lesson view, submissions, grading");
   check("grading: student -> 403", 403, await code(student, "GET", "/api/grading"));
 
   // Export as MD: the lesson's AI instructions, then the student's own answers
+  // (AI instructions are written on the AIDA page; the Lesson Editor's save leaves them alone.)
+  const put = await req(admin, "PUT", "/api/aida/admin", { lesson: { id: "lesson_1", aiInstructions: "Coach me on problem discovery. SMOKE-AI-1" } });
+  check("admin saves AI instructions on a lesson", [200, "Coach me on problem discovery. SMOKE-AI-1"], [put.status, put.json?.lesson?.aiInstructions]);
   const l1 = (await req(admin, "GET", "/api/lessons/lesson_1")).json;
-  const put = await req(admin, "PUT", "/api/lessons/lesson_1", { ...l1, aiInstructions: "Coach me on problem discovery. SMOKE-AI-1" });
-  check("admin saves AI instructions on a lesson", [200, "Coach me on problem discovery. SMOKE-AI-1"], [put.status, put.json?.aiInstructions]);
+  const viaEditor = await req(admin, "PUT", "/api/lessons/lesson_1", { ...l1, aiInstructions: "overwritten by the editor" });
+  check("a Lesson Editor save keeps the AI instructions", "Coach me on problem discovery. SMOKE-AI-1", viaEditor.json?.aiInstructions);
   check("AI instructions are not in the student's lesson data", [false, false], [
     (await req(student, "GET", "/api/lessons/view")).json.lessons.some((l) => "aiInstructions" in l),
     "aiInstructions" in (await req(student, "GET", "/api/lessons/lesson_1")).json,
@@ -609,6 +612,58 @@ head("settings");
   check("cap 0 -> 400", 400, await code(admin, "PATCH", "/api/settings", { classSizeCap: 0 }));
   check("cap 25 -> 200", 25, (await req(admin, "PATCH", "/api/settings", { classSizeCap: 25 })).json?.classSizeCap);
   await req(admin, "PATCH", "/api/settings", { classSizeCap: 23 });
+}
+
+/* ---- AIDA: the AI cofounder ---- */
+head("AIDA");
+{
+  const A = "/api/aida/admin";
+  const chat = (cookie, lessonId, message) => req(cookie, "POST", "/api/aida/chat", { lessonId, message });
+  check("AIDA page: admin 200; admin API: student and leader -> 403", [200, 403, 403], [await code(admin, "GET", "/aida"), await code(student, "GET", A), await code(leader, "GET", A)]);
+  const first = (await req(admin, "GET", A)).json;
+  check("AIDA starts off, with every lesson's instructions and deliverables", ["off", true, true], [first?.settings.mode, first?.lessons.some((l) => l.id === "lesson_1" && l.aiInstructions.includes("SMOKE-AI-1")), first?.lessons.find((l) => l.id === "lesson_2")?.deliverables.some((d) => d.id === "del_memo")]);
+  check("off: no Ask AIDA for the student, chat refused", [false, 403], [(await req(student, "GET", "/api/lessons/view")).json.aida, (await chat(student, "lesson_2", "hello")).status]);
+
+  // an inline deliverable in the text, and one linked from another lesson
+  const saved = await req(admin, "PUT", A, { lesson: { id: "lesson_2", aiInstructions: "Compare with their journal: {{deliverable:del_journal|Lesson 1: Problem Journal Entry}} SMOKE-INLINE", aidaLinks: [{ lessonId: "lesson_1", deliverableId: "del_worksheet" }, { lessonId: "lesson_1", deliverableId: "del_worksheet" }] } });
+  check("admin links a deliverable to a lesson (duplicates dropped)", [200, 1], [saved.status, saved.json?.lesson?.aidaLinks.length]);
+  const asAmara = (await req(admin, "GET", `${A}?preview=1&lesson=lesson_2&student=user_amara`)).json;
+  check("what AIDA sees: inline answer in place, linked answer, own deliverables, no name", [true, true, true, false], [
+    asAmara.context.indexOf("my entry") > asAmara.context.indexOf("Compare with their journal") && asAmara.context.indexOf("my entry") < asAmara.context.indexOf("SMOKE-INLINE"),
+    asAmara.context.includes("Commuters"),
+    asAmara.context.includes("Customer Interview Log"),
+    /Amara|amara\.chen/.test(asAmara.context + asAmara.shared),
+  ]);
+  const blank = (await req(admin, "GET", `${A}?preview=1&lesson=lesson_2`)).json;
+  check("what AIDA sees with no student: no answers", [false, false, true], [blank.context.includes("my entry"), blank.context.includes("Commuters"), blank.context.includes("_Not completed yet._")]);
+  const md = await (await fetch(`${BASE}/api/lessons/export?lesson=lesson_2`, { headers: { Cookie: student } })).text();
+  check("export fills the inline deliverable with the student's answer", [true, false], [md.includes("my entry"), md.includes("{{deliverable")]);
+
+  await req(admin, "PUT", A, { settings: { general: "SMOKE-GENERAL house rule" } });
+  check("general context reaches every lesson", true, (await req(admin, "GET", `${A}?preview=1&lesson=lesson_1`)).json.shared.includes("SMOKE-GENERAL house rule"));
+
+  const trial = await req(admin, "POST", A, { lessonId: "lesson_2", studentId: "user_amara", messages: [{ role: "user", content: "SMOKE-TEST-TAB" }] });
+  check("Test tab: admin gets a reply; a student cannot use it", [200, true, 403], [trial.status, trial.text.includes("SMOKE-TEST-TAB") && trial.text.includes("Lesson 2"), (await req(student, "POST", A, { lessonId: "lesson_2", messages: [{ role: "user", content: "x" }] })).status]);
+
+  check("test-account-only mode: an ordinary student still has no AIDA", ["test", false], [(await req(admin, "PUT", A, { settings: { mode: "test" } })).json?.settings.mode, (await req(student, "GET", "/api/lessons/view")).json.aida]);
+  await req(admin, "PUT", A, { settings: { mode: "on" } });
+  check("on: the student gets Ask AIDA; leaders and strangers cannot chat", [true, 403, 401], [(await req(student, "GET", "/api/lessons/view")).json.aida, (await chat(leader, "lesson_2", "hi")).status, (await chat(stranger, "lesson_2", "hi")).status]);
+  const r1 = await chat(student, "lesson_2", "SMOKE-HELLO what is weak here?");
+  check("student chats: a reply about that lesson", [200, true], [r1.status, r1.text.includes("SMOKE-HELLO") && r1.text.includes("Lesson 2")]);
+  const convo = (await req(student, "GET", "/api/aida/chat?lesson=lesson_2")).json;
+  check("the conversation is kept: question, answer, one fewer left today", [2, "SMOKE-HELLO what is weak here?", 59], [convo.messages.length, convo.messages[0]?.content, convo.remaining]);
+  check("another lesson is another conversation", 0, (await req(student, "GET", "/api/aida/chat?lesson=lesson_1")).json.messages.length);
+  check("empty, too long, unknown lesson -> 400, 400, 404", [400, 400, 404], [(await chat(student, "lesson_2", "  ")).status, (await chat(student, "lesson_2", "x".repeat(2001))).status, (await chat(student, "nope", "hi")).status]);
+  await req(admin, "PUT", A, { settings: { dailyLimit: 1 } });
+  check("daily limit reached -> 429", 429, (await chat(student, "lesson_2", "one more")).status);
+  await req(admin, "PUT", A, { settings: { dailyLimit: 60 } });
+  check("new chat clears the panel", [200, 0], [await code(student, "DELETE", "/api/aida/chat?lesson=lesson_2"), (await req(student, "GET", "/api/aida/chat?lesson=lesson_2")).json.messages.length]);
+  const usage = (await req(admin, "GET", A)).json.usage;
+  check("usage is counted (student message + test message)", 2, usage.today.messages);
+
+  await req(admin, "PUT", A, { settings: { mode: "off", general: "" } });
+  await req(admin, "PUT", A, { lesson: { id: "lesson_2", aiInstructions: "", aidaLinks: [] } });
+  check("switched off again: chat refused", 403, (await chat(student, "lesson_2", "hello")).status);
 }
 
 /* ---- cleanup of things this run created that later runs would trip on ---- */

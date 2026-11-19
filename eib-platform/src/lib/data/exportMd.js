@@ -11,7 +11,7 @@ const cell = (v) => String(v ?? "").replace(/\|/g, "\\|").replace(/\r?\n/g, "<br
 const EMPTY = "_Not completed yet._";
 
 // A student's answer to one deliverable, as Markdown.
-function answerMd(d, payload) {
+export function answerMd(d, payload) {
   if (d.type === "text") return String(payload?.text || "").trim() || EMPTY;
   if (d.type === "link") return isUrl(payload?.url) ? String(payload.url).trim() : EMPTY;
   if (d.type === "checklist") {
@@ -31,12 +31,35 @@ function answerMd(d, payload) {
   return EMPTY;
 }
 
+// AI instructions may carry inline deliverables, written on the AIDA page as
+// {{deliverable:ID|Label}}. Each becomes that student's answer, in place. The
+// deliverable can belong to any lesson in `allLessons`.
+export const INLINE_TOKEN = /\{\{deliverable:([^|}\s]+)(?:\|[^}]*)?\}\}/g;
+export function findDeliverable(allLessons, deliverableId) {
+  for (const lesson of allLessons) {
+    const deliverable = lesson.deliverables.find((d) => d.id === deliverableId);
+    if (deliverable) return { lesson, deliverable };
+  }
+  return null;
+}
+export function resolveInline(text, allLessons, payloadOf) {
+  return String(text || "").replace(INLINE_TOKEN, (_, id) => {
+    const hit = findDeliverable(allLessons, id);
+    if (!hit) return "";
+    return `
+[The student's answer to "${hit.deliverable.title}" (Lesson ${hit.lesson.number})]
+${answerMd(hit.deliverable, payloadOf(hit.lesson.id, id))}
+[End of answer]
+`;
+  });
+}
+
 const lessonName = (lesson) => `Lesson ${lesson.number}: ${lesson.title}`;
 
 // One lesson's section. `payloads` maps deliverableId -> the student's payload.
-export function lessonMarkdown(lesson, payloads = {}) {
+export function lessonMarkdown(lesson, payloads = {}, inline = (t) => t) {
   const out = [`## ${lessonName(lesson)}`, ""];
-  const instructions = String(lesson.aiInstructions || "").trim();
+  const instructions = inline(String(lesson.aiInstructions || "")).trim();
   if (instructions) out.push(instructions, "");
   if (lesson.deliverables.length) {
     out.push(`### My work for Lesson ${lesson.number}`, "");
@@ -51,10 +74,11 @@ export function lessonMarkdown(lesson, payloads = {}) {
 
 // The whole file: a short header, then each lesson's section. Lessons with
 // neither instructions nor deliverables are left out.
-export function exportMarkdown({ user, lessons, submissions, cohortYear }) {
+export function exportMarkdown({ user, lessons, submissions, cohortYear, allLessons = lessons }) {
   const byLesson = {};
   for (const s of submissions) (byLesson[s.lessonId] ||= {})[s.deliverableId] = s.payload;
-  const sections = lessons.filter((l) => String(l.aiInstructions || "").trim() || l.deliverables.length).map((l) => lessonMarkdown(l, byLesson[l.id]));
+  const inline = (text) => resolveInline(text, allLessons, (lessonId, deliverableId) => byLesson[lessonId]?.[deliverableId]);
+  const sections = lessons.filter((l) => String(l.aiInstructions || "").trim() || l.deliverables.length).map((l) => lessonMarkdown(l, byLesson[l.id], inline));
   const head = [
     `# EIB venture context: ${user.name}`,
     "",

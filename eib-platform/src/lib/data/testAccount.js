@@ -10,6 +10,7 @@ import { getUserByEmail } from "./users";
 import { deleteSubmissionsFor } from "./submissions";
 import { findApplicationByEmail } from "./applications";
 import { deleteDraftByEmail } from "./drafts";
+import { deleteAidaFor } from "../aida/store";
 
 export const TEST_NAME = "Test";
 
@@ -31,6 +32,7 @@ export async function wipeTestStudent() {
   const user = await getTestStudent();
   if (!user) return null;
   const removed = { submissions: await deleteSubmissionsFor(user.id), application: 0, draft: 0, agreement: user.agreement ? 1 : 0 };
+  await deleteAidaFor(user.id);
   const app = await findApplicationByEmail(user.email);
   if (app) { await removeOne("applications", app.id); removed.application = 1; }
   if (await deleteDraftByEmail(user.email)) removed.draft = 1;

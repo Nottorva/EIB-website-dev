@@ -498,3 +498,39 @@ users `eib-agent-read` (find on mentors, lessons, users, applications, settings,
 `eib-agent-write` (mentors, lessons, events, settings); the "EIB Documents" Drive folder shared with the
 service account; the variables in `.env.example` on Vercel. The agent's own collections (`agent_processed`,
 `agent_threads`, `agent_escalations`, `agent_changes`) use the main `MONGODB_URI`.
+
+## AIDA (the students' AI cofounder)
+
+AIDA (Artificial Intelligence Deliverable Assistant) is a chat panel a student opens from a lesson on the
+Lessons page ("Ask AIDA"). It reads that student's deliverables and coaches them on the lesson; it has no
+tools and cannot write or change anything. Plan and cost model: `docs/ai-cofounder-plan.md`. Code:
+`src/lib/aida/`, routes `/api/aida/chat` (students) and `/api/aida/admin` (super admin), page `/aida`.
+
+- **The AIDA page** (super admin, top bar). A strip at the top sets who can use it (**Off** / **Test account
+  only** / **On for students**; a fresh database starts Off), the messages each student may send per day
+  (default 60), and shows usage and cost. Two tabs:
+  - **Context**: the general context (sent on every lesson), the core behaviour prompt (collapsed; "Reset to
+    the original" restores `src/lib/aida/prompt.js`), and every lesson's AI instructions in one list. The
+    Lesson Editor's "AI Instructions" button opens this page at that lesson; a save from the editor never
+    changes the instructions. Under each lesson: **Insert a deliverable inline** puts
+    `{{deliverable:ID|label}}` at the cursor, which becomes the student's answer at that spot, and **Link a
+    deliverable from another lesson** adds it to what AIDA reads for this lesson (`aidaLinks` on the lesson).
+    A lesson's own deliverables are always included. "Export as MD" fills inline deliverables the same way.
+  - **Test**: pick a lesson and whose deliverables to read (any student, the test account, or nobody), then
+    talk to AIDA. "Show what AIDA sees" prints the exact text it is given. Nothing on this tab is saved.
+- **What is sent to Claude** (`context.js`): the core prompt, the general context and the list of published
+  lessons (identical for the whole class), then one lesson with that student's answers. Never the student's
+  name, email or id, never grades or feedback, never another student's work. The student is always the
+  signed-in one; the browser sends only the lesson id and the message.
+- **Caching** (`client.js`): three markers with a 1-hour lifetime (shared text, the student's lesson context,
+  the newest message). The lesson context is frozen when a conversation starts; answers the student changes
+  afterwards are attached to their next message as `<updated_work>`, so nothing already sent is ever edited.
+  Each reply logs `[eib aida] ... cache_read=` so a broken cache shows up in the Vercel logs.
+- **Storage**: `aida_conversations` (one document per student per lesson, id `aida_<student>_<lesson>`;
+  "New chat" keeps the old one under another id), `aida_usage` (one per person per Toronto day), and the
+  `aida` setting. Deleting a student's account or wiping the test account removes theirs.
+- **Limits**: 2,000 characters a message, the daily count, 80 messages a conversation, 1,500 tokens a reply.
+- **Environment**: `AIDA_ANTHROPIC_API_KEY` (falls back to `ANTHROPIC_API_KEY`), `AIDA_MODEL` (default
+  `claude-sonnet-5-5`). With no key a sandbox stand-in answers, which is what `npm run smoke` exercises.
+- **Not built yet** (see the plan): a staff view of students' conversations, the automatic screening of
+  messages with flags, class time windows, and reading the documents behind link deliverables.
