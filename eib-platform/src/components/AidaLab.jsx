@@ -83,6 +83,9 @@ export default function AidaLab() {
         task: item.instructions,
         editor: <DeliverableInput item={item} payload={key in edits ? edits[key] : work[key]} onChange={(payload) => setEdits((e) => ({ ...e, [key]: payload }))} />,
         stamp: JSON.stringify((key in edits ? edits[key] : work[key]) ?? null),
+        item,
+        payload: key in edits ? edits[key] : work[key],
+        apply: (payload) => setEdits((e) => ({ ...e, [key]: payload })),
       };
     }
     return null;

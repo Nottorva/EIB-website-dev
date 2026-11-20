@@ -1,7 +1,8 @@
 "use client";
 
 // AIDA for a student: a panel down the right side of the Lessons page, opened from a lesson card.
-// AIDA can read their work, never change it. When AIDA pulls deliverables into the chat they appear as
+// AIDA reads their work and never changes it itself: a deliverable it writes out in the chat goes in only
+// when the student presses its "Add to 1A" button. When AIDA pulls deliverables into the chat they appear as
 // buttons above the reply box; opening one turns the reply box into that deliverable (see AidaChat.jsx).
 
 import { useEffect, useState } from "react";
@@ -68,6 +69,9 @@ export default function AidaPanel({ lesson, lessons = [], submissions = {}, onCh
         task: item.instructions,
         editor: <DeliverableInput item={item} payload={submissions[`${l.id}:${id}`]?.payload} onChange={(payload) => onChangePayload?.(l.id, id, payload)} />,
         stamp: JSON.stringify(submissions[`${l.id}:${id}`]?.payload ?? null),
+        item,
+        payload: submissions[`${l.id}:${id}`]?.payload,
+        apply: (payload) => onChangePayload?.(l.id, id, payload),
       };
     }
     return null;

@@ -9,11 +9,17 @@
 // grouped by chapter: a column on the left when `wide`, a drop-down above the reply box otherwise), or AIDA
 // pulls it in by writing a [[show:ID]] line (see lib/aida/context.js; never shown as text). Opening a button
 // turns the reply box into that deliverable, and Send becomes "Submit to AIDA".
-// `deliverableOf(id)` describes one: { label, title, task, editor, stamp } (stamp changes when the answer does).
+// `deliverableOf(id)` describes one: { label, title, task, editor, stamp, item, payload, apply }
+// (stamp changes when the answer does; apply(payload) writes the answer).
+//
+// A deliverable AIDA has written out arrives between [[draft:ID]] and [[/draft]] (see lib/aida/draft.js).
+// It is shown in a box with an "Add to 1A" button, which puts it into that deliverable.
 
 import { useEffect, useRef, useState } from "react";
-import { Send, Sparkles, X, ChevronDown, ChevronRight, ListChecks } from "lucide-react";
+import { Send, Sparkles, X, ChevronDown, ChevronRight, ListChecks, Check, FilePlus2 } from "lucide-react";
 import { COLORS, Notice, fieldStyle } from "./ui";
+import { PayloadView } from "./DeliverableInputs";
+import { splitReply, draftPayload, sameAnswer } from "@/lib/aida/draft";
 
 const ERROR_MARK = "[[AIDA_ERROR]]";
 const CARD = /\[\[show:([^\]\s]+)\]\]/g;
@@ -22,6 +28,30 @@ export const AIDA_MAX_CHARS = 2000;
 // A reply without its markers (one still being written is hidden too).
 const visible = (content) => String(content).replace(CARD, "").replace(/\[\[[^\]]*\]?$/, "").replace(/\n{3,}/g, "\n\n").trim();
 const shownIn = (content) => [...new Set([...String(content).matchAll(CARD)].map((m) => m[1]))];
+// The deliverables AIDA wrote out in a reply (finished ones only).
+const draftedIn = (content) => splitReply(content).filter((p) => p.draft?.done).map((p) => p.draft.id);
+
+/* A deliverable AIDA wrote out: the answer as it will look, and the button that puts it in. */
+function Draft({ draft, d, onAdd }) {
+  const payload = d?.item ? draftPayload(d.item, draft.body) : null;
+  const box = { border: `1px solid ${COLORS.indigoBorder}`, borderRadius: 12, padding: 10, margin: "8px 0", background: COLORS.indigoSoft };
+  // Still being written, or not something a button can put in: plain text.
+  if (!payload) return <div style={box}>{draft.body}</div>;
+  const isIn = sameAnswer(d.item, d.payload, payload);
+  const hasOther = !isIn && !isEmpty(d.item, d.payload);
+  return (
+    <div style={box} data-draft={draft.id}>
+      {d.item.type === "table" ? <PayloadView type="table" payload={payload} /> : <div>{payload.text}</div>}
+      {draft.done && d.apply && (
+        <button type="button" disabled={isIn} onClick={() => onAdd(draft.id, payload)} style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 10, border: "none", borderRadius: 10, padding: "8px 13px", fontSize: 13.5, fontWeight: 800, fontFamily: "inherit", cursor: isIn ? "default" : "pointer", background: isIn ? "transparent" : COLORS.indigo, color: isIn ? COLORS.indigo : "#fff" }}>
+          {isIn ? <Check size={15} /> : <FilePlus2 size={15} />}
+          {isIn ? `Added to ${d.label}` : hasOther ? `Replace ${d.label} with this` : `Add to ${d.label}`}
+        </button>
+      )}
+    </div>
+  );
+}
+const isEmpty = (item, payload) => (item.type === "text" ? !String(payload?.text || "").trim() : !(payload?.rows || []).some((r) => r.some((c) => String(c || "").trim())));
 
 /* The deliverables, chapter by chapter. Picking one puts (or removes) its button above the reply box. */
 function Catalog({ catalog, startOpen, active, onPick }) {
@@ -81,7 +111,7 @@ export default function AidaChat({ messages, setMessages, post, emptyHint, disab
 
   // The buttons: what the student picked, plus whatever AIDA pulled in most recently.
   let pulled = [];
-  for (let i = messages.length - 1; i >= 0 && !pulled.length; i--) if (messages[i].role === "assistant") pulled = shownIn(messages[i].content);
+  for (let i = messages.length - 1; i >= 0 && !pulled.length; i--) if (messages[i].role === "assistant") pulled = [...shownIn(messages[i].content), ...draftedIn(messages[i].content)];
   const buttons = deliverableOf ? [...new Set([...picked, ...pulled])].map((id) => ({ id, ...(deliverableOf(id) || {}) })).filter((d) => d.label) : [];
   const open = buttons.find((d) => d.id === openId && d.editor) || null;
 
@@ -89,6 +119,11 @@ export default function AidaChat({ messages, setMessages, post, emptyHint, disab
     if (open?.id === d.id) return setOpenId(null);
     if (!(d.id in submitted.current)) submitted.current[d.id] = d.stamp;
     setOpenId(d.id);
+  };
+  // "Add to 1A": AIDA's version becomes the answer, and the deliverable's button stays above the reply box.
+  const addDraft = (id, payload) => {
+    deliverableOf?.(id)?.apply?.(payload);
+    setPicked((prev) => (prev.includes(id) ? prev : [...prev, id]));
   };
   const pick = (id) => {
     setPicked((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -146,7 +181,10 @@ export default function AidaChat({ messages, setMessages, post, emptyHint, disab
 
   const bubble = (m, i) => {
     const mine = m.role === "user";
-    const shown = mine ? m.content : visible(m.content);
+    const parts = mine ? [] : splitReply(m.content);
+    const shown = mine ? m.content : parts.some((p) => p.draft)
+      ? parts.map((p, k) => (p.draft ? <Draft key={k} draft={p.draft} d={deliverableOf?.(p.draft.id)} onAdd={addDraft} /> : visible(p.text) && <div key={k}>{visible(p.text)}</div>))
+      : visible(m.content);
     return (
       <div key={i} style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start" }}>
         <div style={{ maxWidth: "88%", padding: "11px 14px", borderRadius: 14, fontSize: 14.5, lineHeight: 1.55, whiteSpace: "pre-wrap", overflowWrap: "anywhere", background: mine ? COLORS.indigo : "#fff", color: mine ? "#fff" : COLORS.text, border: mine ? "none" : `1px solid ${COLORS.border}` }}>

@@ -66,8 +66,9 @@ async function mockChat({ shared, context, messages, onText }) {
   const said = messages[messages.length - 1].text;
   const lesson = (context.match(/opened you from (Lesson .+?)\. That is/) || [0, "this lesson"])[1];
   const text = `[Sandbox reply, no AI key set] I am looking at ${lesson}. I can see ${(context.match(/^### /gm) || []).length} deliverable(s). You said: ${said.replace(/<updated_work[\s\S]*<\/updated_work>\s*/g, "").slice(0, 200)}${/show me/i.test(said) ? `\n[[show:${(shared.match(/\(id: ([^)]+)\)/) || [0, "none"])[1]}]]` : ""}`;
+  const drafted = /draft it/i.test(said) ? `\n[[draft:${(shared.match(/\(id: ([^)]+)\)/) || [0, "none"])[1]}]]\nSANDBOX-DRAFT one\nSANDBOX-DRAFT two\n[[/draft]]\nWant any changes?` : "";
   const updated = ((said.match(/<updated_work[\s\S]*<\/updated_work>/) || [""])[0].match(/^### /gm) || []).length;
-  const full = updated ? `${text}\nChanged answers received with this message: ${updated}.` : text;
+  const full = (updated ? `${text}\nChanged answers received with this message: ${updated}.` : text) + drafted;
   for (const piece of full.match(/.{1,40}/gs) || []) onText(piece);
   return { text: full, usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, stop: "end_turn" };
 }

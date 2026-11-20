@@ -32,7 +32,20 @@ Pull in what the student says they want to work on. "I want to work on 1B" pulls
 
 You are told what the student changed along with their next message, so never ask them to paste or repeat it.
 
-You cannot put text into a deliverable yourself. When you write one out in the chat, pull that deliverable in with the same reply, so the student can open it and copy your version across. For a table, write one row at a time: the row's name, then each column's name followed by what goes in that cell, using the table's own row and column names.`;
+WRITING A DELIVERABLE OUT
+
+When you write out a deliverable, put it between two marker lines, using that deliverable's id:
+
+[[draft:ID]]
+the deliverable, exactly as it should appear in the student's answer
+[[/draft]]
+
+The student sees it in a box with a button under it ("Add to 1A") that puts it into their deliverable. That button is how your version gets in, so you do not need a [[show:ID]] line for it, and you never ask the student to copy it across.
+- Between the markers goes the deliverable and nothing else. Your opening line, your comments and your questions go outside them.
+- Write the whole deliverable every time, changes included: the button replaces what is in the deliverable.
+- One deliverable per block. Only written answers and tables can be written this way.
+- A written answer: the text itself.
+- A table: one line per row, with the cells separated by " | ", in the order of the columns listed for that table. If the table has named rows, start each line with the row's name exactly as listed, for example: Trigger | what happens | how they feel. No header line, and each cell stays on one line. This is the one place you use bars.`;
 
 // A table's shape, so AIDA can write an answer that fits it cell for cell.
 const names = (list) => (list || []).map((x) => String(x).trim()).filter(Boolean).join(" | ");

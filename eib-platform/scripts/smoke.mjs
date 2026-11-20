@@ -664,6 +664,11 @@ head("AIDA");
   await req(student, "PUT", "/api/submissions", { lessonId: "lesson_1", deliverableId: "del_journal", payload: { text: "SMOKE-CARD-EDIT new journal answer" } });
   await chat(student, "lesson_3", "I changed it");
   check("an answer edited mid-chat reaches AIDA as a change, and the chat shows only what was typed", "I changed it", (await req(student, "GET", "/api/aida/chat?lesson=lesson_3")).json.messages[2]?.content);
+  // A deliverable AIDA writes out: marked in the reply, read back as the answer its "Add to" button puts in
+  const { splitReply, draftPayload } = await import("../src/lib/aida/draft.js");
+  const drafted = splitReply((await chat(student, "lesson_3", "draft it")).text).find((p) => p.draft)?.draft;
+  check("AIDA is told how to write a deliverable out, and a written one is read back as the answer", [true, "del_journal", true, { text: "SANDBOX-DRAFT one" + String.fromCharCode(10) + "SANDBOX-DRAFT two" }], [asAmara.shared.includes("[[draft:ID]]"), drafted?.id, drafted?.done, draftPayload({ type: "text" }, drafted?.body)]);
+  check("a table AIDA writes out fills the right rows", [["", ""], ["bus late", "nervous"]], draftPayload({ type: "table", columns: ["What happens", "How they feel"], rowLabels: ["Starting State", "Trigger"] }, "Trigger | bus late | nervous")?.rows);
   check("another lesson is another conversation", 0, (await req(student, "GET", "/api/aida/chat?lesson=lesson_1")).json.messages.length);
   check("empty, too long, unknown lesson -> 400, 400, 404", [400, 400, 404], [(await chat(student, "lesson_2", "  ")).status, (await chat(student, "lesson_2", "x".repeat(2001))).status, (await chat(student, "nope", "hi")).status]);
   // opening hours (Toronto time): closed on every day but today, then open all of today
@@ -680,7 +685,7 @@ head("AIDA");
   await req(admin, "PUT", A, { settings: { dailyLimit: 60 } });
   check("new chat clears the panel", [200, 0], [await code(student, "DELETE", "/api/aida/chat?lesson=lesson_2"), (await req(student, "GET", "/api/aida/chat?lesson=lesson_2")).json.messages.length]);
   const usage = (await req(admin, "GET", A)).json.usage;
-  check("usage is counted (student messages + chat page messages)", 6, usage.today.messages);
+  check("usage is counted (student messages + chat page messages)", 7, usage.today.messages);
 
   await req(admin, "PUT", A, { settings: { mode: "off", general: "" } });
   await req(admin, "PUT", A, { lesson: { id: "lesson_2", aiInstructions: "" } });
