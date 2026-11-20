@@ -148,11 +148,11 @@ export default function Aida() {
               <textarea aria-label="General context" value={data.settings.general} onChange={(e) => patchSettings({ general: e.target.value })} placeholder="For example: Students work alone or in pairs. The showcase is on April 23. Ventures must be something a student could really start this year." rows={rowsFor(data.settings.general)} style={{ ...fieldStyle, ...mono, resize: "vertical" }} />
 
               <button type="button" onClick={() => setShowPrompt((v) => !v)} style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 16, border: "none", background: "transparent", color: COLORS.indigo, fontWeight: 800, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit", padding: 0 }}>
-                {showPrompt ? <ChevronUp size={15} /> : <ChevronDown size={15} />} Core behaviour (how AIDA coaches)
+                {showPrompt ? <ChevronUp size={15} /> : <ChevronDown size={15} />} Core behaviour (how AIDA works with students)
               </button>
               {showPrompt && (
                 <div style={{ marginTop: 12 }}>
-                  <div style={{ ...hint, marginBottom: 10 }}>The rules AIDA follows with every student: coach, do not write their work, stay on the lesson, stay appropriate for high school. Edit with care.</div>
+                  <div style={{ ...hint, marginBottom: 10 }}>The rules AIDA follows with every student: ask for what a deliverable needs without leading, write it from the student's answers, stay on the lesson, stay appropriate for high school. Edit with care.</div>
                   <textarea aria-label="Core behaviour" value={data.settings.prompt || data.defaultPrompt} onChange={(e) => patchSettings({ prompt: e.target.value })} rows={22} style={{ ...fieldStyle, ...mono, resize: "vertical" }} />
                   {data.settings.prompt && data.settings.prompt !== data.defaultPrompt && (
                     <button type="button" onClick={() => patchSettings({ prompt: "" })} style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10, border: `1px solid ${COLORS.border}`, background: "#fff", borderRadius: 9, padding: "7px 12px", fontSize: 13, fontWeight: 700, color: COLORS.sub, cursor: "pointer", fontFamily: "inherit" }}>

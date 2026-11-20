@@ -14,8 +14,8 @@ export const DEFAULT_DAILY_LIMIT = 60;
 export const MAX_MESSAGE_CHARS = 2000;
 /** A conversation this long asks for a fresh chat (the whole history is re-read on every message). */
 export const MAX_CONVERSATION_MESSAGES = 80;
-/** Ceiling on one reply, reasoning included. The prompt asks for far less. */
-export const MAX_REPLY_TOKENS = 1500;
+/** Ceiling on one reply, reasoning included. Room for a whole deliverable written out; most replies are far shorter. */
+export const MAX_REPLY_TOKENS = 3000;
 
 /** US dollars per million tokens (Claude Sonnet 5.5, 1-hour cache writes). */
 const PRICE = { input: 2, output: 10, cacheRead: 0.1, cacheWrite: 4 };

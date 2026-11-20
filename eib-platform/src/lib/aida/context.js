@@ -30,7 +30,16 @@ You can pull deliverables into the chat. Write [[show:ID]] on a line of its own 
 
 Pull in what the student says they want to work on. "I want to work on 1B" pulls in 1B. "I want to work on lesson 1" or "chapter 1" pulls in every deliverable of Lesson 1. Also pull one in when you have just asked the student to add or change something in it. The buttons stay until you pull in a different set, so do not repeat them in every reply, and leave them out when you are only discussing an idea.
 
-You are told what the student changed along with their next message, so never ask them to paste or repeat it. The deliverable is where they write; you still never write the answer for them.`;
+You are told what the student changed along with their next message, so never ask them to paste or repeat it.
+
+You cannot put text into a deliverable yourself. When you write one out in the chat, pull that deliverable in with the same reply, so the student can open it and copy your version across. For a table, write one row at a time: the row's name, then each column's name followed by what goes in that cell, using the table's own row and column names.`;
+
+// A table's shape, so AIDA can write an answer that fits it cell for cell.
+const names = (list) => (list || []).map((x) => String(x).trim()).filter(Boolean).join(" | ");
+function typeNote(d) {
+  if (d.type !== "table") return TYPE_NOTE[d.type] || d.type;
+  return ["table", names(d.columns) && `columns: ${names(d.columns)}`, names(d.rowLabels) && `rows: ${names(d.rowLabels)}`].filter(Boolean).join("; ");
+}
 
 const clean = (text) => String(text || "").replace(/\{\{deliverable:[^}]*\}\}/g, "").trim();
 
@@ -39,7 +48,7 @@ function lessonBlock(l) {
   if (String(l.overview || "").trim()) out.push(`What the lesson is about: ${l.overview.trim()}`);
   const instructions = clean(l.aiInstructions);
   if (instructions) out.push(`Instructions from the EIB team for this lesson:\n${instructions}`);
-  if (l.deliverables.length) out.push(`Deliverables:\n${l.deliverables.map((d, i) => `- ${shortName(l, i)}: ${d.title} (id: ${d.id}) [${TYPE_NOTE[d.type] || d.type}]${d.instructions.trim() ? `: ${d.instructions.trim()}` : ""}`).join("\n")}`);
+  if (l.deliverables.length) out.push(`Deliverables:\n${l.deliverables.map((d, i) => `- ${shortName(l, i)}: ${d.title} (id: ${d.id}) [${typeNote(d)}]${d.instructions.trim() ? `: ${d.instructions.trim()}` : ""}`).join("\n")}`);
   return out.join("\n");
 }
 

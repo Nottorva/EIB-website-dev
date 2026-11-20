@@ -99,7 +99,7 @@ export default function AidaPanel({ lesson, lessons = [], submissions = {}, onCh
         </button>
       </div>
       <div style={{ fontSize: 12, color: COLORS.faint, padding: "8px 16px", borderBottom: `1px solid ${COLORS.border}`, lineHeight: 1.45 }}>
-        AIDA is an AI. It can read your EIB deliverables and coach you on them; the writing is yours. Chats are saved and EIB staff may review them. Don't share personal details.
+        AIDA is an AI. It reads your EIB deliverables, asks you for what it needs, and writes drafts from your answers. Check every draft: the venture is yours. Chats are saved and EIB staff may review them. Don't share personal details.
       </div>
       {error ? (
         <div style={{ padding: 16 }}><Notice onClose={onClose}>{error}</Notice></div>
