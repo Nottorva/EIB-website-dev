@@ -54,3 +54,20 @@ a {
 .eib-spin {
   animation: eib-spin 0.9s linear infinite;
 }
+
+/* The AIDA chat on a phone: text at 16px, so it reads comfortably and iOS does not zoom the page when
+   the message box is tapped (it does for anything smaller). */
+@media (max-width: 700px) {
+  :root {
+    --aida-input-size: 16px;
+    --aida-text-size: 15.5px;
+  }
+}
+
+/* On a phone the tools menu wraps onto several lines, so it scrolls away with the page instead of
+   staying stuck over a third of the screen. */
+@media (max-width: 700px) {
+  .eib-topbar {
+    position: static !important;
+  }
+}

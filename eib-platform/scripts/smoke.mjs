@@ -701,6 +701,25 @@ head("AIDA");
   check("AIDA Unlocked: its messages are counted in usage", 9, (await req(admin, "GET", A)).json.usage.today.messages);
   await req(admin, "PUT", U, { knowledge: "", name: "" });
 
+  // One-time demo links: no account, first browser to press Start gets it, spent for everyone else
+  const D = "/api/aida/demo-links";
+  check("demo links: student and leader cannot make or list them", [403, 403], [await code(student, "GET", D), await code(leader, "POST", D, { label: "x" })]);
+  const made = (await req(admin, "POST", D, { label: "SMOKE investor" })).json;
+  const demo = `/api/demo/${made?.id}`;
+  const hello = { messages: [{ role: "user", content: "SMOKE-DEMO" }] };
+  check("demo link: made, listed as not opened", [true, "unused", "SMOKE investor"], [/^[A-Za-z0-9_-]{24}$/.test(made?.id || ""), made?.links[0]?.status, made?.links[0]?.label]);
+  const landing = await req(null, "GET", `/demo/${made?.id}`);
+  check("demo link: the page opens with no account, and opening it does not use it up", [200, true, "unused"], [landing.status, landing.text.includes("Start the demo"), (await req(admin, "GET", D)).json.links[0].status]);
+  check("demo link: no chat before Start; a made-up link is refused", [410, 410, true], [await code(null, "POST", demo, hello), await code(null, "POST", "/api/demo/abcdefghijklmnopqrstuvwx", { start: true }), (await req(null, "GET", "/demo/abcdefghijklmnopqrstuvwx")).text.includes("not available")]);
+  const started = await req(null, "POST", demo, { start: true });
+  const visitor = cookieOf(started);
+  check("demo link: Start claims it for that browser", [200, "active", 40, true], [started.status, started.json?.status, started.json?.left, /HttpOnly/i.test(started.setCookie.join(";"))]);
+  check("demo link: spent for anyone else (second Start, chat without the cookie, the page)", [410, 410, true], [await code(null, "POST", demo, { start: true }), await code(null, "POST", demo, hello), (await req(null, "GET", `/demo/${made?.id}`)).text.includes("already been used")]);
+  const said = await req(visitor, "POST", demo, hello);
+  check("demo link: the visitor chats with AIDA Unlocked, and it is counted", [true, "open", 1], [said.text.includes("AIDA Unlocked here") && said.text.includes("SMOKE-DEMO"), (await req(admin, "GET", D)).json.links[0].status, (await req(admin, "GET", D)).json.links[0].messages]);
+  check("demo link: the visitor cannot reach anything else", [403, 403], [await code(student, "GET", U), await code(student, "GET", D)]);
+  check("demo link: deleted -> the visitor is cut off", [0, 410], [(await req(admin, "DELETE", `${D}?id=${made?.id}`)).json.links.length, await code(visitor, "POST", demo, hello)]);
+
   await req(admin, "PUT", A, { settings: { mode: "off", general: "" } });
   await req(admin, "PUT", A, { lesson: { id: "lesson_2", aiInstructions: "" } });
   check("switched off again: chat refused", 403, (await chat(student, "lesson_2", "hello")).status);

@@ -198,7 +198,7 @@ export default function AidaChat({ messages, setMessages, post, emptyHint, disab
     const waiting = searching ? "Searching the web…" : writing ? "AIDA is thinking…" : deliverableOf ? "Your deliverables are just above the reply box." : "";
     return (
       <div key={i} style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start" }}>
-        <div style={{ maxWidth: "88%", padding: "11px 14px", borderRadius: 14, fontSize: 14.5, lineHeight: 1.55, whiteSpace: "pre-wrap", overflowWrap: "anywhere", background: mine ? COLORS.indigo : "#fff", color: mine ? "#fff" : COLORS.text, border: mine ? "none" : `1px solid ${COLORS.border}` }}>
+        <div style={{ maxWidth: "min(88%, 760px)", padding: "11px 14px", borderRadius: 14, fontSize: "var(--aida-text-size, 14.5px)", lineHeight: 1.55, whiteSpace: "pre-wrap", overflowWrap: "anywhere", background: mine ? COLORS.indigo : "#fff", color: mine ? "#fff" : COLORS.text, border: mine ? "none" : `1px solid ${COLORS.border}` }}>
           {shown}
           {(!shown || searching) && waiting && <span style={{ color: COLORS.faint, display: "block", marginTop: shown ? 8 : 0 }}>{waiting}</span>}
         </div>
@@ -241,7 +241,7 @@ export default function AidaChat({ messages, setMessages, post, emptyHint, disab
           <div ref={endRef} />
         </div>
 
-        <div style={{ padding: "10px 16px 14px", borderTop: `1px solid ${COLORS.border}`, background: "#fff" }}>
+        <div style={{ padding: "10px 16px max(14px, env(safe-area-inset-bottom))", borderTop: `1px solid ${COLORS.border}`, background: "#fff" }}>
           {error && <div style={{ marginBottom: 8 }}><Notice onClose={() => setError(null)}>{error}</Notice></div>}
           {disabledReason && <div style={{ marginBottom: 8 }}><Notice tone="amber">{disabledReason}</Notice></div>}
 
@@ -292,7 +292,8 @@ export default function AidaChat({ messages, setMessages, post, emptyHint, disab
                 maxLength={maxChars}
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
+                  // On a touch keyboard Enter starts a new line, as in any messaging app; the button sends.
+                  if (e.key === "Enter" && !e.shiftKey && !window.matchMedia?.("(pointer: coarse)").matches) {
                     e.preventDefault();
                     send();
                   }
@@ -300,7 +301,7 @@ export default function AidaChat({ messages, setMessages, post, emptyHint, disab
                 placeholder={placeholder}
                 rows={2}
                 disabled={off}
-                style={{ ...fieldStyle, resize: "none", fontSize: 14.5, lineHeight: 1.45, padding: "10px 12px" }}
+                style={{ ...fieldStyle, resize: "none", fontSize: "var(--aida-input-size, 14.5px)", lineHeight: 1.45, padding: "10px 12px" }}
               />
               {sendButton("", () => send(), busy || !text.trim() || off)}
             </div>

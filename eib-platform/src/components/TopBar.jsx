@@ -70,6 +70,7 @@ export default function TopBar({ user, authMode, identity }) {
 
   return (
     <header
+      className="eib-topbar"
       style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "12px 28px", borderBottom: `1px solid ${COLORS.border}`, background: "#fff", position: "sticky", top: 0, zIndex: 50, flexWrap: "wrap" }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
