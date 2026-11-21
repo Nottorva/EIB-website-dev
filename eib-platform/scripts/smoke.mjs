@@ -687,6 +687,20 @@ head("AIDA");
   const usage = (await req(admin, "GET", A)).json.usage;
   check("usage is counted (student messages + chat page messages)", 7, usage.today.messages);
 
+  // AIDA Unlocked: the demo cofounder, super admin only, with the method kept in the database
+  const U = "/api/aida/unlocked";
+  check("AIDA Unlocked: page and API for the admin; student and leader -> 403", [200, 200, 403, 403], [await code(admin, "GET", "/aida-unlocked"), await code(admin, "GET", U), await code(student, "GET", U), await code(leader, "POST", U, { messages: [{ role: "user", content: "hi" }] })]);
+  check("AIDA Unlocked: starts with no method loaded", 0, (await req(admin, "GET", U)).json.knowledge.words);
+  const bare = await req(admin, "POST", U, { messages: [{ role: "user", content: "SMOKE-UNLOCKED" }] });
+  check("AIDA Unlocked: answers without the method", [true, true], [bare.text.includes("Method loaded: none"), bare.text.includes("SMOKE-UNLOCKED")]);
+  const loaded = await req(admin, "PUT", U, { knowledge: "one two three four five", name: "smoke.txt" });
+  check("AIDA Unlocked: the method file is saved and described", [5, "smoke.txt", 5], [loaded.json?.knowledge.words, loaded.json?.knowledge.name, (await req(admin, "GET", U)).json.knowledge.words]);
+  const withMethod = await req(admin, "POST", U, { messages: [{ role: "user", content: "hello" }, { role: "assistant", content: "[[searching]]hi" }, { role: "user", content: "please search" }] });
+  check("AIDA Unlocked: reads the method and the whole chat; a search is marked and its sources listed", [true, true, true, true], [withMethod.text.includes("Method loaded: 5 words"), withMethod.text.includes("Messages so far: 3"), withMethod.text.includes("[[searching]]"), withMethod.text.includes("https://example.com/smoke")]);
+  check("AIDA Unlocked: no message, or not text -> 400", [400, 400], [await code(admin, "POST", U, { messages: [] }), await code(admin, "PUT", U, { knowledge: 5 })]);
+  check("AIDA Unlocked: its messages are counted in usage", 9, (await req(admin, "GET", A)).json.usage.today.messages);
+  await req(admin, "PUT", U, { knowledge: "", name: "" });
+
   await req(admin, "PUT", A, { settings: { mode: "off", general: "" } });
   await req(admin, "PUT", A, { lesson: { id: "lesson_2", aiInstructions: "" } });
   check("switched off again: chat refused", 403, (await chat(student, "lesson_2", "hello")).status);

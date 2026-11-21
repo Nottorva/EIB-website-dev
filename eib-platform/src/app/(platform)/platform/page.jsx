@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Pencil, Users, ClipboardList, GraduationCap, FileText, Globe, Bot, ClipboardCheck, CheckCheck, Sparkles } from "lucide-react";
+import { Pencil, Users, ClipboardList, GraduationCap, FileText, Globe, Bot, ClipboardCheck, CheckCheck, Sparkles, Rocket } from "lucide-react";
 import { getAccessState, authMode } from "@/lib/auth";
 import { ROLE_LABEL } from "@/lib/roles";
 
@@ -58,6 +58,13 @@ const TOOLS = [
     icon: Sparkles,
     roles: ["superAdmin"],
     blurb: "The students' AI cofounder: every lesson's AI instructions in one place, and a tab to test it.",
+  },
+  {
+    href: "/aida-unlocked",
+    label: "AIDA Unlocked",
+    icon: Rocket,
+    roles: ["superAdmin"],
+    blurb: "The demo AI cofounder: the whole EIB method plus live web research, for any founder and any venture.",
   },
   {
     href: "/website",

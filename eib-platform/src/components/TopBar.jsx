@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, Pencil, Users, ClipboardList, GraduationCap, FileText, Globe, Bot, ClipboardCheck, CheckCheck, Sparkles } from "lucide-react";
+import { BookOpen, Pencil, Users, ClipboardList, GraduationCap, FileText, Globe, Bot, ClipboardCheck, CheckCheck, Sparkles, Rocket } from "lucide-react";
 import { COLORS } from "./ui";
 import { GoogleSignInButton, GoogleSignOutButton } from "./GoogleButtons";
 
@@ -15,6 +15,7 @@ const NAV = [
   { href: "/grading", label: "Grading", icon: CheckCheck, roles: ["superAdmin", "studentLeader"] },
   { href: "/lessons", label: "Lessons", icon: GraduationCap, roles: ["superAdmin", "studentLeader", "student"] },
   { href: "/aida", label: "AIDA", icon: Sparkles, roles: ["superAdmin"] },
+  { href: "/aida-unlocked", label: "AIDA Unlocked", icon: Rocket, roles: ["superAdmin"] },
   { href: "/website", label: "Website", icon: Globe, roles: ["superAdmin"] },
   { href: "/agent", label: "Assistant", icon: Bot, roles: ["superAdmin"] },
   { href: "/changes", label: "Changes", icon: ClipboardCheck, roles: ["superAdmin"] },

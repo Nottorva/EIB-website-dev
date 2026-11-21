@@ -14,6 +14,9 @@
 //
 // A deliverable AIDA has written out arrives between [[draft:ID]] and [[/draft]] (see lib/aida/draft.js).
 // It is shown in a box with an "Add to 1A" button, which puts it into that deliverable.
+//
+// AIDA Unlocked uses the same box with no deliverables. Web addresses in a reply are links, and while it
+// searches the web the reply carries [[searching]] (never shown as text), which shows as a status line.
 
 import { useEffect, useRef, useState } from "react";
 import { Send, Sparkles, X, ChevronDown, ChevronRight, ListChecks, Check, FilePlus2 } from "lucide-react";
@@ -26,7 +29,11 @@ const CARD = /\[\[show:([^\]\s]+)\]\]/g;
 export const AIDA_MAX_CHARS = 2000;
 
 // A reply without its markers (one still being written is hidden too).
-const visible = (content) => String(content).replace(CARD, "").replace(/\[\[[^\]]*\]?$/, "").replace(/\n{3,}/g, "\n\n").trim();
+const SEARCHING = "[[searching]]";
+const visible = (content) => String(content).replaceAll(SEARCHING, "").replace(CARD, "").replace(/\[\[[^\]]*\]?$/, "").replace(/\n{3,}/g, "\n\n").trim();
+// Text with its web addresses as links.
+const LINK = /(https?:\/\/[^\s<>"]+[^\s<>".,;:!?)\]])/;
+const linked = (str) => (LINK.test(str) ? str.split(LINK).map((part, i) => (i % 2 ? <a key={i} href={part} target="_blank" rel="noopener noreferrer" style={{ color: COLORS.indigo }}>{part}</a> : part)) : str);
 const shownIn = (content) => [...new Set([...String(content).matchAll(CARD)].map((m) => m[1]))];
 // The deliverables AIDA wrote out in a reply (finished ones only).
 const draftedIn = (content) => splitReply(content).filter((p) => p.draft?.done).map((p) => p.draft.id);
@@ -95,7 +102,7 @@ function Catalog({ catalog, startOpen, active, onPick }) {
   );
 }
 
-export default function AidaChat({ messages, setMessages, post, emptyHint, disabledReason = "", deliverableOf, catalog = [], currentGroup = "", wide = false, editorNote = "This is your deliverable. It saves as you type." }) {
+export default function AidaChat({ messages, setMessages, post, emptyHint, disabledReason = "", deliverableOf, catalog = [], currentGroup = "", wide = false, editorNote = "This is your deliverable. It saves as you type.", maxChars = AIDA_MAX_CHARS, placeholder = "Ask AIDA about your work…" }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -183,12 +190,17 @@ export default function AidaChat({ messages, setMessages, post, emptyHint, disab
     const mine = m.role === "user";
     const parts = mine ? [] : splitReply(m.content);
     const shown = mine ? m.content : parts.some((p) => p.draft)
-      ? parts.map((p, k) => (p.draft ? <Draft key={k} draft={p.draft} d={deliverableOf?.(p.draft.id)} onAdd={addDraft} /> : visible(p.text) && <div key={k}>{visible(p.text)}</div>))
-      : visible(m.content);
+      ? parts.map((p, k) => (p.draft ? <Draft key={k} draft={p.draft} d={deliverableOf?.(p.draft.id)} onAdd={addDraft} /> : visible(p.text) && <div key={k}>{linked(visible(p.text))}</div>))
+      : linked(visible(m.content));
+    const writing = busy && i === messages.length - 1;
+    // The last thing in the reply so far is a web search that has not produced words yet.
+    const searching = !mine && writing && String(m.content).trimEnd().endsWith(SEARCHING);
+    const waiting = searching ? "Searching the web…" : writing ? "AIDA is thinking…" : deliverableOf ? "Your deliverables are just above the reply box." : "";
     return (
       <div key={i} style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start" }}>
         <div style={{ maxWidth: "88%", padding: "11px 14px", borderRadius: 14, fontSize: 14.5, lineHeight: 1.55, whiteSpace: "pre-wrap", overflowWrap: "anywhere", background: mine ? COLORS.indigo : "#fff", color: mine ? "#fff" : COLORS.text, border: mine ? "none" : `1px solid ${COLORS.border}` }}>
-          {shown || <span style={{ color: COLORS.faint }}>{busy && i === messages.length - 1 ? "AIDA is thinking…" : "Your deliverables are just above the reply box."}</span>}
+          {shown}
+          {(!shown || searching) && waiting && <span style={{ color: COLORS.faint, display: "block", marginTop: shown ? 8 : 0 }}>{waiting}</span>}
         </div>
       </div>
     );
@@ -220,7 +232,7 @@ export default function AidaChat({ messages, setMessages, post, emptyHint, disab
       <div style={{ display: "flex", flexDirection: "column", minHeight: 0, minWidth: 0, flex: 1 }}>
         <div aria-live="polite" style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10, padding: "16px 16px 8px", background: COLORS.bg }}>
           {messages.length === 0 && (
-            <div style={{ margin: "auto", textAlign: "center", color: COLORS.faint, fontSize: 14, lineHeight: 1.55, maxWidth: 300 }}>
+            <div style={{ margin: "auto", textAlign: "center", color: COLORS.faint, fontSize: 14, lineHeight: 1.55, maxWidth: 380 }}>
               <Sparkles size={22} color={COLORS.indigo} style={{ marginBottom: 8 }} />
               <div>{emptyHint}</div>
             </div>
@@ -277,7 +289,7 @@ export default function AidaChat({ messages, setMessages, post, emptyHint, disab
               <textarea
                 aria-label="Message to AIDA"
                 value={text}
-                maxLength={AIDA_MAX_CHARS}
+                maxLength={maxChars}
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
@@ -285,7 +297,7 @@ export default function AidaChat({ messages, setMessages, post, emptyHint, disab
                     send();
                   }
                 }}
-                placeholder="Ask AIDA about your work…"
+                placeholder={placeholder}
                 rows={2}
                 disabled={off}
                 style={{ ...fieldStyle, resize: "none", fontSize: 14.5, lineHeight: 1.45, padding: "10px 12px" }}

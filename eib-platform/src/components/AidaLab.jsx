@@ -5,10 +5,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Sparkles, RotateCcw, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { Sparkles, RotateCcw, Eye, EyeOff, ArrowLeft, Maximize2 } from "lucide-react";
 import { COLORS, Notice, Loading, FieldLabel, fieldStyle } from "./ui";
 import { api } from "@/lib/api";
 import AidaChat from "./AidaChat";
+import ChatFrame from "./ChatFrame";
 import { DeliverableInput } from "./DeliverableInputs";
 
 const ADMIN = "/api/aida/admin";
@@ -27,6 +28,7 @@ export default function AidaLab() {
   const [work, setWork] = useState({}); // the chosen student's saved answers
   const [edits, setEdits] = useState({}); // trial changes made here
   const told = useRef({}); // each trial change as AIDA was last sent it
+  const [full, setFull] = useState(false); // the chat over the whole window
 
   useEffect(() => {
     api
@@ -132,6 +134,9 @@ export default function AidaLab() {
                 <button type="button" onClick={togglePreview} style={button}>
                   {preview ? <EyeOff size={15} /> : <Eye size={15} />} {preview ? "Hide what AIDA sees" : "Show what AIDA sees"}
                 </button>
+                <button type="button" onClick={() => setFull(true)} style={button}>
+                  <Maximize2 size={15} /> Full screen
+                </button>
                 <button type="button" onClick={() => setMessages([])} disabled={!messages.length} style={{ ...button, cursor: messages.length ? "pointer" : "default", opacity: messages.length ? 1 : 0.5 }}>
                   <RotateCcw size={15} /> New chat
                 </button>
@@ -150,9 +155,9 @@ export default function AidaLab() {
               </div>
             )}
 
-            <div style={{ ...card, padding: 0, overflow: "hidden", display: "flex", flexDirection: "column", height: "min(680px, 74vh)" }}>
+            <ChatFrame full={full} onExit={() => setFull(false)} title="Chat with AIDA" onNew={messages.length ? () => setMessages([]) : null}>
               <AidaChat messages={messages} setMessages={setMessages} post={post} deliverableOf={deliverableOf} catalog={catalog} currentGroup={lessonId} wide editorNote="A test copy. Nothing you type here is saved to the student's work." emptyHint={`This is the AIDA students get. It is reading ${whose} deliverables. Nothing here is saved.`} />
-            </div>
+            </ChatFrame>
           </div>
         )}
       </div>
