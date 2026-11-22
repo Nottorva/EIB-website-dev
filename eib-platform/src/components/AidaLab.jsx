@@ -105,7 +105,7 @@ export default function AidaLab() {
   };
   // The list beside the chat: every deliverable, chapter by chapter. Picking one puts its button above
   // the reply box without having to ask AIDA for it.
-  const catalog = (data?.lessons || []).map((l) => ({ id: l.id, label: l.chapterLabel || `Lesson ${l.number}`, title: l.studentVisible ? l.title : `${l.title} (draft)`, items: l.deliverables.map((d, i) => ({ id: d.id, label: `${l.number}${String.fromCharCode(65 + i)}`, title: d.title })) }));
+  const catalog = (data?.lessons || []).filter((l) => l.studentVisible || l.id === lessonId).map((l) => ({ id: l.id, label: l.chapterLabel || `Lesson ${l.number}`, title: l.title, items: l.deliverables.map((d, i) => ({ id: d.id, label: `${l.number}${String.fromCharCode(65 + i)}`, title: d.title })) }));
   const who = data?.students.find((s) => s.id === studentId);
   const whose = who ? `${who.name}'s` : "blank";
 
@@ -159,7 +159,7 @@ export default function AidaLab() {
             {preview && (
               <div style={card}>
                 <div style={{ fontSize: 13, color: COLORS.faint, lineHeight: 1.5, marginBottom: 12 }}>Exactly this, then the conversation. No student name or email is included.</div>
-                <FieldLabel>1. Same for every student: how AIDA behaves, your context, every lesson (here, drafts included; students get published lessons only)</FieldLabel>
+                <FieldLabel>1. Same for every student: how AIDA behaves, your context, every lesson</FieldLabel>
                 <pre style={{ ...pre, maxHeight: 300, margin: "0 0 14px" }}>{preview.shared}</pre>
                 <FieldLabel>2. This student: the lesson they are on and all of their work</FieldLabel>
                 <pre style={{ ...pre, maxHeight: 420, margin: 0 }}>{preview.context}</pre>

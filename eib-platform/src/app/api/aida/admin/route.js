@@ -23,14 +23,13 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
 // What AIDA would be given when opened from this lesson, reading this student's work (or none).
-// Every lesson, drafts included, so new lessons can be tried here before they go out. (Students' AIDA
-// reads published lessons only: see api/aida/chat.)
+// Published lessons, plus the chosen one if it is still a draft, so a lesson can be tried before it goes out.
 async function assemble(lessonId, studentId, edits) {
   const [lessons, settings] = await Promise.all([listLessons(), getAidaSettings()]);
   const lesson = lessons.find((l) => l.id === lessonId);
   if (!lesson) throw new HttpError(404, "Lesson not found.");
   const payloads = { ...(studentId ? payloadMap(await listSubmissions({ studentId })) : {}), ...(edits && typeof edits === "object" ? edits : {}) };
-  const visible = lessons;
+  const visible = lessons.filter((l) => l.studentVisible || l.id === lesson.id);
   const built = buildContext({ lesson, lessons: visible, payloads });
   return { shared: sharedText({ settings, lessons: visible }), context: built.text, parts: built.parts, lessons: visible };
 }
