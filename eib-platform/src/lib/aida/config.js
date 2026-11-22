@@ -9,8 +9,8 @@ export const aidaConfig = () => ({
   unlockedModel: process.env.AIDA_UNLOCKED_MODEL || "claude-opus-5-5",
 });
 
-/** Who may open AIDA on the Lessons page: nobody, the test account only, or every student. */
-export const AIDA_MODES = ["off", "test", "on"];
+/** Who may open AIDA on the Lessons page: nobody or every student. */
+export const AIDA_MODES = ["off", "on"];
 export const DEFAULT_DAILY_LIMIT = 60;
 /** One student message, in characters. */
 export const MAX_MESSAGE_CHARS = 2000;

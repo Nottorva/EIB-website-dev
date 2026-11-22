@@ -21,7 +21,7 @@ export default function Onboarding({ user }) {
   const [reachedEnd, setReachedEnd] = useState(false);
   const [viewerFailed, setViewerFailed] = useState(false);
   const [openedPdf, setOpenedPdf] = useState(false);
-  const [form, setForm] = useState({ readConfirmed: false, studentSignature: "", parentSignature: "", parentEmail: "", parentRelationship: "", parentConfirmed: false });
+  const [form, setForm] = useState({ readConfirmed: false, studentSignature: "", parentSignature: "", parentEmail: "", parentRelationship: "", parentConfirmed: false, answers: {} });
   const today = fmtLongDateYear(new Date());
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(null);
@@ -50,6 +50,7 @@ export default function Onboarding({ user }) {
   const preview = user.role !== "student";
   const canSign = reachedEnd || (viewerFailed && openedPdf);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const setAnswer = (id, v) => setForm((f) => ({ ...f, answers: { ...f.answers, [id]: v } }));
 
   const submit = async (e) => {
     e.preventDefault();
@@ -128,7 +129,7 @@ export default function Onboarding({ user }) {
       <Shell>
         <Card>
           <div style={{ fontSize: 18, fontWeight: 900, color: COLORS.text }}>{meta.title}</div>
-          <div style={{ fontSize: 14, color: COLORS.sub, marginTop: 6 }}>{preview ? "No PDF has been uploaded yet. Upload one in Student Manager → Forms → Student agreement." : "There is nothing to sign right now."}</div>
+          <div style={{ fontSize: 14, color: COLORS.sub, marginTop: 6 }}>{preview ? "No PDF has been uploaded yet. Upload one in Student Manager → Student agreement." : "There is nothing to sign right now."}</div>
           {!preview && <a href="/lessons" style={{ display: "inline-flex", alignItems: "center", gap: 8, marginTop: 16, color: COLORS.indigo, fontWeight: 800, fontSize: 14, textDecoration: "none" }}>Open your lessons <ArrowRight size={15} /></a>}
         </Card>
       </Shell>
@@ -137,6 +138,9 @@ export default function Onboarding({ user }) {
 
   const box = { ...fieldStyle, padding: "10px 12px", fontSize: 14.5, borderRadius: 10 };
   const label = { fontSize: 12, fontWeight: 800, color: COLORS.sub, letterSpacing: 0.3, marginBottom: 6, display: "block" };
+  // the wording and the extra questions are set on the Student Manager's Student agreement tab
+  const w = meta.wording || {};
+  const extra = (who) => (meta.questions || []).filter((q) => (q.askedOf === "guardian" ? "guardian" : "student") === who).map((q) => <ExtraField key={q.id} q={q} value={form.answers[q.id] || ""} onChange={(v) => setAnswer(q.id, v)} box={box} label={label} />);
 
   return (
     <Shell>
@@ -199,9 +203,9 @@ export default function Onboarding({ user }) {
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(160px, 1fr)", gap: 14 }}>
               <div>
-                <label htmlFor="student-signature" style={label}>Student signature</label>
+                <label htmlFor="student-signature" style={label}>{w.studentSignatureLabel}</label>
                 <input id="student-signature" value={form.studentSignature} onChange={(e) => set("studentSignature", e.target.value)} placeholder="Type your full name" maxLength={60} autoComplete="off" required style={{ ...box, fontStyle: form.studentSignature ? "italic" : "normal" }} />
-                <div style={{ fontSize: 12, color: COLORS.faint, marginTop: 6 }}>Typing your name here is your signature.</div>
+                {w.studentSignatureHelp && <div style={{ fontSize: 12, color: COLORS.faint, marginTop: 6 }}>{w.studentSignatureHelp}</div>}
               </div>
               <div>
                 <label htmlFor="student-date" style={label}>Date</label>
@@ -210,17 +214,16 @@ export default function Onboarding({ user }) {
             </div>
             <label style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14.5, color: COLORS.text, cursor: "pointer" }}>
               <input type="checkbox" checked={form.readConfirmed} onChange={(e) => set("readConfirmed", e.target.checked)} required style={{ width: 18, height: 18, marginTop: 2 }} />
-              <span>I have read and understood this agreement, the EIB syllabus and the EIB MVP Reimbursement Policy.</span>
+              <span>{w.readStatement}</span>
             </label>
+            {extra("student")}
 
-            <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 18 }}>
-              <div style={{ fontSize: 13.5, color: COLORS.sub, lineHeight: 1.55 }}>
-                The next line must be completed by your parent or legal guardian, personally: on their own device, or with you typing exactly what they say. We will email them a link to confirm.
-              </div>
+            <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: w.guardianNote ? 18 : 0 }}>
+              {w.guardianNote && <div style={{ fontSize: 13.5, color: COLORS.sub, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{w.guardianNote}</div>}
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(160px, 1fr)", gap: 14 }}>
               <div>
-                <label htmlFor="parent-signature" style={label}>Parent or guardian signature</label>
+                <label htmlFor="parent-signature" style={label}>{w.parentSignatureLabel}</label>
                 <input id="parent-signature" value={form.parentSignature} onChange={(e) => set("parentSignature", e.target.value)} placeholder="Type your full name" maxLength={60} autoComplete="off" required style={{ ...box, fontStyle: form.parentSignature ? "italic" : "normal" }} />
               </div>
               <div>
@@ -230,21 +233,22 @@ export default function Onboarding({ user }) {
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
               <div>
-                <label htmlFor="parent-email" style={label}>Parent or guardian email</label>
+                <label htmlFor="parent-email" style={label}>{w.parentEmailLabel}</label>
                 <input id="parent-email" type="email" value={form.parentEmail} onChange={(e) => set("parentEmail", e.target.value)} autoComplete="off" required style={box} />
-                <div style={{ fontSize: 12, color: COLORS.faint, marginTop: 6 }}>The confirmation link goes here.</div>
+                {w.parentEmailHelp && <div style={{ fontSize: 12, color: COLORS.faint, marginTop: 6 }}>{w.parentEmailHelp}</div>}
               </div>
               <div>
-                <label htmlFor="parent-rel" style={label}>Relationship to the student</label>
+                <label htmlFor="parent-rel" style={label}>{w.relationshipLabel}</label>
                 <select id="parent-rel" value={form.parentRelationship} onChange={(e) => set("parentRelationship", e.target.value)} required style={{ ...box, background: "#fff" }}>
                   <option value="">Choose…</option>
                   {(meta.relationships || []).map((r) => <option key={r} value={r}>{r}</option>)}
                 </select>
               </div>
             </div>
+            {extra("guardian")}
             <label style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14.5, color: COLORS.text, cursor: "pointer" }}>
               <input type="checkbox" checked={form.parentConfirmed} onChange={(e) => set("parentConfirmed", e.target.checked)} required style={{ width: 18, height: 18, marginTop: 2 }} />
-              <span>I am the parent or legal guardian of {user.name} and I agree to this agreement on their behalf. Typing my name above is my signature. I will click the confirmation link sent to the email address I provided; the signature is complete only after that.</span>
+              <span>{String(w.parentStatement || "").split("{student}").join(user.name)}</span>
             </label>
           </fieldset>
 
@@ -263,6 +267,45 @@ export default function Onboarding({ user }) {
         </form>
       </Card>
     </Shell>
+  );
+}
+
+// One of the extra questions the super admin added to the signing form.
+function ExtraField({ q, value, onChange, box, label }) {
+  const id = `extra-${q.id}`;
+  if (q.type === "notice") {
+    const ack = q.ack || "I understand";
+    return (
+      <div style={{ background: COLORS.amberSoft, border: `1px solid ${COLORS.amberBorder}`, borderRadius: 12, padding: "14px 16px" }}>
+        <div style={{ fontSize: 15.5, fontWeight: 800, color: COLORS.text, lineHeight: 1.45, whiteSpace: "pre-wrap" }}>{q.label}</div>
+        {q.detail && <div style={{ fontSize: 14, color: COLORS.text, lineHeight: 1.55, marginTop: 6, whiteSpace: "pre-wrap" }}>{q.detail}</div>}
+        <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12, fontSize: 14.5, fontWeight: 800, color: COLORS.text, cursor: "pointer" }}>
+          <input type="checkbox" checked={value === ack} onChange={(e) => onChange(e.target.checked ? ack : "")} required={q.required} style={{ width: 18, height: 18 }} />
+          {ack}
+        </label>
+      </div>
+    );
+  }
+  return (
+    <div>
+      <label htmlFor={id} style={label}>
+        {q.label}
+        {!q.required && <span style={{ fontWeight: 600, color: COLORS.faint }}> (optional)</span>}
+      </label>
+      {q.type === "long" ? (
+        <textarea id={id} value={value} onChange={(e) => onChange(e.target.value)} required={q.required} rows={4} style={{ ...box, resize: "vertical" }} />
+      ) : q.type === "choice" ? (
+        <select id={id} value={value} onChange={(e) => onChange(e.target.value)} required={q.required} style={{ ...box, background: "#fff" }}>
+          <option value="">Choose…</option>
+          {(q.options || []).map((o) => <option key={o} value={o}>{o}</option>)}
+        </select>
+      ) : (
+        <input id={id} type={q.type === "link" ? "url" : "text"} placeholder={q.type === "link" ? "https://" : undefined} value={value} onChange={(e) => onChange(e.target.value)} required={q.required} autoComplete="off" style={box} />
+      )}
+      {(q.help || (q.type === "long" && q.maxWords > 0)) && (
+        <div style={{ fontSize: 12, color: COLORS.faint, marginTop: 6 }}>{[q.help, q.type === "long" && q.maxWords > 0 ? `Up to ${q.maxWords} words.` : ""].filter(Boolean).join(" ")}</div>
+      )}
+    </div>
   );
 }
 

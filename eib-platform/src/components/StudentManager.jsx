@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { FileText, Users, ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Mail, Calendar, Link2, UserPlus, Lock, ExternalLink, Send, Pencil, Copy, Check, CalendarClock, Megaphone, ShieldOff, ShieldCheck, Clock, ChartColumn, Table2, Signature, Upload, Download, FlaskConical, Eraser, X, CircleCheck, Circle } from "lucide-react";
+import { Users,ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Mail, Calendar, Link2, UserPlus, Lock, ExternalLink, Send, Pencil, Check, Megaphone, ShieldOff, ShieldCheck, Clock, ChartColumn, Table2, Signature, Upload, Download, X, CircleCheck, Circle } from "lucide-react";
 import { buildDays, TimeChart, DaysTable, Stat } from "./ApplicationsChart";
 import {
   COLORS,
@@ -25,7 +25,7 @@ import {
   nextId,
 } from "./ui";
 import { api, useDebouncedSaver } from "@/lib/api";
-import { fmtSmart, fmtDateTime, fmtLongDate, fmtShortDateTime } from "@/lib/format";
+import { fmtSmart, fmtLongDate, fmtShortDateTime } from "@/lib/format";
 import { GradeCard, useGrades } from "./Grading";
 
 const STATUSES = [
@@ -42,8 +42,8 @@ const isUnreleased = (a) => FINAL.includes(a.status) && !a.decisionReleased;
 // Older applications stored a date only; newer ones a full timestamp.
 const fmtDate = (v) => fmtSmart(v, "—");
 
-/* ================= Forms tab ================= */
-function QuestionEditor({ question, index, total, onChange, onDelete, onMove }) {
+/* ================= Question editor (the agreement's extra questions) ================= */
+function QuestionEditor({ question, index, total, onChange, onDelete, onMove, headerExtra }) {
   const info = questionType(question.type);
   const Icon = info.icon;
   const locked = Boolean(question.locked);
@@ -82,6 +82,7 @@ function QuestionEditor({ question, index, total, onChange, onDelete, onMove }) 
               ))}
             </select>
           )}
+          {headerExtra}
           <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: COLORS.sub, fontWeight: 700, marginLeft: "auto" }}>
             <input type="checkbox" checked={question.required} disabled={locked} onChange={(e) => onChange({ ...question, required: e.target.checked })} />
             {question.type === "notice" ? "Must be ticked to submit" : "Required"}
@@ -146,7 +147,7 @@ function QuestionEditor({ question, index, total, onChange, onDelete, onMove }) 
   );
 }
 
-// A notice is shown to applicants the way it is edited here: the headline
+// A notice is shown the way it is edited here: the headline
 // big and bold, the detail under it, and the tick-box text.
 function NoticeEditor({ question, onChange }) {
   return (
@@ -168,236 +169,6 @@ function NoticeEditor({ question, onChange }) {
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <span style={{ fontSize: 12, fontWeight: 800, color: COLORS.faint, textTransform: "uppercase", letterSpacing: 0.4, whiteSpace: "nowrap" }}>Tick-box says</span>
         <EditableInput value={question.ack ?? "I understand"} onChange={(v) => onChange({ ...question, ack: v })} placeholder="I understand" style={{ fontSize: 14, fontWeight: 800, color: COLORS.text, background: "#fff", flex: 1 }} />
-      </div>
-    </div>
-  );
-}
-
-/* ---------- Application link + open/close window ---------- */
-const toLocalInput = (iso) => {
-  if (!iso) return "";
-  const d = new Date(iso);
-  const pad = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-};
-const fromLocalInput = (v) => (v ? new Date(v).toISOString() : null);
-const fmtWhen = (iso) => fmtDateTime(iso, "not set");
-
-const WINDOW_STATE = {
-  upcoming: { label: "Not open yet", color: COLORS.amber, soft: COLORS.amberSoft, border: COLORS.amberBorder },
-  open: { label: "Live", color: COLORS.green, soft: COLORS.greenSoft, border: COLORS.greenBorder },
-  closed: { label: "Closed", color: COLORS.red, soft: COLORS.redSoft, border: COLORS.redBorder },
-};
-
-function ApplicationLinkPanel({ saver }) {
-  const [win, setWin] = useState(null);
-  const [draft, setDraft] = useState({ opensAt: "", closesAt: "", applicantDomain: "" });
-  const [dirty, setDirty] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [error, setError] = useState(null);
-  const link = typeof window !== "undefined" ? `${window.location.origin}/apply` : "/apply";
-
-  useEffect(() => {
-    api
-      .get("/api/application-window")
-      .then((w) => {
-        setWin(w);
-        setDraft({ opensAt: toLocalInput(w.opensAt), closesAt: toLocalInput(w.closesAt), applicantDomain: w.applicantDomain });
-      })
-      .catch((e) => setError(e.message));
-  }, []);
-
-  const edit = (patch) => {
-    setDraft((d) => ({ ...d, ...patch }));
-    setDirty(true);
-  };
-
-  const save = () =>
-    saver.immediate(async () => {
-      try {
-        const w = await api.put("/api/application-window", {
-          opensAt: fromLocalInput(draft.opensAt),
-          closesAt: fromLocalInput(draft.closesAt),
-          applicantDomain: draft.applicantDomain,
-        });
-        setWin(w);
-        setDirty(false);
-        setError(null);
-      } catch (e) {
-        setError(e.message);
-      }
-    });
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(link);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch {
-      window.prompt("Copy this link:", link);
-    }
-  };
-
-  if (error && !win) return <Notice>{error}</Notice>;
-  if (!win) return <Loading />;
-  const st = WINDOW_STATE[win.state];
-  const inputStyle = { width: "100%", boxSizing: "border-box", border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "9px 12px", fontSize: 14, outline: "none", color: COLORS.text };
-  const label = { fontSize: 11.5, fontWeight: 800, color: COLORS.faint, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 };
-
-  return (
-    <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 18, marginBottom: 18 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
-        <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.text }}>Application link</div>
-        <StatusBadge status={st} size="sm" />
-      </div>
-
-      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
-        <input readOnly value={link} onFocus={(e) => e.target.select()} style={{ ...inputStyle, fontFamily: "ui-monospace, monospace", fontSize: 13.5, background: "#fbfbfd" }} />
-        <PrimaryButton onClick={copy} icon={copied ? Check : Copy} style={{ whiteSpace: "nowrap" }}>
-          {copied ? "Copied" : "Copy link"}
-        </PrimaryButton>
-        <a href="/apply" target="_blank" rel="noreferrer" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 800, color: COLORS.indigo, textDecoration: "none", whiteSpace: "nowrap" }}>
-          Open <ExternalLink size={13} />
-        </a>
-      </div>
-      <div style={{ fontSize: 12.5, color: COLORS.sub, lineHeight: 1.5, marginBottom: 16 }}>
-        Send this link once. It shows "not open yet" until the open time, the live form between the two times, and "closed" after. Applicants sign in with their school account, so name and email are collected automatically.
-      </div>
-
-      {error && <Notice onClose={() => setError(null)}>{error}</Notice>}
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, alignItems: "end" }}>
-        <div>
-          <div style={label}>Opens</div>
-          <input type="datetime-local" value={draft.opensAt} onChange={(e) => edit({ opensAt: e.target.value })} style={inputStyle} />
-        </div>
-        <div>
-          <div style={label}>Closes</div>
-          <input type="datetime-local" value={draft.closesAt} onChange={(e) => edit({ closesAt: e.target.value })} style={inputStyle} />
-        </div>
-        <div>
-          <div style={label}>Applicant email domain</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <span style={{ fontSize: 14, fontWeight: 800, color: COLORS.faint }}>@</span>
-            <input value={draft.applicantDomain} onChange={(e) => edit({ applicantDomain: e.target.value })} placeholder="tfs.ca" style={inputStyle} />
-          </div>
-        </div>
-      </div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
-        <div style={{ fontSize: 12.5, color: COLORS.faint }}>
-          Currently: opens {fmtWhen(win.opensAt)} · closes {fmtWhen(win.closesAt)}. Leave a field blank for no limit on that side.
-        </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          {dirty && (
-            <button
-              type="button"
-              onClick={() => {
-                setDraft({ opensAt: toLocalInput(win.opensAt), closesAt: toLocalInput(win.closesAt), applicantDomain: win.applicantDomain });
-                setDirty(false);
-              }}
-              style={{ border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.sub, fontWeight: 800, fontSize: 13, borderRadius: 10, padding: "8px 14px", cursor: "pointer" }}
-            >
-              Discard
-            </button>
-          )}
-          <PrimaryButton onClick={save} disabled={!dirty} icon={CalendarClock} style={{ fontSize: 13, padding: "9px 14px" }}>
-            Save window
-          </PrimaryButton>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function FormsTab({ saver, user }) {
-  const [questions, setQuestions] = useState(null);
-  const [error, setError] = useState(null);
-  const [loadingCanonical, setLoadingCanonical] = useState(false);
-
-  const [confirmDanger, confirmUI] = useDangerConfirm();
-  const loadCanonical = async () => {
-    if (!(await confirmDanger({ title: "Replace the current form with the 2026-27 application?", body: "Every question currently in the form will be removed. Applications already submitted keep their answers.", label: "Replace the form" }))) return;
-    setLoadingCanonical(true);
-    try {
-      setQuestions(await api.post("/api/form/reset", {}));
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setLoadingCanonical(false);
-    }
-  };
-
-  useEffect(() => {
-    api.get("/api/form").then(setQuestions).catch((e) => setError(e.message));
-  }, []);
-
-  const commit = (next) => {
-    setQuestions(next);
-    saver.schedule("form", () => api.put("/api/form", next));
-  };
-  const update = (id, next) => commit(questions.map((q) => (q.id === id ? next : q)));
-  const remove = (id) => commit(questions.filter((q) => q.id !== id));
-  const move = (index, dir) => {
-    const next = [...questions];
-    const [item] = next.splice(index, 1);
-    next.splice(index + dir, 0, item);
-    commit(next);
-  };
-  const addQuestion = () => commit([...questions, { id: nextId("q"), type: "short", label: "New question", required: true, options: [] }]);
-  const addNotice = () => commit([...questions, { id: nextId("q"), type: "notice", label: "Important notice", detail: "", ack: "I understand", required: true, options: [] }]);
-
-  if (error) return <Notice>{error}</Notice>;
-  if (!questions) return <Loading />;
-
-  return (
-    <div style={{ maxWidth: 720, margin: "0 auto" }}>
-      {confirmUI}
-      <div style={{ marginBottom: 18, display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-        <div>
-          <div style={{ fontSize: 22, fontWeight: 900, color: COLORS.text }}>EIB Application 2026-27</div>
-          <div style={{ fontSize: 14, color: COLORS.sub, marginTop: 4 }}>Share the link, set when it opens and closes, and edit the questions applicants answer.</div>
-        </div>
-        {user?.role === "superAdmin" && (
-          <button
-            type="button"
-            onClick={loadCanonical}
-            disabled={loadingCanonical}
-            title="Replace the saved form with the 2026-27 application defined in code"
-            style={{ border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.sub, fontWeight: 800, fontSize: 13, borderRadius: 10, padding: "8px 14px", cursor: loadingCanonical ? "default" : "pointer" }}
-          >
-            {loadingCanonical ? "Loading…" : "Load the 2026-27 application"}
-          </button>
-        )}
-      </div>
-
-      <ApplicationLinkPanel saver={saver} />
-
-      <div style={{ display: "flex", alignItems: "center", gap: 10, background: COLORS.indigoSoft, border: `1px solid ${COLORS.indigoBorder}`, borderRadius: 12, padding: "10px 14px", marginBottom: 12, fontSize: 13, fontWeight: 700, color: COLORS.indigo }}>
-        <Lock size={14} /> Name and school email come from the applicant's sign-in, so you don't need questions for them.
-      </div>
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {questions.map((q, i) => (
-          <QuestionEditor key={q.id} question={q} index={i} total={questions.length} onChange={(next) => update(q.id, next)} onDelete={() => remove(q.id)} onMove={(dir) => move(i, dir)} />
-        ))}
-      </div>
-
-      <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
-        <button
-          type="button"
-          onClick={addQuestion}
-          style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, border: `1px dashed ${COLORS.border}`, background: "#fff", color: COLORS.indigo, fontWeight: 800, fontSize: 14, borderRadius: 14, padding: "12px 16px", cursor: "pointer", justifyContent: "center" }}
-        >
-          <Plus size={16} /> Add question
-        </button>
-        <button
-          type="button"
-          onClick={addNotice}
-          title="A big, bold statement applicants must tick to acknowledge (a fee, a commitment)"
-          style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, border: `1px dashed ${COLORS.amberBorder}`, background: COLORS.amberSoft, color: COLORS.amber, fontWeight: 800, fontSize: 14, borderRadius: 14, padding: "12px 16px", cursor: "pointer", justifyContent: "center" }}
-        >
-          <Megaphone size={16} /> Add notice
-        </button>
       </div>
     </div>
   );
@@ -573,6 +344,9 @@ function AgreementStatus({ account, onAgreement }) {
             <br />
             {a.parentRelationship}: <strong>{a.parentName}</strong> ({a.parentInitials}) · {a.parentEmail}
             {fee ? <><br /><span style={{ color: COLORS.faint }}>Fee acknowledged at application on {fmtDate(fee.acknowledgedAt)} ("{fee.answer}")</span></> : null}
+            {(a.answers || []).map((x) => (
+              <span key={x.questionId}><br />{x.askedOf === "guardian" ? "Guardian" : "Student"} · {x.label.length > 90 ? `${x.label.slice(0, 90)}…` : x.label}: <strong style={{ whiteSpace: "pre-wrap" }}>{x.answer}</strong></span>
+            ))}
             {!signed && (
               <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                 {editing ? (
@@ -1141,135 +915,121 @@ function AgreementMark({ agreement }) {
   );
 }
 
-/* ================= Test account (super admin) ================= */
-// One student account named "Test" with no application behind it, so the
-// super admin can walk through onboarding, lessons and submissions without
-// touching the class count. Wipe clears everything it did; Remove deletes it.
-function TestAccountBox() {
-  const [account, setAccount] = useState(undefined); // undefined = loading, null = none
-  const [email, setEmail] = useState("");
-  const [editing, setEditing] = useState(false);
-  const [newEmail, setNewEmail] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState(null);
-  const [confirmDanger, confirmUI] = useDangerConfirm();
+/* ================= Student agreement (super admin) ================= */
+// The words on the signing form's own fields. Left empty, a label or a
+// statement goes back to its original wording; a helper line or the note is hidden.
+const WORDING_FIELDS = [
+  { key: "studentSignatureLabel", label: "Student signature: label" },
+  { key: "studentSignatureHelp", label: "Student signature: line underneath", optional: true },
+  { key: "readStatement", label: "Student's tick-box statement", long: true },
+  { key: "guardianNote", label: "Note above the guardian's part", long: true, optional: true },
+  { key: "parentSignatureLabel", label: "Guardian signature: label" },
+  { key: "parentEmailLabel", label: "Guardian email: label" },
+  { key: "parentEmailHelp", label: "Guardian email: line underneath", optional: true },
+  { key: "relationshipLabel", label: "Relationship: label" },
+  { key: "parentStatement", label: "Guardian's tick-box statement", long: true, hint: "{student} is replaced with the student's name." },
+];
 
-  useEffect(() => {
-    api.get("/api/test-account").then((r) => setAccount(r.account)).catch(() => setAccount(null));
-  }, []);
+// The signing form: the words on every field, the relationship options, and
+// the super admin's own questions. Saved a moment after each change.
+function AgreementFields({ meta, saver }) {
+  const [form, setForm] = useState({ wording: meta.wording, relationships: meta.relationships, questions: meta.questions });
+  const commit = (patch) => {
+    const next = { ...form, ...patch };
+    setForm(next);
+    saver.schedule("agreement-form", () => api.put("/api/agreement", next));
+  };
+  const { wording, relationships, questions } = form;
+  const setQuestions = (next) => commit({ questions: next });
+  const move = (index, dir) => {
+    const next = [...questions];
+    const [item] = next.splice(index, 1);
+    next.splice(index + dir, 0, item);
+    setQuestions(next);
+  };
+  const add = (q) => setQuestions([...questions, { id: nextId("aq"), help: "", detail: "", ack: "I understand", required: true, options: [], maxWords: 0, askedOf: "student", ...q }]);
 
-  const run = async (fn) => {
-    setBusy(true);
-    setMsg(null);
-    try {
-      await fn();
-    } catch (e) {
-      setMsg({ ok: false, text: e.status === 401 ? "Your sign-in has expired. Reload the page and try again." : e.message });
-    } finally {
-      setBusy(false);
-    }
-  };
-  const changeEmail = async () => {
-    const target = newEmail.trim().toLowerCase();
-    if (!target || target === account.email) { setEditing(false); return; }
-    if (!(await confirmDanger({ title: `Move the test account to ${target}?`, body: `Everything ${account.email} did is wiped first (submissions, agreement, application or draft), then the account continues under the new email.`, label: "Change the email" }))) return;
-    run(async () => {
-      const r = await api.patch("/api/test-account", { email: target });
-      setAccount(r.account);
-      setEditing(false);
-      setMsg({ ok: true, text: `Test account is now ${r.account.email}, wiped and ready.` });
-    });
-  };
-  const create = () => run(async () => {
-    const r = await api.post("/api/test-account", { email: email.trim() });
-    setAccount(r.account);
-    setEmail("");
-    setMsg({ ok: true, text: `Test account ready. Sign in with ${r.account.email} to go through as a student.` });
-  });
-  const wipe = async () => {
-    if (!(await confirmDanger({ title: "Wipe the test account?", body: `Everything ${account.email} did is deleted: submissions, the signed agreement, any application or draft under that email. The account stays, ready to go through again.`, label: "Wipe it" }))) return;
-    run(async () => {
-      const r = await api.patch("/api/test-account");
-      setAccount(r.account);
-      const n = r.removed;
-      setMsg({ ok: true, text: `Wiped: ${n.submissions} submission${n.submissions === 1 ? "" : "s"}, ${n.agreement ? "the agreement, " : ""}${n.application ? "an application, " : ""}${n.draft ? "a draft, " : ""}account kept.` });
-    });
-  };
-  const remove = async () => {
-    if (!(await confirmDanger({ title: "Remove the test account?", body: "Wipes everything it did and deletes the account. You can create a new one afterwards.", label: "Remove it" }))) return;
-    run(async () => {
-      await api.del("/api/test-account");
-      setAccount(null);
-      setMsg({ ok: true, text: "Test account removed." });
-    });
-  };
+  const label = { fontSize: 11.5, fontWeight: 800, color: COLORS.faint, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 };
+  const box = { ...fieldStyle, padding: "9px 12px", fontSize: 14, borderRadius: 10 };
+  const heading = { fontSize: 13, fontWeight: 800, color: COLORS.indigo, letterSpacing: 0.4, margin: "22px 0 10px" };
 
-  const chip = { display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 800, borderRadius: 999, padding: "5px 10px", cursor: busy ? "default" : "pointer", border: "none", fontFamily: "inherit", opacity: busy ? 0.6 : 1 };
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-      {confirmUI}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#fff", border: `1px dashed ${COLORS.border}`, borderRadius: 12, padding: "6px 10px" }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 800, color: COLORS.sub, whiteSpace: "nowrap" }}>
-          <FlaskConical size={13} color={COLORS.indigo} /> Test account:
-        </span>
-        {account === undefined ? (
-          <span style={{ fontSize: 12, color: COLORS.faint }}>…</span>
-        ) : account ? (
-          <>
-            {editing ? (
-              <>
-                <input
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter" && !busy) changeEmail(); if (e.key === "Escape") setEditing(false); }}
-                  aria-label="New email for the test student account"
-                  autoFocus
-                  style={{ border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "5px 9px", fontSize: 12.5, width: 190, outline: "none", fontFamily: "inherit" }}
-                />
-                <button type="button" onClick={changeEmail} disabled={busy || !newEmail.trim()} style={{ ...chip, background: newEmail.trim() ? COLORS.indigo : COLORS.border, color: newEmail.trim() ? "#fff" : COLORS.faint }}>Save</button>
-                <button type="button" onClick={() => setEditing(false)} disabled={busy} style={{ ...chip, background: "transparent", color: COLORS.faint, padding: "5px 4px" }}>Cancel</button>
-              </>
-            ) : (
-              <>
-                <span style={{ fontSize: 12.5, fontWeight: 700, color: COLORS.text }} title={`Created ${fmtDate(account.createdAt)}${account.wipedAt ? ` · wiped ${fmtDate(account.wipedAt)}` : ""}`}>{account.email}</span>
-                <button type="button" onClick={() => { setNewEmail(account.email); setEditing(true); }} disabled={busy} title="Change the email (wipes the account first)" style={{ ...chip, background: "transparent", color: COLORS.indigo, padding: "5px 4px" }}>
-                  <Pencil size={13} />
-                </button>
-              </>
-            )}
-            {!editing && <button type="button" onClick={wipe} disabled={busy} title="Delete everything this account did and start again" style={{ ...chip, background: COLORS.amberSoft, color: COLORS.amber }}>
-              <Eraser size={12} /> Wipe
-            </button>}
-            {!editing && <button type="button" onClick={remove} disabled={busy} title="Remove the test account" style={{ ...chip, background: "transparent", color: COLORS.faint, padding: "5px 4px" }}>
-              <X size={13} />
-            </button>}
-          </>
-        ) : (
-          <>
-            <input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && email.trim() && !busy) create(); }}
-              placeholder="you@tfs.ca"
-              aria-label="Email for the test student account"
-              style={{ border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "5px 9px", fontSize: 12.5, width: 170, outline: "none", fontFamily: "inherit" }}
-            />
-            <button type="button" onClick={create} disabled={!email.trim() || busy} style={{ ...chip, background: email.trim() ? COLORS.indigo : COLORS.border, color: email.trim() ? "#fff" : COLORS.faint }}>
-              <Plus size={12} /> Create
-            </button>
-          </>
-        )}
+    <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 20, marginTop: 16 }}>
+      <div style={{ fontSize: 15, fontWeight: 900, color: COLORS.text }}>What students fill out</div>
+      <div style={{ fontSize: 12.5, color: COLORS.faint, marginTop: 2, lineHeight: 1.5 }}>
+        The signing form under the PDF. Changes apply to everyone who signs from now on; students who have already signed are not asked again. The student's name and the dates are filled in automatically.
       </div>
-      {msg && <div style={{ fontSize: 12, fontWeight: 700, color: msg.ok ? COLORS.green : COLORS.red, maxWidth: 420, textAlign: "right" }}>{msg.text}</div>}
+
+      <div style={heading}>Wording of the signing fields</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {WORDING_FIELDS.map((w) => (
+          <div key={w.key}>
+            <div style={label}>{w.label}</div>
+            {w.long ? (
+              <textarea aria-label={w.label} value={wording[w.key] ?? ""} onChange={(e) => commit({ wording: { ...wording, [w.key]: e.target.value } })} rows={3} placeholder={w.optional ? "Leave empty to hide this" : "Leave empty to use the original wording"} style={{ ...box, resize: "vertical" }} />
+            ) : (
+              <input aria-label={w.label} value={wording[w.key] ?? ""} onChange={(e) => commit({ wording: { ...wording, [w.key]: e.target.value } })} placeholder={w.optional ? "Leave empty to hide this" : "Leave empty to use the original wording"} style={box} />
+            )}
+            {w.hint && <div style={{ fontSize: 12, color: COLORS.faint, marginTop: 4 }}>{w.hint}</div>}
+          </div>
+        ))}
+      </div>
+
+      <div style={heading}>Relationship options</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {relationships.map((r, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ width: 6, height: 6, borderRadius: 999, background: COLORS.faint, flexShrink: 0 }} />
+            <EditableInput value={r} onChange={(v) => commit({ relationships: relationships.map((x, j) => (j === i ? v : x)) })} style={{ fontSize: 14, color: COLORS.sub }} />
+            <button type="button" aria-label={`Remove ${r}`} onClick={() => commit({ relationships: relationships.filter((_, j) => j !== i) })} disabled={relationships.length === 1} style={{ border: "none", background: "transparent", color: relationships.length === 1 ? "#d7dbe4" : COLORS.faint, cursor: relationships.length === 1 ? "default" : "pointer" }}>
+              <Trash2 size={13} />
+            </button>
+          </div>
+        ))}
+        <button type="button" onClick={() => commit({ relationships: [...relationships, "New option"] })} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.indigo, fontWeight: 700, fontSize: 13, cursor: "pointer", padding: "4px 0", alignSelf: "flex-start", fontFamily: "inherit" }}>
+          <Plus size={14} /> Add option
+        </button>
+      </div>
+
+      <div style={heading}>Your own questions</div>
+      <div style={{ fontSize: 12.5, color: COLORS.faint, marginBottom: 10, lineHeight: 1.5 }}>
+        Extra fields on the signing form. A question asked of the student sits under the student's signature; one asked of the parent or guardian sits in the guardian's part. The answers show on each student's account card in EIB Students.
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {questions.map((q, i) => (
+          <QuestionEditor
+            key={q.id}
+            question={q}
+            index={i}
+            total={questions.length}
+            onChange={(next) => setQuestions(questions.map((x) => (x.id === q.id ? next : x)))}
+            onDelete={() => setQuestions(questions.filter((x) => x.id !== q.id))}
+            onMove={(dir) => move(i, dir)}
+            headerExtra={
+              <select aria-label="Who answers this" value={q.askedOf === "guardian" ? "guardian" : "student"} onChange={(e) => setQuestions(questions.map((x) => (x.id === q.id ? { ...x, askedOf: e.target.value } : x)))} style={{ fontSize: 12.5, fontWeight: 700, color: COLORS.sub, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "4px 6px", background: "#fff" }}>
+                <option value="student">Asked of the student</option>
+                <option value="guardian">Asked of the parent or guardian</option>
+              </select>
+            }
+          />
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
+        <button type="button" onClick={() => add({ type: "short", label: "New question" })} style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, border: `1px dashed ${COLORS.border}`, background: "#fff", color: COLORS.indigo, fontWeight: 800, fontSize: 14, borderRadius: 14, padding: "12px 16px", cursor: "pointer", justifyContent: "center", fontFamily: "inherit" }}>
+          <Plus size={16} /> Add question
+        </button>
+        <button type="button" onClick={() => add({ type: "notice", label: "Important notice" })} title="A bold statement that must be ticked to sign" style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, border: `1px dashed ${COLORS.amberBorder}`, background: COLORS.amberSoft, color: COLORS.amber, fontWeight: 800, fontSize: 14, borderRadius: 14, padding: "12px 16px", cursor: "pointer", justifyContent: "center", fontFamily: "inherit" }}>
+          <Megaphone size={16} /> Add notice
+        </button>
+      </div>
     </div>
   );
 }
 
-/* ================= Student agreement (super admin) ================= */
 // Upload the PDF students must sign, decide whether signing is required,
-// and edit the title and intro. Replacing the PDF starts a new version, so
-// everyone signs again.
-function AgreementCard() {
+// edit the title and intro, and edit the signing form. Replacing the PDF
+// starts a new version, so everyone signs again.
+function AgreementCard({ saver }) {
   const [meta, setMeta] = useState(null);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -1393,6 +1153,7 @@ function AgreementCard() {
           </>
         )}
       </div>
+      {meta && <AgreementFields meta={meta} saver={saver} />}
     </div>
   );
 }
@@ -1583,10 +1344,11 @@ export default function StudentManager({ user }) {
   const saver = useDebouncedSaver();
   const isSuperAdmin = user.role === "superAdmin";
 
-  // /manager?tab=forms deep-links to a tab.
+  // /manager?tab=agreement deep-links to a tab (forms is the old name of the agreement tab).
   useEffect(() => {
     const wanted = new URLSearchParams(window.location.search).get("tab");
-    if (wanted && ["forms", "students", "analytics", "accmanager"].includes(wanted)) setTab(wanted);
+    if (wanted && ["agreement", "students", "analytics", "accmanager"].includes(wanted)) setTab(wanted);
+    if (wanted === "forms") setTab("agreement");
     if (wanted === "unfinished") setTab("analytics");
   }, []);
   // The Student Manager link in the top bar always comes back to the
@@ -1602,7 +1364,7 @@ export default function StudentManager({ user }) {
   }, []);
 
   const tabs = [
-    { id: "forms", label: "Forms", icon: FileText },
+    ...(isSuperAdmin ? [{ id: "agreement", label: "Student agreement", icon: Signature }] : []),
     { id: "students", label: "EIB Students", icon: Users },
     // Analytics has no tab; it still opens at /manager?tab=analytics.
     ...(isSuperAdmin ? [{ id: "accmanager", label: "Acc Manager", icon: UserPlus }] : []),
@@ -1616,18 +1378,12 @@ export default function StudentManager({ user }) {
           <>
             <SaveIndicator status={saver.status} />
             <SegmentedTabs value={tab} onChange={setTab} options={tabs} style={{ background: "#fff", borderRadius: 12 }} />
-            {/* TestAccountBox is not shown here any more; the component is kept above. */}
           </>
         }
       />
       <div style={{ maxWidth: 720, margin: "0 auto" }}>{saver.error && <Notice onClose={saver.clearError}>{saver.error}</Notice>}</div>
 
-      {tab === "forms" ? (
-        <>
-          {isSuperAdmin && <AgreementCard />}
-          <FormsTab saver={saver} user={user} />
-        </>
-      ) : tab === "students" ? <StudentsTab key={listKey} saver={saver} user={user} /> : tab === "analytics" ? <AnalyticsTab key={listKey} user={user} /> : <AccManagerTab saver={saver} />}
+      {tab === "agreement" && isSuperAdmin ? <AgreementCard saver={saver} /> : tab === "analytics" ? <AnalyticsTab key={listKey} user={user} /> : tab === "accmanager" && isSuperAdmin ? <AccManagerTab saver={saver} /> : <StudentsTab key={listKey} saver={saver} user={user} />}
     </div>
   );
 }

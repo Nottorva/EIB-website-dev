@@ -1,62 +1,24 @@
-// The one test student account. The super admin types an email (their own
-// school address, typically) and gets a student named "Test" with no
-// application behind it, so nothing they do touches the class count or the
-// applicant pipeline. Wiping it deletes everything that account produced
-// (submissions, the signed agreement, any application or draft under that
-// email) and leaves the account ready to go through again. Only one exists.
+// The test student account feature is gone. All that is left is this
+// clean-up: a database that still holds a test student (a user row with
+// isTest) loses it, together with everything it produced: submissions, AIDA
+// conversations and usage, and any application or draft under its email.
+// Runs when the super admin opens the home menu. Once the live database has
+// no such row, this file and its one call in the home menu page can go.
 
-import { findOneBy, insert, updateOne, removeOne, newId } from "./store";
-import { getUserByEmail } from "./users";
+import { findOneBy, removeOne } from "./store";
 import { deleteSubmissionsFor } from "./submissions";
 import { findApplicationByEmail } from "./applications";
 import { deleteDraftByEmail } from "./drafts";
 import { deleteAidaFor } from "../aida/store";
 
-export const TEST_NAME = "Test";
-
-export async function getTestStudent() {
-  return findOneBy("users", "isTest", true, (u) => u.isTest === true);
-}
-
-export async function createTestStudent(email) {
-  const key = String(email || "").trim().toLowerCase();
-  if (!/^\S+@\S+\.\S+$/.test(key)) return { error: "Enter a valid email address.", status: 400 };
-  if (await getTestStudent()) return { error: "There is already a test account. Wipe or remove it first.", status: 409 };
-  if (await getUserByEmail(key)) return { error: `${key} already has an account.`, status: 409 };
-  const user = await insert("users", { id: newId("user"), name: TEST_NAME, email: key, role: "student", isTest: true, createdAt: new Date().toISOString() });
-  return { user };
-}
-
-// Everything the test account did, gone; the account itself stays.
-export async function wipeTestStudent() {
-  const user = await getTestStudent();
-  if (!user) return null;
-  const removed = { submissions: await deleteSubmissionsFor(user.id), application: 0, draft: 0, agreement: user.agreement ? 1 : 0 };
+export async function removeLeftoverTestAccount() {
+  const user = await findOneBy("users", "isTest", true, (u) => u.isTest === true);
+  if (!user) return false;
+  await deleteSubmissionsFor(user.id);
   await deleteAidaFor(user.id);
   const app = await findApplicationByEmail(user.email);
-  if (app) { await removeOne("applications", app.id); removed.application = 1; }
-  if (await deleteDraftByEmail(user.email)) removed.draft = 1;
-  const fresh = await updateOne("users", user.id, { name: TEST_NAME, agreement: null, welcomedAt: null, suspended: false, suspendedAt: null, wipedAt: new Date().toISOString() });
-  return { user: fresh, removed };
-}
-
-// Wipe, then move the account to a different email.
-export async function retargetTestStudent(email) {
-  const key = String(email || "").trim().toLowerCase();
-  if (!/^\S+@\S+\.\S+$/.test(key)) return { error: "Enter a valid email address.", status: 400 };
-  const current = await getTestStudent();
-  if (!current) return { error: "There is no test account.", status: 404 };
-  const taken = await getUserByEmail(key);
-  if (taken && taken.id !== current.id) return { error: `${key} already has an account.`, status: 409 };
-  const wiped = await wipeTestStudent();
-  const user = await updateOne("users", current.id, { email: key });
-  return { user, removed: wiped.removed };
-}
-
-// Wipe, then delete the account too.
-export async function removeTestStudent() {
-  const wiped = await wipeTestStudent();
-  if (!wiped) return null;
-  await removeOne("users", wiped.user.id);
-  return wiped.removed;
+  if (app) await removeOne("applications", app.id);
+  await deleteDraftByEmail(user.email);
+  await removeOne("users", user.id);
+  return true;
 }

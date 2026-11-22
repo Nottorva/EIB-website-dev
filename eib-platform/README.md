@@ -47,18 +47,11 @@ builds and whenever Google sign-in is on.
 
 | Signed in as | What you can open |
 |---|---|
-| Josef Marshall (super admin) | Lesson Editor, Mentor CRM, Student Manager (all three tabs), Grading, Lessons (leader preview) |
-| Jack Harlow (student leader) | Mentor CRM, Student Manager (Forms + Students only), Grading, Lessons (leader mode) |
+| Josef Marshall (super admin) | Lesson Editor, Mentor CRM, Student Manager (Student agreement, EIB Students, Acc Manager), Grading, Lessons (leader preview) |
+| Jack Harlow (student leader) | Mentor CRM, Student Manager (EIB Students only), Grading, Lessons (leader mode) |
 | Advancement team (created by the super admin from the CRM's **New advancement team member** button) | Mentor CRM only; the hub sends them straight there |
 | Amara Chen (student) | Lessons (student mode, own submissions only) |
 | Not on the allow-list | Nothing except the public application form |
-
-**Test account.** Student Manager, top right: "Test account:" takes an email
-and creates one student named Test with no application behind it (so the
-class count and the pipeline are untouched). Only one can exist. Wipe
-deletes everything it did (submissions, agreement, any application or draft
-under that email) and keeps the account; the × removes it. API:
-`/api/test-account` (GET / POST / PATCH = wipe / DELETE), super admin only.
 
 **First sign-in.** An accepted student's first visit lands on `/welcome`
 ("Congratulations", one button). Pressing it sets `welcomedAt` on their row
@@ -67,9 +60,15 @@ from before this existed have no `welcomedAt`, so they see it once too.
 In EIB Students a mark beside each name shows the agreement: green check
 signed, amber clock pending, hollow circle not started.
 
-**Student Agreement (onboarding).** Student Manager → Forms → Student
-agreement: upload the PDF (`POST /api/agreement/pdf`, stored in settings,
-4 MB max), tick "Required before lessons", edit the title and intro. While a
+**Student Agreement (onboarding).** Student Manager → Student agreement
+(super admin only; this tab replaced the Forms tab): upload the PDF
+(`POST /api/agreement/pdf`, stored in settings, 4 MB max), tick "Required
+before lessons", edit the title and intro. Under it, "What students fill
+out" edits the signing form: the wording of every built-in field, the
+relationship options, and extra questions asked of the student or of the
+guardian (`wording`, `relationships`, `questions` on `PUT /api/agreement`;
+answers are stored on the record as `answers`). Editing the form is not a
+new version, so nobody signs again. While a
 PDF exists and signing is required, a student who has not signed the current
 version is sent to `/onboarding` (the Lessons page redirects; the view API
 answers 403). There they read the PDF page by page (pdf.js), the signature
@@ -209,7 +208,10 @@ Things worth trying, in order:
    placeholder in the student's text box. "Preview" on a card is a blank,
    unsaved copy of the widget for trying it out. Table deliverables can name
    their rows as well as their columns.
-10. **Application link and window.** Student Manager → Forms. The form a
+10. **Application link and window.** The form builder and the link and
+    window panel are no longer in the Student Manager (the program is moving
+    to first come, first served). The application form, `/api/form` and
+    `/api/application-window` still work as saved. The form a
     fresh database starts with is the 2026-27 application in
     `src/lib/data/applicationForm2026.js` (12 items: three notices, level and
     starting-point choices, three 250-word long answers with helper lines,
@@ -510,14 +512,14 @@ model: `docs/ai-cofounder-plan.md`. Code: `src/lib/aida/`, routes `/api/aida/cha
 `/api/aida/admin` (super admin), pages `/aida` and `/aida/chat`.
 
 - **`/aida`** (super admin, top bar): everything AIDA is told. A strip at the top sets who can use it
-  (**Off** / **Test account only** / **On for students**; a fresh database starts Off), the messages each
+  (**Off** / **On for students**; a fresh database starts Off), the messages each
   student may send per day (default 60), and shows usage and cost. Below it, the context blocks: the general
   context, the core behaviour prompt (collapsed; "Reset to the original" restores `src/lib/aida/prompt.js`),
   and one block of AI instructions per lesson. This is the only place AI instructions exist: the Lesson
   Editor has no button for them, a save from the editor never changes them, students never receive them and
   "Export as MD" does not carry them (it is the student's own work only).
 - **`/aida/chat`** (super admin, the "Chat with AIDA" button): the same AIDA students get. Pick the lesson it
-  is opened from and whose deliverables it reads (any student, the test account, or nobody). "Show what AIDA
+  is opened from and whose deliverables it reads (any student, or nobody). "Show what AIDA
   sees" prints the exact text it is given. The deliverable buttons open that student's answer as a test copy:
   edits are sent to AIDA with the message (`edits` in the request) and never written to the student's work.
   Nothing on this page is saved.
@@ -538,11 +540,11 @@ model: `docs/ai-cofounder-plan.md`. Code: `src/lib/aida/`, routes `/api/aida/cha
   on the lesson card) and Send becomes "Submit to AIDA". AIDA is sent only the answers that changed.
 - **Storage**: `aida_conversations` (one document per student per lesson, id `aida_<student>_<lesson>`;
   "New chat" keeps the old one under another id), `aida_usage` (one per person per Toronto day), and the
-  `aida` setting. Deleting a student's account or wiping the test account removes theirs.
+  `aida` setting. Deleting a student's account removes theirs.
 - **Opening hours** (`closedNote` in `store.js`): "Only open at set hours" on `/aida`, with a day-of-week
   picker and a from/to time, read in Toronto time. Outside them a student can open the panel and read their
-  chat, the reply box is disabled with the hours, and the chat route answers 403. Applies to the test account
-  too; `/aida/chat` is never limited.
+  chat, the reply box is disabled with the hours, and the chat route answers 403.
+  `/aida/chat` is never limited.
 - **Limits**: 2,000 characters a message, the daily count, 80 messages a conversation, 1,500 tokens a reply.
 - **Environment**: `AIDA_ANTHROPIC_API_KEY` (falls back to `ANTHROPIC_API_KEY`), `AIDA_MODEL` (default
   `claude-sonnet-5-5`). With no key a sandbox stand-in answers, which is what `npm run smoke` exercises.

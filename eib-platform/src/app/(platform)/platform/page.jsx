@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Pencil, Users, ClipboardList, GraduationCap, FileText, Globe, Bot, ClipboardCheck, CheckCheck, Sparkles, Rocket } from "lucide-react";
 import { getAccessState, authMode } from "@/lib/auth";
 import { ROLE_LABEL } from "@/lib/roles";
+import { removeLeftoverTestAccount } from "@/lib/data/testAccount";
 
 const COLORS = {
   text: "#0f1222",
@@ -36,7 +37,7 @@ const TOOLS = [
     label: "Student Manager",
     icon: ClipboardList,
     roles: ["superAdmin", "studentLeader"],
-    blurb: "Edit the application form, review applicants, grade deliverables.",
+    blurb: "Review applicants, set up the student agreement, grade deliverables.",
   },
   {
     href: "/grading",
@@ -93,7 +94,7 @@ const TOOLS = [
     icon: FileText,
     roles: ["superAdmin", "studentLeader"],
     tone: "amber",
-    blurb: "What applicants see. Copy the link from the Student Manager's Forms tab.",
+    blurb: "What applicants see.",
   },
 ];
 
@@ -109,7 +110,9 @@ export default async function Home() {
   if (user?.role === "advancement") redirect("/crm");
   // The advancement team has one tool too.
   if (user?.role === "advancement") redirect("/crm");
-  const signInMissing = !user && authMode !== "google" && process.env.NODE_ENV === "production";
+  // One-time clean-up of the retired test student account (see testAccount.js).
+  if (user?.role === "superAdmin") await removeLeftoverTestAccount().catch((e) => console.error("[eib] test account clean-up failed", e));
+  const signInMissing =!user && authMode !== "google" && process.env.NODE_ENV === "production";
   const allowed = TOOLS.filter((t) => user && t.roles.includes(user.role));
 
   return (

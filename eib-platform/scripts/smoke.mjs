@@ -417,7 +417,9 @@ head("decisions and release");
   check("application carries studentId", true, Boolean((await req(leader, "GET", `/api/applications/${appId}`)).json?.studentId));
   const newStudent = await login("smoke.applicant@tfs.ca");
   check("new student: first visit goes to the welcome page", "/welcome", new URL((await fetch(`${BASE}/lessons`, { headers: { Cookie: newStudent }, redirect: "manual" })).headers.get("location") || "/", BASE).pathname);
-  await req(newStudent, "POST", "/api/welcome", {});
+  check("new student: /onboarding also goes to the welcome page, which renders", ["/welcome", true], [new URL((await fetch(`${BASE}/onboarding`, { headers: { Cookie: newStudent }, redirect: "manual" })).headers.get("location") || "/", BASE).pathname, (await req(newStudent, "GET", "/welcome")).text.includes("Congratulations")]);
+  check("leader cannot press welcome -> 403", 403, await code(leader, "POST", "/api/welcome", {}));
+  check("new student presses the welcome button -> 200", 200, await code(newStudent, "POST", "/api/welcome", {}));
   check("new student can open lessons after the welcome", 200, await code(newStudent, "GET", "/lessons"));
   await setStatus("waitlist");
   check("moved to waitlist -> account suspended, decision unreleased", ["suspended", false], [await acct(), (await req(leader, "GET", `/api/applications/${appId}`)).json?.decisionReleased]);
@@ -487,7 +489,23 @@ head("student agreement");
   const pdfRes = await fetch(`${BASE}/api/agreement/pdf`, { headers: { Cookie: student } });
   check("student can fetch the PDF", [200, "application/pdf"], [pdfRes.status, pdfRes.headers.get("content-type")]);
   check("stranger cannot fetch the PDF -> 401", 401, (await fetch(`${BASE}/api/agreement/pdf`, { headers: { Cookie: stranger } })).status);
-  const good = { readConfirmed: true, studentSignature: "Amara Chen", parentSignature: "Mei Chen", parentEmail: "mei.chen@example.com", parentRelationship: "Mother", parentConfirmed: true };
+  // the signing form is editable: its wording, the relationship options, extra questions
+  const formEdit = await req(admin, "PUT", "/api/agreement", {
+    wording: { readStatement: "SMOKE read statement", studentSignatureLabel: "", parentEmailHelp: "" },
+    relationships: ["Mother", "Father", " Aunt ", "Aunt", ""],
+    questions: [{ id: "aq_phone", type: "short", label: "Guardian phone", required: true, askedOf: "guardian" }, { type: "choice", label: "T-shirt size", required: false, options: ["S", "M"], askedOf: "nonsense" }],
+  });
+  const sizeId = formEdit.json?.questions?.[1]?.id;
+  check("signing form wording: saved; an empty label goes back to the original; an empty helper line is hidden", ["SMOKE read statement", "Student signature", ""], [formEdit.json?.wording?.readStatement, formEdit.json?.wording?.studentSignatureLabel, formEdit.json?.wording?.parentEmailHelp]);
+  check("signing form: relationship options trimmed, no blanks or repeats", ["Mother", "Father", "Aunt"], formEdit.json?.relationships);
+  check("signing form: extra questions saved with an id and who answers", ["aq_phone", "guardian", true, "student"], [formEdit.json?.questions?.[0]?.id, formEdit.json?.questions?.[0]?.askedOf, Boolean(sizeId), formEdit.json?.questions?.[1]?.askedOf]);
+  check("leader cannot edit the signing form -> 403", 403, await code(leader, "PUT", "/api/agreement", { questions: [] }));
+  const asStudent = (await req(student, "GET", "/api/agreement")).json;
+  check("the student is given the form's wording, options and questions", ["SMOKE read statement", 3, 2], [asStudent?.wording?.readStatement, asStudent?.relationships?.length, asStudent?.questions?.length]);
+  const good = { readConfirmed: true, studentSignature: "Amara Chen", parentSignature: "Mei Chen", parentEmail: "mei.chen@example.com", parentRelationship: "Mother", parentConfirmed: true, answers: { aq_phone: "416 555 0100" } };
+  check("sign without a required extra answer -> 400", 400, await code(student, "POST", "/api/agreement/accept", { ...good, answers: {} }));
+  check("sign with a relationship that is no longer an option -> 400", 400, await code(student, "POST", "/api/agreement/accept", { ...good, parentRelationship: "Legal guardian" }));
+  check("sign with a choice that is not one of the options -> 400", 400, await code(student, "POST", "/api/agreement/accept", { ...good, answers: { ...good.answers, [sizeId]: "XL" } }));
   check("sign without parent confirm -> 400", 400, await code(student, "POST", "/api/agreement/accept", { ...good, parentConfirmed: false }));
   check("sign with a bad signature -> 400", 400, await code(student, "POST", "/api/agreement/accept", { ...good, studentSignature: "123" }));
   check("leader cannot sign -> 403", 403, await code(leader, "POST", "/api/agreement/accept", good));
@@ -496,6 +514,9 @@ head("student agreement");
   const before = outbox().length;
   const signed = await req(student, "POST", "/api/agreement/accept", good);
   check("student submits -> 200, pending, guardian emailed", [200, "pending", "Mei Chen", "2026-27", true], [signed.status, signed.json?.agreement?.status, signed.json?.agreement?.parentName, signed.json?.agreement?.versionLabel, outbox().length === before + 1]);
+  check("the record keeps the extra answers (the optional one left empty is not stored)", [1, "aq_phone", "guardian", "416 555 0100"], [signed.json?.agreement?.answers?.length, signed.json?.agreement?.answers?.[0]?.questionId, signed.json?.agreement?.answers?.[0]?.askedOf, signed.json?.agreement?.answers?.[0]?.answer]);
+  const formReset = await req(admin, "PUT", "/api/agreement", { wording: { readStatement: "" }, relationships: [], questions: [] });
+  check("signing form put back: original statement, the four relationships, no extra questions", [true, 4, 0], [formReset.json?.wording?.readStatement.startsWith("I have read and understood"), formReset.json?.relationships?.length, formReset.json?.questions?.length]);
   check("record has no token, email masked", [false, "m…@example.com"], ["confirmation" in (signed.json?.agreement || {}), signed.json?.agreement?.parentEmailMasked]);
   // the sample student applied before the fee notice existed, so hers is null; the field itself must be there
   check("fee acknowledgement field present on the record", true, "feeAcknowledgement" in (signed.json?.agreement || {}));
@@ -541,42 +562,10 @@ head("student agreement");
   await req(admin, "PUT", "/api/agreement", { required: true });
 }
 
-/* ---- the test student account ---- */
-head("test account");
+/* ---- the test student account is gone ---- */
+head("no test account");
 {
-  check("leader cannot create a test account -> 403", 403, await code(leader, "POST", "/api/test-account", { email: "tester@tfs.ca" }));
-  check("none to begin with", null, (await req(admin, "GET", "/api/test-account")).json?.account);
-  check("bad email -> 400", 400, await code(admin, "POST", "/api/test-account", { email: "nope" }));
-  check("existing email -> 409", 409, await code(admin, "POST", "/api/test-account", { email: "amara.chen@tfs.ca" }));
-  const made = await req(admin, "POST", "/api/test-account", { email: "Tester@tfs.ca" });
-  check("admin creates it -> 201, named Test, lowercased", [201, "Test", "tester@tfs.ca"], [made.status, made.json?.account?.name, made.json?.account?.email]);
-  check("only one -> 409", 409, await code(admin, "POST", "/api/test-account", { email: "other@tfs.ca" }));
-  const tester = await login("tester@tfs.ca");
-  check("test account is a student: lessons view 200, manager 403", [200, 403], [await code(tester, "GET", "/api/lessons/view"), await code(tester, "GET", "/api/applications")]);
-  // first sign-in: the welcome page comes before lessons and onboarding
-  check("new student: /lessons -> /welcome, /onboarding -> /welcome", ["/welcome", "/welcome"], [new URL((await fetch(`${BASE}/lessons`, { headers: { Cookie: tester }, redirect: "manual" })).headers.get("location") || "/", BASE).pathname, new URL((await fetch(`${BASE}/onboarding`, { headers: { Cookie: tester }, redirect: "manual" })).headers.get("location") || "/", BASE).pathname]);
-  check("welcome page renders", true, (await req(tester, "GET", "/welcome")).text.includes("Congratulations"));
-  const welcomed = await req(tester, "POST", "/api/welcome", {});
-  check("pressing the button -> next is lessons (no agreement PDF now)", [200, "/lessons"], [welcomed.status, welcomed.json?.next]);
-  check("after that: /lessons 200, /welcome -> /lessons", [200, "/lessons"], [await code(tester, "GET", "/lessons"), new URL((await fetch(`${BASE}/welcome`, { headers: { Cookie: tester }, redirect: "manual" })).headers.get("location") || "/", BASE).pathname]);
-  check("leader cannot press welcome -> 403", 403, await code(leader, "POST", "/api/welcome", {}));
-  const first = (await req(tester, "GET", "/api/lessons/view")).json.lessons[0];
-  const del = first?.deliverables?.[0];
-  if (del) {
-    const sub = await req(tester, "PUT", "/api/submissions", { lessonId: first.id, deliverableId: del.id, payload: { text: "test work" } });
-    check("test account submits work", true, sub.status === 200 || sub.status === 201);
-  }
-  check("applications count unchanged by the test account", false, (await req(admin, "GET", "/api/applications")).json.some((a) => a.email === "tester@tfs.ca"));
-  const wiped = await req(admin, "PATCH", "/api/test-account");
-  check("wipe -> account kept, work gone", [200, "tester@tfs.ca", del ? 1 : 0], [wiped.status, wiped.json?.account?.email, wiped.json?.removed?.submissions]);
-  check("after wipe: no submissions for the tester", 0, (await req(tester, "GET", "/api/lessons/view")).json.submissions.length);
-  check("after wipe: the welcome page shows again", "/welcome", new URL((await fetch(`${BASE}/lessons`, { headers: { Cookie: tester }, redirect: "manual" })).headers.get("location") || "/", BASE).pathname);
-  check("change email to a taken one -> 409", 409, await code(admin, "PATCH", "/api/test-account", { email: "amara.chen@tfs.ca" }));
-  const moved = await req(admin, "PATCH", "/api/test-account", { email: "Tester2@gmail.com" });
-  check("change email -> moved and lowercased", [200, "tester2@gmail.com"], [moved.status, moved.json?.account?.email]);
-  check("old email no longer signs in, new one does", [401, 200], [await code(tester, "GET", "/api/lessons/view"), await code(await login("tester2@gmail.com"), "GET", "/api/lessons/view")]);
-  check("remove -> gone", [200, null], [await code(admin, "DELETE", "/api/test-account"), (await req(admin, "GET", "/api/test-account")).json?.account]);
-  check("removed account can no longer sign in -> 401", 401, await code(tester, "GET", "/api/lessons/view"));
+  check("the test account route no longer exists -> 404", [404, 404], [await code(admin, "GET", "/api/test-account"), await code(admin, "POST", "/api/test-account", { email: "tester@tfs.ca" })]);
 }
 
 head("website admin");
@@ -653,7 +642,7 @@ head("AIDA");
   check("Chat with AIDA: AIDA is told which answer changed", true, told.text.includes("Changed answers received with this message: 1."));
   check("Chat with AIDA: admin gets a reply; a student cannot use it", [200, true, 403], [trial.status, trial.text.includes("SMOKE-TEST-TAB") && trial.text.includes("Lesson 2"), (await req(student, "POST", A, { lessonId: "lesson_2", messages: [{ role: "user", content: "x" }] })).status]);
 
-  check("test-account-only mode: an ordinary student still has no AIDA", ["test", false], [(await req(admin, "PUT", A, { settings: { mode: "test" } })).json?.settings.mode, (await req(student, "GET", "/api/lessons/view")).json.aida]);
+  check("the old test-account-only mode is ignored: AIDA stays off", ["off", false], [(await req(admin, "PUT", A, { settings: { mode: "test" } })).json?.settings.mode, (await req(student, "GET", "/api/lessons/view")).json.aida]);
   await req(admin, "PUT", A, { settings: { mode: "on" } });
   check("on: the student gets Ask AIDA; leaders and strangers cannot chat", [true, 403, 401], [(await req(student, "GET", "/api/lessons/view")).json.aida, (await chat(leader, "lesson_2", "hi")).status, (await chat(stranger, "lesson_2", "hi")).status]);
   const r1 = await chat(student, "lesson_2", "SMOKE-HELLO what is weak here?");

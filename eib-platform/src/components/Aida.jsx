@@ -18,7 +18,6 @@ const rowsFor = (text, min = 5) => Math.min(18, Math.max(min, String(text).split
 const DAYS = [[1, "Mon"], [2, "Tue"], [3, "Wed"], [4, "Thu"], [5, "Fri"], [6, "Sat"], [0, "Sun"]];
 const MODES = [
   { id: "off", label: "Off", note: "No student sees AIDA." },
-  { id: "test", label: "Test account only", note: "Only the Test student sees AIDA on the Lessons page." },
   { id: "on", label: "On for students", note: "Every student sees an Ask AIDA button on each lesson." },
 ];
 

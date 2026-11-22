@@ -75,7 +75,7 @@ export async function saveAidaSettings(patch) {
 /** May this person open AIDA on the Lessons page? */
 export function aidaOpenFor(user, settings) {
   if (!user || user.role !== "student") return false;
-  return settings.mode === "on" || (settings.mode === "test" && user.isTest === true);
+  return settings.mode === "on";
 }
 
 /* ---------------------------------------------------------- conversations --- */
@@ -100,7 +100,7 @@ export async function archiveConversation(studentId, lessonId) {
   return true;
 }
 
-/** Everything AIDA holds about a student, removed with their account (and by the test account's wipe). */
+/** Everything AIDA holds about a student, removed with their account. */
 export async function deleteAidaFor(studentId) {
   const mine = await findAll("aida_conversations", (c) => c.studentId === studentId);
   for (const c of mine) await removeOne("aida_conversations", c.id);

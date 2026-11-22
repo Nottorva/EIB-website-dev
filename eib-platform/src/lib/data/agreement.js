@@ -21,6 +21,25 @@ const META_KEY = "studentAgreement";
 const PDF_KEY = "studentAgreementPdf";
 export const MAX_PDF_BYTES = 4 * 1024 * 1024; // Vercel's request body limit is 4.5 MB
 export const RELATIONSHIPS = ["Mother", "Father", "Legal guardian", "Other"];
+
+// The words on the signing form. The super admin edits them on the Student
+// Manager's Student agreement tab; {student} in the guardian's statement
+// becomes the student's name.
+export const DEFAULT_WORDING = {
+  studentSignatureLabel: "Student signature",
+  studentSignatureHelp: "Typing your name here is your signature.",
+  readStatement: "I have read and understood this agreement, the EIB syllabus and the EIB MVP Reimbursement Policy.",
+  guardianNote: "The next line must be completed by your parent or legal guardian, personally: on their own device, or with you typing exactly what they say. We will email them a link to confirm.",
+  parentSignatureLabel: "Parent or guardian signature",
+  parentEmailLabel: "Parent or guardian email",
+  parentEmailHelp: "The confirmation link goes here.",
+  relationshipLabel: "Relationship to the student",
+  parentStatement: "I am the parent or legal guardian of {student} and I agree to this agreement on their behalf. Typing my name above is my signature. I will click the confirmation link sent to the email address I provided; the signature is complete only after that.",
+};
+// Wording that may be left empty (the helper lines and the note); the rest falls back to the default.
+const OPTIONAL_WORDING = ["studentSignatureHelp", "guardianNote", "parentEmailHelp"];
+const QUESTION_KINDS = ["short", "long", "choice", "link", "notice"];
+const MAX_QUESTIONS = 30;
 export const TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000; // links work for 7 days
 export const RESEND_COOLDOWN_MS = 10 * 60 * 1000; // one email every 10 minutes
 export const RESEND_DAILY_CAP = 5; // and at most five a day
@@ -31,11 +50,61 @@ const DEFAULTS = {
   required: true,
   version: 0,
   pdf: null, // { name, size, uploadedAt }
+  wording: DEFAULT_WORDING,
+  relationships: RELATIONSHIPS,
+  // extra questions the super admin added to the signing form:
+  // { id, type, label, help, detail, ack, required, options, maxWords, askedOf: "student" | "guardian" }
+  questions: [],
 };
+
+const text = (v, max) => String(v ?? "").slice(0, max);
+
+function cleanWording(input, current) {
+  const next = { ...current };
+  for (const key of Object.keys(DEFAULT_WORDING)) {
+    if (input?.[key] === undefined) continue;
+    const value = text(input[key], 800).trim();
+    next[key] = value || (OPTIONAL_WORDING.includes(key) ? "" : DEFAULT_WORDING[key]);
+  }
+  return next;
+}
+
+function cleanRelationships(input) {
+  const list = [...new Set((Array.isArray(input) ? input : []).map((r) => text(r, 40).trim()).filter(Boolean))].slice(0, 12);
+  return list.length ? list : RELATIONSHIPS;
+}
+
+function cleanQuestions(input) {
+  const seen = new Set();
+  return (Array.isArray(input) ? input : []).slice(0, MAX_QUESTIONS).map((q, i) => {
+    let id = /^[A-Za-z0-9_-]{1,40}$/.test(String(q?.id || "")) ? String(q.id) : "aq_" + Date.now().toString(36) + i;
+    while (seen.has(id)) id += "x";
+    seen.add(id);
+    const type = QUESTION_KINDS.includes(q?.type) ? q.type : "short";
+    return {
+      id,
+      type,
+      label: text(q?.label, 1000),
+      help: text(q?.help, 500),
+      detail: text(q?.detail, 2000),
+      ack: text(q?.ack ?? "I understand", 120),
+      required: q?.required !== false,
+      options: (Array.isArray(q?.options) ? q.options : []).slice(0, 20).map((o) => text(o, 200)),
+      maxWords: Math.max(0, Math.round(Number(q?.maxWords) || 0)),
+      askedOf: q?.askedOf === "guardian" ? "guardian" : "student",
+    };
+  });
+}
 
 export async function getStudentAgreement() {
   const saved = (await getSetting(META_KEY)) || {};
-  return { ...DEFAULTS, ...saved };
+  return {
+    ...DEFAULTS,
+    ...saved,
+    wording: { ...DEFAULT_WORDING, ...(saved.wording || {}) },
+    relationships: Array.isArray(saved.relationships) && saved.relationships.length ? saved.relationships : RELATIONSHIPS,
+    questions: Array.isArray(saved.questions) ? saved.questions : [],
+  };
 }
 
 export async function saveStudentAgreement(patch) {
@@ -44,6 +113,11 @@ export async function saveStudentAgreement(patch) {
   if (patch.title !== undefined) next.title = String(patch.title).slice(0, 120) || DEFAULTS.title;
   if (patch.intro !== undefined) next.intro = String(patch.intro).slice(0, 2000);
   if (patch.required !== undefined) next.required = Boolean(patch.required);
+  // The form's wording and questions are not a new version: people who have
+  // signed stay signed, and whoever signs next gets the form as it is now.
+  if (patch.wording !== undefined) next.wording = cleanWording(patch.wording, current.wording);
+  if (patch.relationships !== undefined) next.relationships = cleanRelationships(patch.relationships);
+  if (patch.questions !== undefined) next.questions = cleanQuestions(patch.questions);
   await setSetting(META_KEY, next);
   return next;
 }
@@ -121,6 +195,34 @@ async function feeAcknowledgement(email) {
   return { applicationId: app.id, label: q?.label || "Program fee notice", answer: a.answer, acknowledgedAt: app.submittedAt };
 }
 
+const countWords = (v) => String(v || "").trim().split(" ").filter(Boolean).length;
+
+// The answers to the extra questions: { answers } to store, or { error }.
+function readAnswers(questions, input) {
+  const given = input && typeof input === "object" ? input : {};
+  const answers = [];
+  for (const q of questions) {
+    const value = clean(given[q.id], 5000);
+    const who = q.askedOf === "guardian" ? "Your parent or legal guardian needs to" : "Please";
+    if (q.type === "notice") {
+      const ack = q.ack || "I understand";
+      if (value !== ack) {
+        if (q.required) return { error: who + ' tick "' + ack + '".' };
+        continue;
+      }
+    } else if (!value) {
+      if (q.required) return { error: who + ' answer "' + q.label + '".' };
+      continue;
+    } else if (q.type === "choice" && !q.options.includes(value)) {
+      return { error: who + ' choose one of the options for "' + q.label + '".' };
+    } else if (q.type === "long" && q.maxWords && countWords(value.replace(/\s+/g, " ")) > q.maxWords) {
+      return { error: '"' + q.label + '" is over the ' + q.maxWords + "-word limit." };
+    }
+    answers.push({ questionId: q.id, type: q.type, askedOf: q.askedOf, label: q.label, answer: value });
+  }
+  return { answers };
+}
+
 // Validates and stores the submission as pending, then emails the guardian.
 export async function recordAgreement(user, input, { origin }) {
   const meta = await getStudentAgreement();
@@ -137,9 +239,11 @@ export async function recordAgreement(user, input, { origin }) {
   if (!SIGNATURE.test(studentInitials)) return { error: "Please type your signature: your full name or initials, letters only." };
   if (parentName.length < 2) return { error: "Your parent or legal guardian needs to type their signature." };
   if (!/^\S+@\S+\.\S+$/.test(parentEmail)) return { error: "Please enter a valid email address for your parent or legal guardian." };
-  if (!RELATIONSHIPS.includes(parentRelationship)) return { error: "Please choose the relationship to you." };
+  if (!meta.relationships.includes(parentRelationship)) return { error: "Please choose the relationship to you." };
   if (!SIGNATURE.test(parentInitials)) return { error: "Your parent or legal guardian needs to type their signature: their full name or initials, letters only." };
   if (!parentConfirmed) return { error: "Your parent or legal guardian must confirm they agree on your behalf." };
+  const extra = readAnswers(meta.questions, input.answers);
+  if (extra.error) return { error: extra.error };
   const now = new Date().toISOString();
   const record = {
     status: "pending",
@@ -153,6 +257,7 @@ export async function recordAgreement(user, input, { origin }) {
     parentEmail,
     parentRelationship,
     parentInitials,
+    answers: extra.answers,
     guardianSubmittedAt: now,
     confirmedAt: null,
     acceptedAt: now, // kept for older readers of the record

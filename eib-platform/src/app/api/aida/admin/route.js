@@ -48,7 +48,7 @@ export const GET = guarded(["superAdmin"], async ({ req }) => {
     model: aidaConfig().model,
     usage,
     lessons: lessons.map((l) => ({ id: l.id, number: l.number, title: l.title, studentVisible: l.studentVisible, chapterLabel: l.chapterLabel, aiInstructions: l.aiInstructions || "", deliverables: l.deliverables })),
-    students: students.filter((u) => !u.suspended).map((u) => ({ id: u.id, name: u.name, isTest: u.isTest === true })).sort((a, b) => Number(b.isTest) - Number(a.isTest) || a.name.localeCompare(b.name)),
+    students: students.filter((u) => !u.suspended).map((u) => ({ id: u.id, name: u.name })).sort((a, b) => a.name.localeCompare(b.name)),
   });
 });
 

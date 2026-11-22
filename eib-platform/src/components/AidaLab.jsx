@@ -138,7 +138,7 @@ export default function AidaLab() {
                 Reading the deliverables of
                 <select value={studentId} onChange={(e) => setStudentId(e.target.value)} style={selectStyle}>
                   <option value="">Nobody (blank deliverables)</option>
-                  {data.students.map((s) => <option key={s.id} value={s.id}>{s.name}{s.isTest ? " (test account)" : ""}</option>)}
+                  {data.students.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </label>
               <div style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
