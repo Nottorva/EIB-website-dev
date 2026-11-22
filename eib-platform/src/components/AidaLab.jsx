@@ -30,14 +30,25 @@ export default function AidaLab() {
   const told = useRef({}); // each trial change as AIDA was last sent it
   const [full, setFull] = useState(false); // the chat over the whole window
 
+  // Lessons and deliverables are read when the page opens, and again whenever you come back to this tab
+  // (after adding a lesson in the Lesson Editor, say), so the lists here never need a reload.
   useEffect(() => {
-    api
-      .get(ADMIN)
-      .then((d) => {
-        setData(d);
-        setLessonId(d.lessons[0]?.id || "");
-      })
-      .catch((e) => setError(e.message));
+    const read = () =>
+      api
+        .get(ADMIN)
+        .then((d) => {
+          setData(d);
+          setLessonId((cur) => (d.lessons.some((l) => l.id === cur) ? cur : d.lessons[0]?.id || ""));
+        })
+        .catch((e) => setError(e.message));
+    read();
+    const onBack = () => document.visibilityState === "visible" && read();
+    window.addEventListener("focus", onBack);
+    document.addEventListener("visibilitychange", onBack);
+    return () => {
+      window.removeEventListener("focus", onBack);
+      document.removeEventListener("visibilitychange", onBack);
+    };
   }, []);
 
   // A different lesson or student is a different conversation.
@@ -94,7 +105,7 @@ export default function AidaLab() {
   };
   // The list beside the chat: every deliverable, chapter by chapter. Picking one puts its button above
   // the reply box without having to ask AIDA for it.
-  const catalog = (data?.lessons || []).filter((l) => l.studentVisible || l.id === lessonId).map((l) => ({ id: l.id, label: l.chapterLabel || `Lesson ${l.number}`, title: l.title, items: l.deliverables.map((d, i) => ({ id: d.id, label: `${l.number}${String.fromCharCode(65 + i)}`, title: d.title })) }));
+  const catalog = (data?.lessons || []).map((l) => ({ id: l.id, label: l.chapterLabel || `Lesson ${l.number}`, title: l.studentVisible ? l.title : `${l.title} (draft)`, items: l.deliverables.map((d, i) => ({ id: d.id, label: `${l.number}${String.fromCharCode(65 + i)}`, title: d.title })) }));
   const who = data?.students.find((s) => s.id === studentId);
   const whose = who ? `${who.name}'s` : "blank";
 
@@ -120,7 +131,7 @@ export default function AidaLab() {
               <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12.5, fontWeight: 800, color: COLORS.sub }}>
                 Opened from lesson
                 <select value={lessonId} onChange={(e) => setLessonId(e.target.value)} style={selectStyle}>
-                  {data.lessons.map((l) => <option key={l.id} value={l.id}>Lesson {l.number}: {l.title}</option>)}
+                  {data.lessons.map((l) => <option key={l.id} value={l.id}>Lesson {l.number}: {l.title}{l.studentVisible ? "" : " (draft)"}</option>)}
                 </select>
               </label>
               <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12.5, fontWeight: 800, color: COLORS.sub }}>
@@ -148,7 +159,7 @@ export default function AidaLab() {
             {preview && (
               <div style={card}>
                 <div style={{ fontSize: 13, color: COLORS.faint, lineHeight: 1.5, marginBottom: 12 }}>Exactly this, then the conversation. No student name or email is included.</div>
-                <FieldLabel>1. Same for every student: how AIDA behaves, your context, every lesson</FieldLabel>
+                <FieldLabel>1. Same for every student: how AIDA behaves, your context, every lesson (here, drafts included; students get published lessons only)</FieldLabel>
                 <pre style={{ ...pre, maxHeight: 300, margin: "0 0 14px" }}>{preview.shared}</pre>
                 <FieldLabel>2. This student: the lesson they are on and all of their work</FieldLabel>
                 <pre style={{ ...pre, maxHeight: 420, margin: 0 }}>{preview.context}</pre>

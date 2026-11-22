@@ -108,6 +108,7 @@ export default function AidaChat({ messages, setMessages, post, emptyHint, disab
   const [error, setError] = useState(null);
   const [openId, setOpenId] = useState(null);
   const [picked, setPicked] = useState([]); // chosen from the list
+  const [removed, setRemoved] = useState([]); // pulled in by AIDA, then taken out from the list: "id@message"
   const [listOpen, setListOpen] = useState(false); // the drop-down, when not wide
   const endRef = useRef(null);
   const submitted = useRef({}); // id -> the answer as it was when opened or last submitted
@@ -117,8 +118,15 @@ export default function AidaChat({ messages, setMessages, post, emptyHint, disab
   }, [messages]);
 
   // The buttons: what the student picked, plus whatever AIDA pulled in most recently.
+  // Taking one out lasts until AIDA pulls it in again with a later reply.
   let pulled = [];
-  for (let i = messages.length - 1; i >= 0 && !pulled.length; i--) if (messages[i].role === "assistant") pulled = [...shownIn(messages[i].content), ...draftedIn(messages[i].content)];
+  let pulledAt = -1;
+  for (let i = messages.length - 1; i >= 0 && !pulled.length; i--) {
+    if (messages[i].role !== "assistant") continue;
+    pulled = [...shownIn(messages[i].content), ...draftedIn(messages[i].content)];
+    pulledAt = i;
+  }
+  pulled = pulled.filter((id) => !removed.includes(`${id}@${pulledAt}`));
   const buttons = deliverableOf ? [...new Set([...picked, ...pulled])].map((id) => ({ id, ...(deliverableOf(id) || {}) })).filter((d) => d.label) : [];
   const open = buttons.find((d) => d.id === openId && d.editor) || null;
 
@@ -132,8 +140,11 @@ export default function AidaChat({ messages, setMessages, post, emptyHint, disab
     deliverableOf?.(id)?.apply?.(payload);
     setPicked((prev) => (prev.includes(id) ? prev : [...prev, id]));
   };
+  // The list turns a deliverable's button on or off, whoever put it there.
   const pick = (id) => {
-    setPicked((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    const on = picked.includes(id) || pulled.includes(id);
+    setPicked((prev) => (on ? prev.filter((x) => x !== id) : [...prev, id]));
+    setRemoved((prev) => (on ? [...prev, `${id}@${pulledAt}`] : prev.filter((x) => !x.startsWith(`${id}@`))));
     if (openId === id) setOpenId(null);
     setListOpen(false);
   };
