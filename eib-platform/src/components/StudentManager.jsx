@@ -1604,7 +1604,7 @@ export default function StudentManager({ user }) {
   const tabs = [
     { id: "forms", label: "Forms", icon: FileText },
     { id: "students", label: "EIB Students", icon: Users },
-    { id: "analytics", label: "Analytics", icon: ChartColumn },
+    // Analytics has no tab; it still opens at /manager?tab=analytics.
     ...(isSuperAdmin ? [{ id: "accmanager", label: "Acc Manager", icon: UserPlus }] : []),
   ];
 
@@ -1616,7 +1616,7 @@ export default function StudentManager({ user }) {
           <>
             <SaveIndicator status={saver.status} />
             <SegmentedTabs value={tab} onChange={setTab} options={tabs} style={{ background: "#fff", borderRadius: 12 }} />
-            {isSuperAdmin && <TestAccountBox />}
+            {/* TestAccountBox is not shown here any more; the component is kept above. */}
           </>
         }
       />
