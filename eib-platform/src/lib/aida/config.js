@@ -16,8 +16,10 @@ export const DEFAULT_DAILY_LIMIT = 60;
 export const MAX_MESSAGE_CHARS = 2000;
 /** A conversation this long asks for a fresh chat (the whole history is re-read on every message). */
 export const MAX_CONVERSATION_MESSAGES = 80;
-/** Ceiling on one reply, reasoning included. Room for a whole deliverable written out; most replies are far shorter. */
-export const MAX_REPLY_TOKENS = 3000;
+/** Ceiling on one reply, reasoning and searching included. Room for a whole deliverable written out; most replies are far shorter. */
+export const MAX_REPLY_TOKENS = 6000;
+/** Web searches the student AIDA may run for one message. */
+export const AIDA_MAX_SEARCHES = 3;
 
 /** Ceiling on one AIDA Unlocked reply: room for a full piece of research written out. */
 export const UNLOCKED_REPLY_TOKENS = 16000;

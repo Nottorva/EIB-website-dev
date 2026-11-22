@@ -1,8 +1,9 @@
-// The Claude calls for AIDA: one streamed reply, no tools (runChat), and AIDA Unlocked's, which can
-// search the web (runUnlocked, further down).
+// The Claude calls for AIDA: one streamed reply that can search the web, for the student AIDA (runChat)
+// and for AIDA Unlocked (runUnlocked).
 //
 // Caching. The request is laid out oldest-and-most-shared first, and nothing already sent is ever
 // edited, so each part is paid for once and then read back at a fraction of the price:
+// The student AIDA:
 //   system[0]  shared text (same for the whole class)        cached 1 hour
 //   system[1]  this student's lesson context                 cached 1 hour
 //   messages   the conversation; the marker sits on the newest message
@@ -11,7 +12,7 @@
 // With no API key (the local sandbox) a small mock answers, so the smoke suite runs offline.
 
 import Anthropic from "@anthropic-ai/sdk";
-import { aidaConfig, MAX_REPLY_TOKENS, UNLOCKED_REPLY_TOKENS, UNLOCKED_MAX_SEARCHES } from "./config";
+import { aidaConfig, MAX_REPLY_TOKENS, AIDA_MAX_SEARCHES, UNLOCKED_REPLY_TOKENS, UNLOCKED_MAX_SEARCHES } from "./config";
 import { SEARCHING_MARK } from "./unlocked";
 
 const CACHE = { type: "ephemeral", ttl: "1h" };
@@ -26,84 +27,30 @@ function client() {
 export const aidaLive = () => Boolean(aidaConfig().anthropicKey);
 
 /**
- * messages: [{ role: "user" | "assistant", text }], ending with the new user message.
- * onText is called with each piece of the reply as it is written.
- * Returns { text, usage: { input, output, cacheRead, cacheWrite }, stop }.
- */
-export async function runChat({ shared, context, messages, onText }) {
-  const c = client();
-  if (!c) return mockChat({ shared, context, messages, onText });
-  const cfg = aidaConfig();
-  const last = messages.length - 1;
-  const stream = c.messages.stream({
-    model: cfg.model,
-    max_tokens: MAX_REPLY_TOKENS,
-    output_config: { effort: "low" },
-    system: [
-      { type: "text", text: shared, cache_control: CACHE },
-      { type: "text", text: context, cache_control: CACHE },
-    ],
-    messages: messages.map((m, i) => ({ role: m.role, content: [{ type: "text", text: m.text, ...(i === last ? { cache_control: CACHE } : {}) }] })),
-  });
-  let text = "";
-  for await (const event of stream) {
-    if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-      text += event.delta.text;
-      onText(event.delta.text);
-    }
-  }
-  const final = await stream.finalMessage();
-  const u = final.usage || {};
-  const usage = { input: u.input_tokens || 0, output: u.output_tokens || 0, cacheRead: u.cache_read_input_tokens || 0, cacheWrite: u.cache_creation_input_tokens || 0 };
-  console.log(`[eib aida] ${cfg.model} stop=${final.stop_reason} in=${usage.input} out=${usage.output} cache_read=${usage.cacheRead} cache_write=${usage.cacheWrite}`);
-  if (!text.trim()) {
-    // A refusal, or the reply ran out of room before any words were written.
-    text = final.stop_reason === "refusal" ? "I can't help with that one. Let's get back to your venture: what are you working on in this lesson?" : "I lost my train of thought there. Could you ask that again?";
-    onText(text);
-  }
-  return { text, usage, stop: final.stop_reason };
-}
-
-/**
- * AIDA Unlocked: one streamed reply, with web search.
- *
- *   system[0]  how it behaves + the EIB method (same for everyone)   cached 1 hour
- *   system[1]  today's date (changes once a day, after the cached part)
- *   messages   the conversation; the marker sits on the newest message
+ * One reply, streamed, with web search. Shared by both AIDAs.
  *
  * The search runs on Anthropic's side. A long piece of research can come back "paused": the reply so
  * far is sent back as it is and the model carries on. While a search runs, SEARCHING_MARK is written
- * into the stream so the page can say so; the pages cited are listed under the reply.
- * If the model declines a message, Anthropic's default fallback model answers instead.
+ * into the stream so the page can say so (it is not part of the returned text); the pages cited are
+ * listed under the reply.
+ * `extra` holds request options that are in beta: if the API turns the request down before a word is
+ * written, it is asked once more without them.
  */
-const FALLBACK = { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" };
-export async function runUnlocked({ system, messages, onText }) {
-  const c = client();
-  if (!c) return mockUnlocked({ system, messages, onText });
-  const model = aidaConfig().unlockedModel;
+async function converse(c, { tag, model, maxTokens, effort, system, messages, searches, extra = null, onText }) {
   const last = messages.length - 1;
   const turns = messages.map((m, i) => ({ role: m.role, content: [{ type: "text", text: m.text, ...(i === last ? { cache_control: CACHE } : {}) }] }));
-  const base = {
-    model,
-    max_tokens: UNLOCKED_REPLY_TOKENS,
-    output_config: { effort: "medium" },
-    system: [
-      { type: "text", text: system, cache_control: CACHE },
-      { type: "text", text: `Today's date is ${new Date().toLocaleDateString("en-CA", { timeZone: "America/Toronto" })}.` },
-    ],
-    tools: [{ type: "web_search_20260209", name: "web_search", max_uses: UNLOCKED_MAX_SEARCHES }],
-  };
+  const base = { model, max_tokens: maxTokens, output_config: { effort }, system, tools: [{ type: "web_search_20260209", name: "web_search", max_uses: searches }] };
 
   let text = "";
   let gap = false; // a search happened since the last words, so the next words start a new paragraph
   let stop = "end_turn";
-  let extra = FALLBACK;
   const usage = { model, input: 0, output: 0, cacheRead: 0, cacheWrite: 0, searches: 0 };
   const sources = new Map();
   for (let round = 0; round < 4; round++) {
     let final;
     try {
-      const stream = c.beta.messages.stream({ ...base, ...extra, messages: turns }, { timeout: 280_000 });
+      const params = { ...base, ...(extra || {}), messages: turns };
+      const stream = extra ? c.beta.messages.stream(params, { timeout: 280_000 }) : c.messages.stream(params, { timeout: 280_000 });
       for await (const event of stream) {
         if (event.type === "content_block_start" && event.content_block.type === "server_tool_use") {
           gap = true;
@@ -117,11 +64,9 @@ export async function runUnlocked({ system, messages, onText }) {
       }
       final = await stream.finalMessage();
     } catch (e) {
-      // The fallback option is the one part of this request that is in beta: if the API turns the
-      // request down before a word is written, ask once more without it.
-      if (e instanceof Anthropic.BadRequestError && extra === FALLBACK && !text && round === 0) {
-        console.error(`[eib aida unlocked] retrying without fallbacks: ${e.message}`);
-        extra = {};
+      if (e instanceof Anthropic.BadRequestError && extra && !text && round === 0) {
+        console.error(`[eib ${tag}] retrying without beta options: ${e.message}`);
+        extra = null;
         round--;
         continue;
       }
@@ -141,17 +86,79 @@ export async function runUnlocked({ system, messages, onText }) {
     if (stop !== "pause_turn") break;
     turns.push({ role: "assistant", content: final.content });
   }
-  console.log(`[eib aida unlocked] ${model} stop=${stop} in=${usage.input} out=${usage.output} cache_read=${usage.cacheRead} cache_write=${usage.cacheWrite} searches=${usage.searches}`);
-
+  console.log(`[eib ${tag}] ${model} stop=${stop} in=${usage.input} out=${usage.output} cache_read=${usage.cacheRead} cache_write=${usage.cacheWrite} searches=${usage.searches}`);
   const say = (t) => {
     text += t;
     onText(t);
   };
-  if (!text.trim()) say(stop === "refusal" ? "I can't help with that one. What are you working on in the venture?" : "I lost my train of thought there. Could you ask that again?");
-  else if (stop === "max_tokens") say("\n\n(I ran out of room there. Say \"continue\" and I will pick up where I stopped.)");
-  else if (stop === "pause_turn") say("\n\n(That research ran long and I stopped before finishing. Say \"continue\" and I will carry on.)");
-  if (sources.size) say(`\n\nSources:\n${[...sources].slice(0, 12).map(([url, title]) => `${title}: ${url}`).join("\n")}`);
-  return { text, usage, stop };
+  return { text: () => text, say, usage, stop, sources };
+}
+
+// Told to the model after the cached parts, so a new day does not mean reading everything again at full price.
+const TODAY = () => `Today's date is ${new Date().toLocaleDateString("en-CA", { timeZone: "America/Toronto" })}.`;
+const sourceList = (sources) => `\n\nSources:\n${[...sources].slice(0, 12).map(([url, title]) => `${title}: ${url}`).join("\n")}`;
+
+/**
+ * The student AIDA.
+ * messages: [{ role: "user" | "assistant", text }], ending with the new user message.
+ * onText is called with each piece of the reply as it is written.
+ * Returns { text, usage: { model, input, output, cacheRead, cacheWrite, searches }, stop }.
+ */
+export async function runChat({ shared, context, messages, onText }) {
+  const c = client();
+  if (!c) return mockChat({ shared, context, messages, onText });
+  const r = await converse(c, {
+    tag: "aida",
+    model: aidaConfig().model,
+    maxTokens: MAX_REPLY_TOKENS,
+    effort: "low",
+    system: [
+      { type: "text", text: shared, cache_control: CACHE },
+      { type: "text", text: context, cache_control: CACHE },
+      { type: "text", text: TODAY() },
+    ],
+    messages,
+    searches: AIDA_MAX_SEARCHES,
+    onText,
+  });
+  // A refusal, or the reply ran out of room before any words were written.
+  if (!r.text().trim()) r.say(r.stop === "refusal" ? "I can't help with that one. Let's get back to your venture: what are you working on in this lesson?" : "I lost my train of thought there. Could you ask that again?");
+  else if (r.sources.size) r.say(sourceList(r.sources));
+  return { text: r.text(), usage: r.usage, stop: r.stop };
+}
+
+/**
+ * AIDA Unlocked.
+ *
+ *   system[0]  how it behaves + the EIB method (same for everyone)   cached 1 hour
+ *   system[1]  today's date (changes once a day, after the cached part)
+ *   messages   the conversation; the marker sits on the newest message
+ *
+ * If the model declines a message, Anthropic's default fallback model answers instead.
+ */
+const FALLBACK = { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" };
+export async function runUnlocked({ system, messages, onText }) {
+  const c = client();
+  if (!c) return mockUnlocked({ system, messages, onText });
+  const r = await converse(c, {
+    tag: "aida unlocked",
+    model: aidaConfig().unlockedModel,
+    maxTokens: UNLOCKED_REPLY_TOKENS,
+    effort: "medium",
+    system: [
+      { type: "text", text: system, cache_control: CACHE },
+      { type: "text", text: TODAY() },
+    ],
+    messages,
+    searches: UNLOCKED_MAX_SEARCHES,
+    extra: FALLBACK,
+    onText,
+  });
+  if (!r.text().trim()) r.say(r.stop === "refusal" ? "I can't help with that one. What are you working on in the venture?" : "I lost my train of thought there. Could you ask that again?");
+  else if (r.stop === "max_tokens") r.say("\n\n(I ran out of room there. Say \"continue\" and I will pick up where I stopped.)");
+  else if (r.stop === "pause_turn") r.say("\n\n(That research ran long and I stopped before finishing. Say \"continue\" and I will carry on.)");
+  if (r.sources.size) r.say(sourceList(r.sources));
+  return { text: r.text(), usage: r.usage, stop: r.stop };
 }
 
 async function mockUnlocked({ system, messages, onText }) {

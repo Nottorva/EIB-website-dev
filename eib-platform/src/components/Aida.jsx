@@ -75,7 +75,7 @@ export default function Aida() {
             </Link>
           </div>
         </div>
-        <div style={{ fontSize: 14.5, color: COLORS.sub, marginBottom: 22 }}>Artificial Intelligence Deliverable Assistant: the AI cofounder students open from a lesson. It reads everything on this page and all of the student's deliverables, and coaches them; it never writes or changes their work.</div>
+        <div style={{ fontSize: 14.5, color: COLORS.sub, marginBottom: 22 }}>Artificial Intelligence Deliverable Assistant: the AI cofounder students open from a lesson. It reads everything on this page and all of the student's deliverables, asks them for what a deliverable needs, looks up outside facts on the web, and writes the deliverable from their answers. Nothing goes into their work until they press the button under its draft.</div>
 
         {error && <Notice onClose={() => setError(null)}>{error}</Notice>}
         {saver.error && <Notice onClose={saver.clearError}>{saver.error}</Notice>}
