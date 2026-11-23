@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, Pencil, Users, ClipboardList, GraduationCap, FileText, Globe, Bot, CheckCheck, Sparkles, Rocket } from "lucide-react";
+import { BookOpen, Pencil, Users, ClipboardList, GraduationCap, Globe, Bot, CheckCheck, Sparkles, Rocket } from "lucide-react";
 import { COLORS } from "./ui";
 import { GoogleSignInButton, GoogleSignOutButton } from "./GoogleButtons";
 
@@ -102,14 +102,6 @@ export default function TopBar({ user, authMode, identity }) {
           {user && user.role === "advancement" && (
             <Link href="/" style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13.5, fontWeight: 800, color: COLORS.sub, borderRadius: 9, padding: "7px 12px", textDecoration: "none" }}>
               <Globe size={15} /> Back to the website
-            </Link>
-          )}
-          {user && !single && (
-            <Link
-              href="/apply"
-              style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13.5, fontWeight: 800, color: pathname === "/apply" ? COLORS.amber : COLORS.faint, background: pathname === "/apply" ? COLORS.amberSoft : "transparent", borderRadius: 9, padding: "7px 12px", textDecoration: "none" }}
-            >
-              <FileText size={15} /> Application form
             </Link>
           )}
         </nav>
