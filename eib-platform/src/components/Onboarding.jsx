@@ -12,6 +12,7 @@ import { COLORS, fieldStyle, Notice, Loading } from "./ui";
 import { api } from "@/lib/api";
 import { fmtLongDateYear } from "@/lib/format";
 import PdfReader from "./PdfReader";
+import PaymentCard from "./PaymentCard";
 
 const fmt = (iso) => fmtLongDateYear(iso);
 
@@ -87,7 +88,9 @@ export default function Onboarding({ user }) {
             <div>
               <div style={{ fontSize: 20, fontWeight: 900, color: COLORS.text }}>{signed ? "Agreement signed" : "Waiting for your guardian to confirm"}</div>
               <div style={{ fontSize: 13.5, color: COLORS.sub }}>
-                {signed
+                {signed && record.signedBy === "guardian"
+                  ? `Signed for you by your ${record.parentRelationship.toLowerCase()}, ${record.parentName}, on ${fmt(record.confirmedAt)} · version ${record.versionLabel || AGREEMENT_VERSION_LABEL}. You do not need to sign anything.`
+                  : signed
                   ? `Confirmed ${fmt(record.confirmedAt)} · you signed as ${record.studentInitials} · ${record.parentRelationship.toLowerCase()} ${record.parentName} (${record.parentInitials}) · version ${record.versionLabel || AGREEMENT_VERSION_LABEL}`
                   : `You signed on ${fmt(record.studentSignedAt || record.acceptedAt)}. We emailed ${record.parentEmailMasked}${record.lastSentAt ? ` on ${fmt(record.lastSentAt)}` : ""} with a confirmation link. Your lessons open once they click it.`}
               </div>
@@ -120,6 +123,7 @@ export default function Onboarding({ user }) {
             )}
           </div>
         </Card>
+        <PaymentCard payment={meta.payment} paid={meta.paid} />
       </Shell>
     );
   }

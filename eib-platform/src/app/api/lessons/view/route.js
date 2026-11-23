@@ -5,12 +5,13 @@ import { guarded, HttpError } from "@/lib/auth";
 import { listLessons, forStudent } from "@/lib/data/lessons";
 import { listMentors, toPublicMentor } from "@/lib/data/mentors";
 import { listSubmissions, stripUnreleased } from "@/lib/data/submissions";
-import { getCohortYear } from "@/lib/data/settings";
+import { getCohortYear, getClassStarted } from "@/lib/data/settings";
 import { needsAgreement } from "@/lib/data/agreement";
 import { getAidaSettings, aidaOpenFor } from "@/lib/aida/store";
 
 export const GET = guarded(null, async ({ user }) => {
   if (await needsAgreement(user)) throw new HttpError(403, "Please sign the Student Agreement first.");
+  if (user.role === "student" && !(await getClassStarted())) throw new HttpError(403, "Class has not started yet.");
   const [allLessons, mentors, cohortYear] = await Promise.all([listLessons(), listMentors(), getCohortYear()]);
   // Drafts reach the super admin only (shown as drafts); students and
   // student leaders get the published lessons.

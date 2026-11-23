@@ -1,10 +1,13 @@
 // The agreement PDF itself. GET streams it to anyone signed in (students
-// read it on the onboarding page; ?download=1 saves it). POST (multipart,
+// read it on the onboarding page; ?download=1 saves it) and to a parent
+// holding their emailed sign-up link (?token=). POST (multipart,
 // field "file") replaces it and starts a new version; DELETE removes it.
-import { guarded, HttpError } from "@/lib/auth";
+import { guarded, open, getCurrentUser, HttpError } from "@/lib/auth";
+import { parentByToken } from "@/lib/data/parentSignup";
 import { getStudentAgreement, getStudentAgreementPdf, saveStudentAgreementPdf, deleteStudentAgreementPdf, MAX_PDF_BYTES } from "@/lib/data/agreement";
 
-export const GET = guarded(null, async ({ req }) => {
+export const GET = open(async ({ req }) => {
+  if (!(await getCurrentUser()) && !(await parentByToken(new URL(req.url).searchParams.get("token")))) throw new HttpError(401, "Sign in to read the agreement.");
   const [meta, pdf] = await Promise.all([getStudentAgreement(), getStudentAgreementPdf()]);
   if (!pdf) throw new HttpError(404, "No agreement has been uploaded yet.");
   const download = new URL(req.url).searchParams.get("download") === "1";

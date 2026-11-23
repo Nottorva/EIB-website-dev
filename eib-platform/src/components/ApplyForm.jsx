@@ -51,7 +51,7 @@ function PreviewStrip({ state, opensAt, closesAt }) {
         <span style={{ fontSize: 11.5, fontWeight: 900, letterSpacing: 0.6, textTransform: "uppercase", color: "#fff", background: st.color, borderRadius: 999, padding: "4px 10px" }}>{st.label}</span>
         <span style={{ fontSize: 13.5, fontWeight: 700, color: st.color }}>Preview · {when}</span>
       </div>
-      <span style={{ fontSize: 12.5, color: COLORS.sub, fontWeight: 600 }}>This is what applicants see. Submitting is disabled here.</span>
+      <span style={{ fontSize: 12.5, color: COLORS.sub, fontWeight: 600 }}>This is what a signed-in student sees. Signing up is disabled here.</span>
     </div>
   );
 }
@@ -61,12 +61,12 @@ const fmtSubmitted = (v) => fmtSmartLong(v, null);
 
 // The schedule and the fee are stated inside the form itself (the notices
 // applicants tick), so the intro does not repeat them.
-function Shell({ children, title = "Apply to EIB", sub = "Tell us about yourself and a problem you'd want to work on." }) {
+function Shell({ children, title = "Sign up for EIB", sub = "Seats are first come, first served. Signing up takes one click; the Student Agreement and the program fee come right after." }) {
   return (
     <div style={{ background: COLORS.bg, minHeight: "100%", padding: "44px 20px 80px" }}>
       <div style={{ maxWidth: 640, margin: "0 auto" }}>
         <div style={{ marginBottom: 24 }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: COLORS.indigo, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>EIB · Application</div>
+          <div style={{ fontSize: 13, fontWeight: 800, color: COLORS.indigo, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>EIB · Sign-up</div>
           <div style={{ fontSize: 30, fontWeight: 800, color: COLORS.text }}>{title}</div>
           {sub && <div style={{ fontSize: 15, color: COLORS.sub, marginTop: 8, lineHeight: 1.6 }}>{sub}</div>}
         </div>
@@ -81,8 +81,24 @@ function Shell({ children, title = "Apply to EIB", sub = "Tell us about yourself
 
 const quietButton = { border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.sub, fontWeight: 800, fontSize: 13, borderRadius: 10, padding: "8px 14px", cursor: "pointer" };
 
-/* What an applicant sees once they have applied: exactly one card, driven by
-   the released decision (or the lack of one). Nothing to click through. */
+// First come, first served: how many seats are left, or, once the class is
+// full, how many of the waitlist's few spots are.
+function SeatsNote({ seats }) {
+  if (!seats) return null;
+  const { cap, seatsLeft, waitlistSpots, waitlistLeft } = seats;
+  const classFull = seatsLeft === 0;
+  const tone = classFull ? { color: COLORS.amber, soft: COLORS.amberSoft, border: COLORS.amberBorder } : { color: COLORS.green, soft: COLORS.greenSoft, border: COLORS.greenBorder };
+  return (
+    <div style={{ fontSize: 13.5, fontWeight: 700, color: tone.color, background: tone.soft, border: `1px solid ${tone.border}`, borderRadius: 12, padding: "10px 14px", marginBottom: 14, lineHeight: 1.5 }}>
+      {classFull
+        ? `The class is full. You can still join the waitlist: ${waitlistLeft} of its ${waitlistSpots} spots ${waitlistLeft === 1 ? "is" : "are"} left. If a seat opens up, it goes to the first person in line.`
+        : `First come, first served: ${seatsLeft} of ${cap} seats left.${waitlistSpots > 0 ? ` Once the class is full there is a waitlist, and it has only ${waitlistSpots} spots.` : ""}`}
+    </div>
+  );
+}
+
+/* What someone sees once they have signed up: exactly one card, saying where
+   they landed (in the class, or their place on the waitlist). */
 function StatusScreen({ status, onSignOut }) {
   const first = status.applicant?.name?.split(" ")[0];
   const submitted = fmtSubmitted(status.application?.submittedAt || status.appliedAt);
@@ -110,13 +126,15 @@ function StatusScreen({ status, onSignOut }) {
     return (
       <Shell title="Your application" sub={null}>
         <BigCard icon={CheckCircle2} tone="green" title={`You're in${first ? `, ${first}` : ""}`}>
-          Your application to EIB was accepted and your student account is ready.
+          {status.classStarted === false
+            ? "You have a seat in EIB and your student account is ready. Class has not started yet; in the meantime you can read and sign the Student Agreement."
+            : "You have a seat in EIB and your student account is ready."}
           <div style={{ marginTop: 20 }}>
             <Link href="/lessons" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: COLORS.indigo, color: "#fff", fontWeight: 800, fontSize: 15, borderRadius: 12, padding: "12px 20px", textDecoration: "none" }}>
-              Open your lessons <ArrowRight size={16} />
+              {status.classStarted === false ? "Continue" : "Open your lessons"} <ArrowRight size={16} />
             </Link>
           </div>
-          <div style={{ fontSize: 13, color: COLORS.faint, marginTop: 16 }}>Application submitted {submitted}.</div>
+          <div style={{ fontSize: 13, color: COLORS.faint, marginTop: 16 }}>Signed up {submitted}.</div>
         </BigCard>
       </Shell>
     );
@@ -135,10 +153,14 @@ function StatusScreen({ status, onSignOut }) {
   }
 
   if (decision === "waitlist") {
+    const place = status.application.waitlistPosition;
+    const spots = status.seats?.waitlistSpots;
     return (
       <Shell title="Your application" sub={null}>
-        <BigCard icon={CalendarClock} tone="amber" title="You're on the waitlist">
-          Thank you for applying. We could not offer you a place right away, but you are on the waitlist and we will be in touch as soon as a spot opens up.
+        <BigCard icon={CalendarClock} tone="amber" title={place ? `You're number ${place} on the waitlist` : "You're on the waitlist"}>
+          {place
+            ? <>The class is full, so you are on the waitlist. The waitlist has only {spots} spots and you hold number {place}. If a seat opens up it goes to the first person in line, and we will email <strong>{status.applicant.email}</strong> the moment one is yours.</>
+            : "Thank you for applying. We could not offer you a place right away, but you are on the waitlist and we will be in touch as soon as a spot opens up."}
           <div style={{ fontSize: 13, color: COLORS.faint, marginTop: 16 }}>Application submitted {submitted}.</div>
           {signOut}
         </BigCard>
@@ -205,10 +227,10 @@ function SignInShell({ domain, children }) {
         <div style={{ width: 44, height: 44, borderRadius: 12, background: COLORS.indigoSoft, color: COLORS.indigo, display: "flex", alignItems: "center", justifyContent: "center" }}>
           <Lock size={20} strokeWidth={2.25} />
         </div>
-        <div style={{ fontSize: 20, fontWeight: 800, color: COLORS.text }}>Sign in to apply</div>
+        <div style={{ fontSize: 20, fontWeight: 800, color: COLORS.text }}>Students: sign in to sign up</div>
       </div>
       <div style={{ fontSize: 14.5, color: COLORS.sub, lineHeight: 1.6, marginBottom: 18 }}>
-        Use your <strong>@{domain}</strong> Google account. Your name and school email come from that account, so you won't need to type them into the form.
+        Use your <strong>@{domain}</strong> Google account. Your name and school email come from that account, so there is nothing to fill in.
       </div>
       {children}
     </div>
@@ -254,6 +276,57 @@ function DevSignInCard({ domain, onSignedIn }) {
   );
 }
 
+// A parent or guardian signs their child up without the student: their own
+// name and email, the student's name and school email. They are emailed a
+// link; the seat is taken when they open it.
+function ParentCard({ domain }) {
+  const [form, setForm] = useState({ parentName: "", parentEmail: "", studentName: "", studentEmail: "" });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const [sentTo, setSentTo] = useState(null);
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  const submit = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await api.post("/api/apply/parent", form);
+      setSentTo(r.parentEmailMasked);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (sentTo) {
+    return (
+      <div style={{ marginTop: 16 }}>
+        <BigCard icon={CheckCircle2} tone="green" title="Check your email">
+          We sent a link to <strong>{sentTo}</strong>. The seat is taken the moment you open it, so open it as soon as you can. The same link then lets you sign the Student Agreement and see how to pay the program fee. If it has not arrived in a minute, look in the spam folder.
+        </BigCard>
+      </div>
+    );
+  }
+  return (
+    <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 18, padding: 28, marginTop: 16 }}>
+      <div style={{ fontSize: 20, fontWeight: 800, color: COLORS.text, marginBottom: 6 }}>Parent or guardian? Sign your child up</div>
+      <div style={{ fontSize: 14.5, color: COLORS.sub, lineHeight: 1.6, marginBottom: 18 }}>
+        You can do this without your child. We email you a link to confirm your address; the seat is taken the moment you open it, and you then sign the Student Agreement and see how to pay the program fee yourself.
+      </div>
+      {error && <Notice onClose={() => setError(null)}>{error}</Notice>}
+      <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <input value={form.parentName} onChange={set("parentName")} placeholder="Your full name" aria-label="Your full name" autoComplete="name" required style={fieldStyle} />
+        <input type="email" value={form.parentEmail} onChange={set("parentEmail")} placeholder="Your email address" aria-label="Your email address" autoComplete="email" required style={fieldStyle} />
+        <input value={form.studentName} onChange={set("studentName")} placeholder="Student's full name" aria-label="Student's full name" autoComplete="off" required style={fieldStyle} />
+        <input type="email" value={form.studentEmail} onChange={set("studentEmail")} placeholder={`Student's school email (@${domain})`} aria-label={`Student's school email, ending in @${domain}`} autoComplete="off" required style={fieldStyle} />
+        <button type="submit" disabled={busy} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: busy ? "#d7dbe4" : COLORS.indigo, color: "#fff", border: "none", borderRadius: 12, padding: "13px", fontSize: 15, fontWeight: 800, cursor: busy ? "default" : "pointer" }}>
+          <Send size={16} /> {busy ? "Sending…" : "Email me the link"}
+        </button>
+      </form>
+    </div>
+  );
+}
+
 export default function ApplyForm() {
   const [status, setStatus] = useState(null);
   const [answers, setAnswers] = useState({});
@@ -287,7 +360,7 @@ export default function ApplyForm() {
   // changed since the last successful save, retried a few times on failure,
   // and flushed with a beacon if they leave the page mid-way. The save state
   // is shown under their name. Nothing is saved in preview or once applied.
-  const formLive = Boolean(status?.applicant && status.state === "open" && status.domainOk !== false && !status.alreadyApplied && !status.account?.suspended);
+  const formLive = Boolean(status?.form?.length && status?.applicant && status.state === "open" && status.domainOk !== false && !status.alreadyApplied && !status.account?.suspended);
   const [saveState, setSaveState] = useState("idle"); // idle | saving | saved | error
   const lastSaved = useRef(null);
   const payloadRef = useRef(null);
@@ -351,8 +424,13 @@ export default function ApplyForm() {
     setSubmitting(true);
     setError(null);
     try {
-      await api.post("/api/apply", { answers: status.form.map((q) => ({ questionId: q.id, answer: answers[q.id] ?? "" })) });
-      // The status page takes over from here (submitted, under review).
+      const r = await api.post("/api/apply", {});
+      // a seat: straight to the Student Agreement (payment follows it)
+      if (r.placed === "class") {
+        window.location.href = "/onboarding";
+        return;
+      }
+      // The status page takes over from here (in the class, or on the waitlist).
       await load();
       window.scrollTo({ top: 0 });
     } catch (err) {
@@ -403,15 +481,28 @@ export default function ApplyForm() {
     );
   }
 
+  // No seat and no waitlist spot left: nothing to fill in.
+  if (!preview && status.seats?.full) {
+    return (
+      <Shell title={title}>
+        <BigCard icon={Lock} tone="gray" title="The class is full">
+          All {status.seats.cap} seats{status.seats.waitlistSpots > 0 ? <> and all {status.seats.waitlistSpots} waitlist spots</> : null} have been taken, so sign-up is closed.
+        </BigCard>
+      </Shell>
+    );
+  }
+
   if (!preview && !status.applicant) {
     return (
       <Shell title={title}>
+        <SeatsNote seats={status.seats} />
         {status.closesAt && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, fontWeight: 700, color: COLORS.amber, background: COLORS.amberSoft, border: `1px solid ${COLORS.amberBorder}`, borderRadius: 12, padding: "10px 14px", marginBottom: 14 }}>
             <CalendarClock size={15} /> Applications close {fmt(status.closesAt)}
           </div>
         )}
         <SignInCard domain={status.applicantDomain} onSignedIn={load} authMode={status.authMode} signInAvailable={status.signInAvailable} />
+        <ParentCard domain={status.applicantDomain} />
       </Shell>
     );
   }
@@ -420,13 +511,14 @@ export default function ApplyForm() {
     return (
       <Shell title={title}>
         <BigCard icon={Lock} tone="amber" title={`Please use your @${status.applicantDomain} account`}>
-          You're signed in as <strong>{status.applicant.email}</strong>, which isn't a school account. Sign out and choose your @{status.applicantDomain} Google account instead.
+          You're signed in as <strong>{status.applicant.email}</strong>, which isn't a school account. Students: sign out and choose your @{status.applicantDomain} Google account instead. Parents and guardians: use the form below.
           <div style={{ marginTop: 16 }}>
             <button type="button" onClick={signOut} style={{ border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.sub, fontWeight: 800, fontSize: 13, borderRadius: 10, padding: "8px 14px", cursor: "pointer" }}>
               Sign out
             </button>
           </div>
         </BigCard>
+        <ParentCard domain={status.applicantDomain} />
       </Shell>
     );
   }
@@ -449,7 +541,7 @@ export default function ApplyForm() {
           </button>
         </div>
       )}
-      {!preview && (
+      {!preview && status.form.length > 0 && (
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", fontSize: 12.5, color: COLORS.faint, margin: "-6px 2px 14px" }}>
           <span>{restored ? "Welcome back. Your answers from last time are here; carry on and submit when you're ready." : "Your answers save as you type, so you can come back and finish later."}</span>
           <span style={{ fontWeight: 700, color: saveState === "error" ? COLORS.red : saveState === "saved" ? COLORS.green : COLORS.faint, whiteSpace: "nowrap" }}>
@@ -464,6 +556,8 @@ export default function ApplyForm() {
           <CalendarClock size={15} /> Applications close {fmt(status.closesAt)}
         </div>
       )}
+
+      <SeatsNote seats={status.seats} />
 
       {error && <Notice onClose={() => setError(null)}>{error}</Notice>}
 
@@ -530,9 +624,11 @@ export default function ApplyForm() {
           title={preview ? "Submitting is disabled in preview" : undefined}
           style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", background: submitting || preview ? "#d7dbe4" : COLORS.indigo, color: "#fff", border: "none", borderRadius: 13, padding: "15px", fontSize: 16, fontWeight: 800, cursor: submitting ? "default" : "pointer", marginTop: 6 }}
         >
-          <Send size={16} /> {preview ? "Submit application (disabled in preview)" : submitting ? "Submitting…" : "Submit application"}
+          <Send size={16} /> {preview ? "Sign up (disabled in preview)" : submitting ? "Signing you up…" : status.seats?.seatsLeft === 0 ? "Join the waitlist" : "Sign up"}
         </button>
       </form>
+      {/* the super admin's preview shows the whole page a visitor gets, the parents' form included */}
+      {preview && <ParentCard domain={status.applicantDomain} />}
     </Shell>
   );
 }

@@ -5,6 +5,7 @@
 import { guarded, readJson } from "@/lib/auth";
 import { getStudentAgreement, saveStudentAgreement, agreementPending, publicRecord, isSigned, isPending } from "@/lib/data/agreement";
 import { emailConfigured } from "@/lib/mailer";
+import { findApplicationByEmail } from "@/lib/data/applications";
 
 export const GET = guarded(null, async ({ user }) => {
   const meta = await getStudentAgreement();
@@ -13,6 +14,8 @@ export const GET = guarded(null, async ({ user }) => {
     pending: agreementPending(user, meta),
     // the student's own record for this version: status "signed" or "pending"
     record: user.role === "student" && (isSigned(user.agreement, meta) || isPending(user.agreement, meta)) ? publicRecord(user.agreement) : null,
+    // whether the program fee has been ticked as paid (students only)
+    paid: user.role === "student" ? Boolean((await findApplicationByEmail(user.email))?.paidAt) : null,
     emailMode: emailConfigured() ? "live" : "outbox",
   });
 });

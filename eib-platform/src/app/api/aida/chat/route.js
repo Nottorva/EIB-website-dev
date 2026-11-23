@@ -11,6 +11,7 @@ import { guarded, readJson, HttpError } from "@/lib/auth";
 import { listLessons } from "@/lib/data/lessons";
 import { listSubmissions } from "@/lib/data/submissions";
 import { needsAgreement } from "@/lib/data/agreement";
+import { getClassStarted } from "@/lib/data/settings";
 import { MAX_MESSAGE_CHARS, MAX_CONVERSATION_MESSAGES } from "@/lib/aida/config";
 import { sharedText, buildContext, contextKey, changedWork, sentHashes, payloadMap } from "@/lib/aida/context";
 import { getAidaSettings, aidaOpenFor, closedNote, getConversation, newConversation, saveConversation, archiveConversation, usageToday, recordUsage } from "@/lib/aida/store";
@@ -21,6 +22,7 @@ export const maxDuration = 120;
 
 async function open(user, lessonId) {
   if (await needsAgreement(user)) throw new HttpError(403, "Please sign the Student Agreement first.");
+  if (user.role === "student" && !(await getClassStarted())) throw new HttpError(403, "Class has not started yet.");
   const settings = await getAidaSettings();
   if (!aidaOpenFor(user, settings)) throw new HttpError(403, "AIDA is not switched on.");
   const lessons = (await listLessons()).filter((l) => l.studentVisible);

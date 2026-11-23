@@ -36,6 +36,12 @@ export const DEFAULT_WORDING = {
   relationshipLabel: "Relationship to the student",
   parentStatement: "I am the parent or legal guardian of {student} and I agree to this agreement on their behalf. Typing my name above is my signature. I will click the confirmation link sent to the email address I provided; the signature is complete only after that.",
 };
+// Shown instead of parentStatement when a parent signs their child up
+// themselves: their email is already confirmed, so there is no link to click.
+DEFAULT_WORDING.parentOnlyStatement = "I am the parent or legal guardian of {student} and I agree to this agreement on their behalf. Typing my name above is my signature.";
+// How the program fee is paid: a button to a payment page EIB already has,
+// and a line or two of explanation. Shown once the agreement is signed.
+const DEFAULT_PAYMENT = { url: "", label: "Pay the program fee", note: "" };
 // Wording that may be left empty (the helper lines and the note); the rest falls back to the default.
 const OPTIONAL_WORDING = ["studentSignatureHelp", "guardianNote", "parentEmailHelp"];
 const QUESTION_KINDS = ["short", "long", "choice", "link", "notice"];
@@ -55,7 +61,20 @@ const DEFAULTS = {
   // extra questions the super admin added to the signing form:
   // { id, type, label, help, detail, ack, required, options, maxWords, askedOf: "student" | "guardian" }
   questions: [],
+  payment: DEFAULT_PAYMENT,
 };
+
+function cleanPayment(input, current) {
+  const next = { ...DEFAULT_PAYMENT, ...current };
+  if (input?.url !== undefined) {
+    const url = text(input.url, 600).trim();
+    if (url && !/^https?:\/\/\S+$/i.test(url)) throw Object.assign(new Error("The payment link must start with http:// or https://"), { status: 400 });
+    next.url = url;
+  }
+  if (input?.label !== undefined) next.label = text(input.label, 80).trim() || DEFAULT_PAYMENT.label;
+  if (input?.note !== undefined) next.note = text(input.note, 1500).trim();
+  return next;
+}
 
 const text = (v, max) => String(v ?? "").slice(0, max);
 
@@ -104,6 +123,7 @@ export async function getStudentAgreement() {
     wording: { ...DEFAULT_WORDING, ...(saved.wording || {}) },
     relationships: Array.isArray(saved.relationships) && saved.relationships.length ? saved.relationships : RELATIONSHIPS,
     questions: Array.isArray(saved.questions) ? saved.questions : [],
+    payment: { ...DEFAULT_PAYMENT, ...(saved.payment || {}) },
   };
 }
 
@@ -118,6 +138,7 @@ export async function saveStudentAgreement(patch) {
   if (patch.wording !== undefined) next.wording = cleanWording(patch.wording, current.wording);
   if (patch.relationships !== undefined) next.relationships = cleanRelationships(patch.relationships);
   if (patch.questions !== undefined) next.questions = cleanQuestions(patch.questions);
+  if (patch.payment !== undefined) next.payment = cleanPayment(patch.payment, current.payment);
   await setSetting(META_KEY, next);
   return next;
 }
@@ -198,12 +219,13 @@ async function feeAcknowledgement(email) {
 const countWords = (v) => String(v || "").trim().split(" ").filter(Boolean).length;
 
 // The answers to the extra questions: { answers } to store, or { error }.
-function readAnswers(questions, input) {
+// `oneSigner`: a parent signing alone answers every question themselves.
+function readAnswers(questions, input, oneSigner = false) {
   const given = input && typeof input === "object" ? input : {};
   const answers = [];
   for (const q of questions) {
     const value = clean(given[q.id], 5000);
-    const who = q.askedOf === "guardian" ? "Your parent or legal guardian needs to" : "Please";
+    const who = q.askedOf === "guardian" && !oneSigner ? "Your parent or legal guardian needs to" : "Please";
     if (q.type === "notice") {
       const ack = q.ack || "I understand";
       if (value !== ack) {
@@ -268,6 +290,49 @@ export async function recordAgreement(user, input, { origin }) {
   const sent = await issueConfirmation(user.id, { origin });
   if (sent.error) return { record: publicRecord({ ...record }), warning: sent.error };
   return { record: publicRecord(sent.record) };
+}
+
+// A parent or guardian who signed their child up signs on their own. The
+// link that brought them here proved their email address, so this one
+// signature completes the agreement: there is no student signature and no
+// confirmation email.
+export async function recordParentAgreement(userId, parent, input) {
+  const meta = await getStudentAgreement();
+  if (!meta.pdf) return { error: "There is no agreement to sign yet." };
+  const user = await findById("users", userId);
+  if (!user) return { error: "This student's account was not found." };
+  if (isSigned(user.agreement, meta)) return { record: publicRecord(user.agreement) };
+  const signature = clean(input?.parentSignature, 60);
+  const parentRelationship = clean(input?.parentRelationship, 40);
+  if (!input?.readConfirmed) return { error: "Please confirm you have read and understood the agreement." };
+  if (!SIGNATURE.test(signature)) return { error: "Please type your signature: your full name or initials, letters only." };
+  if (!meta.relationships.includes(parentRelationship)) return { error: "Please choose your relationship to the student." };
+  if (!input?.parentConfirmed) return { error: "Please confirm you agree on the student's behalf." };
+  const extra = readAnswers(meta.questions, input?.answers, true);
+  if (extra.error) return { error: extra.error };
+  const now = new Date().toISOString();
+  const record = {
+    status: "signed",
+    signedBy: "guardian",
+    version: meta.version,
+    versionLabel: AGREEMENT_VERSION_LABEL,
+    pdfName: meta.pdf.name,
+    studentId: user.id,
+    studentInitials: "",
+    studentSignedAt: null,
+    parentName: clean(parent?.name, 120) || signature,
+    parentEmail: clean(parent?.email, 160).toLowerCase(),
+    parentRelationship,
+    parentInitials: signature,
+    answers: extra.answers,
+    guardianSubmittedAt: now,
+    confirmedAt: now,
+    acceptedAt: now,
+    feeAcknowledgement: null,
+    confirmation: { tokenHash: null, expiresAt: null, lastSentAt: null, sendLog: [], usedAt: now },
+  };
+  await updateOne("users", user.id, { agreement: record });
+  return { record: publicRecord(record) };
 }
 
 /* ---------- the guardian's confirmation link ---------- */

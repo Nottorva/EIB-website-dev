@@ -1,8 +1,8 @@
 // Super admin only: turn an unfinished application into a submitted one, as
 // if the applicant had pressed Submit with what they have. Skips the window,
 // domain and required-field checks (those protect the public form; this is
-// a deliberate staff action). The result is an ordinary pending application
-// in EIB Students; the usual interview / approve / release steps follow.
+// a deliberate staff action). The result is an ordinary sign-up: a seat if
+// one is free, else a waitlist spot, else 409.
 import { guarded, HttpError } from "@/lib/auth";
 import { getDraft, deleteDraft } from "@/lib/data/drafts";
 import { getApplicationForm } from "@/lib/data/settings";

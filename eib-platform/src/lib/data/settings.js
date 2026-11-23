@@ -55,6 +55,36 @@ export async function setClassSizeCap(value) {
   return setSetting("classSizeCap", n);
 }
 
+// How many people can wait once the class is full. 0 switches the waitlist off.
+export async function getWaitlistSpots() {
+  const v = await getSetting("waitlistSpots");
+  return v != null && Number.isInteger(Number(v)) && Number(v) >= 0 ? Number(v) : 8;
+}
+
+export async function setWaitlistSpots(value) {
+  const n = parseInt(value, 10);
+  if (!Number.isFinite(n) || n < 0 || n > 500) {
+    const err = new Error("Waitlist spots must be a whole number, 0 or more.");
+    err.status = 400;
+    throw err;
+  }
+  return setSetting("waitlistSpots", n);
+}
+
+// Sign-ups hold a seat; the class itself opens when the super admin presses
+// "Start class". Until then students can sign the agreement but their
+// lessons stay closed. A database that has never been asked counts as
+// started, so a class already running is not shut by this setting arriving.
+export async function getClassStarted() {
+  const v = await getSetting("classStarted");
+  return v == null ? true : Boolean(v.started);
+}
+
+export async function setClassStarted(started) {
+  await setSetting("classStarted", { started: Boolean(started), at: new Date().toISOString() });
+  return Boolean(started);
+}
+
 // When the public application link is live. Both bounds are ISO strings or
 // null (null = no bound on that side). Applicants must sign in with an email
 // on `applicantDomain`.

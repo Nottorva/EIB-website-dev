@@ -356,11 +356,8 @@ let applicant = null;
   const st = await req(applicant, "GET", "/api/apply/status");
   check("status: applicant email lowercased", "smoke.applicant@tfs.ca", st.json?.applicant?.email);
   check("status: no name/email questions in the form", 0, st.json?.form.filter((q) => q.key === "name" || q.key === "email").length);
-  check("status: form title", "EIB Application 2026-27", st.json?.title);
+  check("status: one-click sign-up, so no questions, and its title", [0, "Sign up for EIB"], [st.json?.form.length, st.json?.title]);
   check("status: previewer flag only for the super admin", [true, false, false], [(await req(admin, "GET", "/api/apply/status")).json?.previewer, (await req(leader, "GET", "/api/apply/status")).json?.previewer, st.json?.previewer]);
-  check("missing required -> 400", 400, await code(applicant, "POST", "/api/apply", { answers: [{ questionId: "q_level", answer: "Level 3" }] }));
-  check("notice not ticked -> 400", 400, await code(applicant, "POST", "/api/apply", GOOD({ q_fee: "" })));
-  check("notice wrong text -> 400", 400, await code(applicant, "POST", "/api/apply", GOOD({ q_fee: "yes" })));
   // unfinished application: saved as they type, visible to the manager, restored on return
   check("draft without sign-in -> 401", 401, await code(null, "POST", "/api/apply/draft", { answers: [] }));
   check("applicant saves a draft -> 200", 200, await code(applicant, "POST", "/api/apply/draft", { answers: [{ questionId: "q_intro", answer: "Half done" }] }));
@@ -370,20 +367,20 @@ let applicant = null;
   check("status returns the draft to the applicant", "Half done", (await req(applicant, "GET", "/api/apply/status")).json?.draft?.answers?.[0]?.answer);
   await Promise.all([1, 2, 3, 4].map((i) => req(applicant, "POST", "/api/apply/draft", { answers: [{ questionId: "q_intro", answer: `Half done ${i}` }] })));
   check("four saves at once -> still one draft row", 1, (await req(leader, "GET", "/api/applications/drafts")).json.filter((d) => d.email === "smoke.applicant@tfs.ca").length);
-  check("251 words -> 400", 400, await code(applicant, "POST", "/api/apply", GOOD({ q_problem: words(251) })));
   const ok = await req(applicant, "POST", "/api/apply", GOOD({ q_problem: words(250) }));
-  check("250 words, optional blank -> 201", 201, ok.status);
+  check("one click -> 201, straight into the class", [201, "class"], [ok.status, ok.json?.placed]);
   appId = ok.json?.id;
   check("second application same email -> 409", 409, await code(applicant, "POST", "/api/apply", GOOD()));
   const st2 = await req(applicant, "GET", "/api/apply/status");
-  check("status: alreadyApplied, no decision yet", [true, null], [st2.json?.alreadyApplied, st2.json?.application?.decision]);
+  check("status: alreadyApplied, and told at once they are in the class", [true, "approved", null], [st2.json?.alreadyApplied, st2.json?.application?.decision, st2.json?.application?.waitlistPosition]);
   const list = await req(leader, "GET", "/api/applications");
   const mine = list.json?.find((a) => a.id === appId);
-  check("manager list: pending, name/email from sign-in, 12 answers", ["pending", "Smoke Applicant", "smoke.applicant@tfs.ca", 12], [mine?.status, mine?.name, mine?.email, mine?.answers.length]);
+  check("manager list: in the class (first come, first served), name/email from sign-in, no answers", ["approved", true, "Smoke Applicant", "smoke.applicant@tfs.ca", 0], [mine?.status, mine?.fcfs, mine?.name, mine?.email, mine?.answers.length]);
+  check("status: seats are counted for anyone looking at the page", [23, 8, true], (({ seats }) => [seats?.cap, seats?.waitlistSpots, seats?.seatsLeft > 0])((await req(stranger, "GET", "/api/apply/status")).json));
   check("student lists applications -> 403", 403, await code(student, "GET", "/api/applications"));
 }
 
-/* ---- 9. decisions, release, accounts ---- */
+/* ---- 9. seats, the waitlist, accounts ---- */
 {
   const after = await req(admin, "GET", "/api/applications/drafts");
   check("draft gone once submitted", false, (after.json || []).some((d) => d.email === "smoke.applicant@tfs.ca"));
@@ -393,7 +390,7 @@ let applicant = null;
   const draftRow = (await req(admin, "GET", "/api/applications/drafts")).json.find((d) => d.email === "half.way@tfs.ca");
   check("leader cannot submit for them -> 403", 403, await code(leader, "POST", `/api/applications/drafts/${draftRow?.id}/submit`));
   const forced = await req(admin, "POST", `/api/applications/drafts/${draftRow?.id}/submit`);
-  check("admin submits for them -> 201 pending with their answer", [201, "pending", "Only this much."], [forced.status, forced.json?.status, forced.json?.answers?.find((a) => a.questionId === "q_problem")?.answer]);
+  check("admin submits for them -> 201, seated like any sign-up, with their answer", [201, "approved", "Only this much."], [forced.status, forced.json?.status, forced.json?.answers?.find((a) => a.questionId === "q_problem")?.answer]);
   check("their draft is gone", false, (await req(admin, "GET", "/api/applications/drafts")).json.some((d) => d.email === "half.way@tfs.ca"));
   check("they now appear in applications", true, (await req(leader, "GET", "/api/applications")).json.some((a) => a.email === "half.way@tfs.ca"));
   check("submit again -> 404 (draft gone)", 404, await code(admin, "POST", `/api/applications/drafts/${draftRow?.id}/submit`));
@@ -401,41 +398,72 @@ let applicant = null;
   check("clean reset of the forced application", 200, await code(admin, "DELETE", `/api/applications/${forced.json?.id}`));
 }
 
-head("decisions and release");
+head("first come, first served");
 {
-  const acct = async () => { const u = (await req(admin, "GET", "/api/users?role=student")).json.find((x) => x.email === "smoke.applicant@tfs.ca"); return u ? (u.suspended ? "suspended" : "active") : "none"; };
-  const setStatus = (s) => code(leader, "PATCH", `/api/applications/${appId}`, { status: s });
-  const release = () => req(admin, "POST", "/api/applications/release", {});
-  check("unknown status -> 400", 400, await setStatus("maybe"));
-  check("leader approves -> 200", 200, await setStatus("approved"));
-  check("approve alone creates no account, not released", ["none", false], [await acct(), (await req(leader, "GET", `/api/applications/${appId}`)).json?.decisionReleased]);
-  check("applicant sees no decision before release", null, (await req(applicant, "GET", "/api/apply/status")).json?.application?.decision);
-  check("leader releases -> 403", 403, await code(leader, "POST", "/api/applications/release", {}));
-  const r = await release();
-  check("admin releases: 1 account created", [1, 1], [r.json?.accountsCreated, r.json?.approved]);
-  check("account active, applicant sees approved", ["active", "approved"], [await acct(), (await req(applicant, "GET", "/api/apply/status")).json?.application?.decision]);
-  check("application carries studentId", true, Boolean((await req(leader, "GET", `/api/applications/${appId}`)).json?.studentId));
+  const S = "/api/settings";
+  const users = async () => (await req(admin, "GET", "/api/users?role=student")).json;
+  const acct = async (email = "smoke.applicant@tfs.ca") => { const u = (await users()).find((x) => x.email === email); return u ? (u.suspended ? "suspended" : "active") : "none"; };
+  const mine = async (cookie) => (await req(cookie, "GET", "/api/apply/status")).json;
+  const apps = async () => (await req(admin, "GET", "/api/applications")).json;
+  const idOf = async (email) => (await apps()).find((a) => a.email === email)?.id;
+  const signUp = async (name, email) => { const cookie = stranger + "; " + (await applicantSession(name, email)).cookie; return { cookie, res: await req(cookie, "POST", "/api/apply", GOOD()) }; };
+  const outbox = () => { try { return fs.readFileSync("data/outbox.jsonl", "utf8").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l)); } catch { return []; } };
+
+  // the sign-up made under "applying" took a free seat
+  check("signed up with a seat free: account active, sign-up carries the student id", ["active", true], [await acct(), Boolean((await req(leader, "GET", `/api/applications/${appId}`)).json?.studentId)]);
+  check("the old release step is gone -> 405", 405, await code(admin, "POST", "/api/applications/release", {}));
   const newStudent = await login("smoke.applicant@tfs.ca");
-  check("new student: first visit goes to the welcome page", "/welcome", new URL((await fetch(`${BASE}/lessons`, { headers: { Cookie: newStudent }, redirect: "manual" })).headers.get("location") || "/", BASE).pathname);
-  check("new student: /onboarding also goes to the welcome page, which renders", ["/welcome", true], [new URL((await fetch(`${BASE}/onboarding`, { headers: { Cookie: newStudent }, redirect: "manual" })).headers.get("location") || "/", BASE).pathname, (await req(newStudent, "GET", "/welcome")).text.includes("Congratulations")]);
   check("leader cannot press welcome -> 403", 403, await code(leader, "POST", "/api/welcome", {}));
-  check("new student presses the welcome button -> 200", 200, await code(newStudent, "POST", "/api/welcome", {}));
-  check("new student can open lessons after the welcome", 200, await code(newStudent, "GET", "/lessons"));
-  await setStatus("waitlist");
-  check("moved to waitlist -> account suspended, decision unreleased", ["suspended", false], [await acct(), (await req(leader, "GET", `/api/applications/${appId}`)).json?.decisionReleased]);
-  check("suspended student lessons -> 307", 307, await code(newStudent, "GET", "/lessons"));
-  await release();
-  check("waitlist released -> applicant sees waitlist, still suspended", ["waitlist", "suspended"], [(await req(applicant, "GET", "/api/apply/status")).json?.application?.decision, await acct()]);
-  await setStatus("approved"); await release();
-  check("re-approved + released -> active again", "active", await acct());
-  await setStatus("denied");
-  check("denied -> suspended", "suspended", await acct());
+  check("new student skips the old welcome page: lessons open, /welcome sends them on", [200, "/lessons"], [await code(newStudent, "GET", "/lessons"), new URL((await fetch(`${BASE}/welcome`, { headers: { Cookie: newStudent }, redirect: "manual" })).headers.get("location") || "/", BASE).pathname]);
+
+  // the class on hold: seats are kept, lessons stay closed until "Start class"
+  check("a database never asked counts as started", true, (await req(leader, "GET", S)).json?.classStarted);
+  check("leader cannot put the class on hold -> 403", 403, await code(leader, "PATCH", S, { classStarted: false }));
+  check("settings PATCH with nothing in it -> 400", 400, await code(admin, "PATCH", S, {}));
+  check("admin puts the class on hold", false, (await req(admin, "PATCH", S, { classStarted: false })).json?.classStarted);
+  check("on hold: the student gets the holding page, the view API answers 403", [true, 403], [(await req(newStudent, "GET", "/lessons")).text.includes("Your seat is saved"), await code(newStudent, "GET", "/api/lessons/view")]);
+  check("on hold: the sign-up page knows class has not started; staff still open lessons", [false, 200], [(await mine(applicant)).classStarted, await code(leader, "GET", "/api/lessons/view")]);
+  check("start class: lessons open for the student", [true, 200], [(await req(admin, "PATCH", S, { classStarted: true })).json?.classStarted, await code(newStudent, "GET", "/api/lessons/view")]);
+
+  // fill the class, then the waitlist
+  const seatedNow = (await apps()).filter((a) => a.status === "approved").length;
+  check("waitlist spots: default 8; -1 -> 400", [8, 400], [(await req(leader, "GET", S)).json?.waitlistSpots, await code(admin, "PATCH", S, { waitlistSpots: -1 })]);
+  await req(admin, "PATCH", S, { classSizeCap: seatedNow, waitlistSpots: 2 });
+  const fullClass = (await mine(stranger)).seats;
+  check("class full: no seats, 2 waitlist spots, sign-up still open", [0, 2, false], [fullClass?.seatsLeft, fullClass?.waitlistLeft, fullClass?.full]);
+  const w1 = await signUp("Wait One", "wait.one@tfs.ca");
+  check("next sign-up joins the waitlist as number 1, with no account", [201, "waitlist", 1, "none"], [w1.res.status, w1.res.json?.placed, w1.res.json?.waitlistPosition, await acct("wait.one@tfs.ca")]);
+  const w2 = await signUp("Wait Two", "wait.two@tfs.ca");
+  const w2view = await mine(w2.cookie);
+  check("the one after is told: on the waitlist, number 2 of 2", ["waitlist", 2, 2], [w2view.application?.decision, w2view.application?.waitlistPosition, w2view.seats?.waitlistSpots]);
+  const refused = await signUp("Wait Three", "wait.three@tfs.ca");
+  check("class and waitlist full: the page says so, a third sign-up -> 409, no row kept", [true, 409, false], [(await mine(stranger)).seats?.full, refused.res.status, (await apps()).some((a) => a.email === "wait.three@tfs.ca")]);
+  check("leader cannot give a seat -> 403", 403, await code(leader, "PATCH", `/api/applications/${await idOf("wait.two@tfs.ca")}`, { status: "approved" }));
+
+  // a seat frees up: the first in line moves in and is emailed
   check("leader clean-resets -> 403", 403, await code(leader, "DELETE", `/api/applications/${appId}`));
   const del = await req(admin, "DELETE", `/api/applications/${appId}`);
-  check("admin clean reset removes application + account", [200, 1, 1], [del.status, del.json?.removed?.application, del.json?.removed?.account]);
-  check("application gone, account gone", [404, "none"], [await code(leader, "GET", `/api/applications/${appId}`), await acct()]);
-  check("same email can apply again", 201, await code(applicant, "POST", "/api/apply", GOOD()));
-  check("clean reset again -> 404", 404, await code(admin, "DELETE", `/api/applications/${appId}`));
+  check("admin removes a student: sign-up and account gone", [200, 1, 1, 404, "none"], [del.status, del.json?.removed?.application, del.json?.removed?.account, await code(leader, "GET", `/api/applications/${appId}`), await acct()]);
+  check("the free seat goes to number 1: in the class, account made, emailed", ["wait.one@tfs.ca", "approved", "active", true], [del.json?.removed?.promoted?.[0]?.email, (await mine(w1.cookie)).application?.decision, await acct("wait.one@tfs.ca"), outbox().some((m) => m.to === "wait.one@tfs.ca" && m.subject.includes("seat opened"))]);
+  check("the person behind moves up to number 1", 1, (await mine(w2.cookie)).application?.waitlistPosition);
+  const grown = await req(admin, "PATCH", S, { classSizeCap: seatedNow + 1 });
+  check("a bigger class seats the next in line", ["wait.two@tfs.ca", "approved", 0], [grown.json?.promoted?.[0]?.email, (await mine(w2.cookie)).application?.decision, (await mine(stranger)).seats?.waitlisted]);
+
+  // the super admin can seat someone by hand, past the class size
+  const w4 = await signUp("Wait Four", "wait.four@tfs.ca");
+  const w4id = await idOf("wait.four@tfs.ca");
+  check("class full again: the next sign-up waits", "waitlist", w4.res.json?.placed);
+  check("unknown status -> 400", 400, await code(admin, "PATCH", `/api/applications/${w4id}`, { status: "maybe" }));
+  const seatedByHand = await req(admin, "PATCH", `/api/applications/${w4id}`, { status: "approved" });
+  check("super admin gives a seat: in the class with an account, past the class size", ["approved", "active", true], [seatedByHand.json?.status, await acct("wait.four@tfs.ca"), (await apps()).filter((a) => a.status === "approved").length > seatedNow + 1]);
+  check("moved out of the class -> account suspended", [200, "suspended"], [await code(admin, "PATCH", `/api/applications/${w4id}`, { status: "denied" }), await acct("wait.four@tfs.ca")]);
+
+  // put everything back
+  for (const email of ["wait.one@tfs.ca", "wait.two@tfs.ca", "wait.four@tfs.ca"]) await req(admin, "DELETE", `/api/applications/${await idOf(email)}`);
+  await req(admin, "PATCH", S, { classSizeCap: 23, waitlistSpots: 8 });
+  const again = await req(applicant, "POST", "/api/apply", GOOD());
+  check("same email can sign up again, and gets a seat", [201, "class"], [again.status, again.json?.placed]);
+  check("clean reset of that sign-up, and of one already gone -> 200, 404", [200, 404], [await code(admin, "DELETE", `/api/applications/${again.json?.id}`), await code(admin, "DELETE", `/api/applications/${appId}`)]);
 }
 
 /* ---- 10. the form ---- */
@@ -554,6 +582,48 @@ head("student agreement");
   check("admin sees signed + confirmation time + guardian", ["signed", true, "Mother"], [row?.agreement?.status, Boolean(row?.agreement?.confirmedAt), row?.agreement?.parentRelationship]);
   check("resend after signed -> 409", 409, await code(student, "POST", "/api/agreement/resend", {}));
   check("guardian email change after signed -> 409", 409, await code(admin, "PUT", "/api/agreement/guardian-email", { userId: amaraId, parentEmail: "late@example.com" }));
+  // a parent or guardian signs their child up on their own
+  {
+    const P = "/api/apply/parent";
+    const parent = { parentName: "Pat Parent", parentEmail: "Pat.Parent@example.com", studentName: "Kid Parent", studentEmail: "Kid.Parent@tfs.ca" };
+    const kidApp = async () => (await req(admin, "GET", "/api/applications")).json.find((a) => a.email === "kid.parent@tfs.ca");
+    const kidUser = async () => (await req(admin, "GET", "/api/users?role=student")).json.find((u) => u.email === "kid.parent@tfs.ca");
+    check("parent sign-up: student email off the school domain -> 400", 400, await code(null, "POST", P, { ...parent, studentEmail: "kid@gmail.com" }));
+    check("parent sign-up: the student's email given as their own -> 400", 400, await code(null, "POST", P, { ...parent, parentEmail: "kid.parent@tfs.ca" }));
+    check("parent sign-up: a student who is already signed up -> 409", 409, await code(null, "POST", P, { ...parent, studentEmail: "amara.chen@tfs.ca" }));
+    const sentBefore = outbox().length;
+    const asked = await req(null, "POST", P, parent);
+    check("parent asks -> 201, one email with a link, no seat taken yet", [201, "p…@example.com", sentBefore + 1, "pat.parent@example.com", false], [asked.status, asked.json?.parentEmailMasked, outbox().length, outbox().at(-1)?.to, Boolean(await kidApp())]);
+    check("asking again straight away -> 429", 429, await code(null, "POST", P, parent));
+    const ptoken = tokenOf(outbox().at(-1));
+    check("the agreement PDF: no sign-in -> 401, the parent's link -> 200", [401, 200], [(await fetch(`${BASE}/api/agreement/pdf`, { headers: { Cookie: stranger } })).status, (await fetch(`${BASE}/api/agreement/pdf?token=${ptoken}`, { headers: { Cookie: stranger } })).status]);
+    const opened = await req(null, "GET", `/parent?token=${ptoken}`);
+    const seated = await kidApp();
+    check("opening the link takes the seat: the page says so, the sign-up names the parent, an account exists", [200, true, "approved", "Pat Parent", true], [opened.status, opened.text.includes("has a seat in EIB"), seated?.status, seated?.parent?.name, Boolean(await kidUser())]);
+    check("the student is emailed that they were signed up", true, outbox().some((m) => m.to === "kid.parent@tfs.ca" && m.subject === "You have been signed up for EIB" && m.text.includes("Pat Parent")));
+    check("opening the link twice makes no second sign-up", 1, (await req(null, "GET", `/parent?token=${ptoken}`), (await req(admin, "GET", "/api/applications")).json.filter((a) => a.email === "kid.parent@tfs.ca").length));
+    const kid = await login("kid.parent@tfs.ca");
+    check("until the agreement is signed the student has no lessons (page -> /onboarding, API 403)", ["/onboarding", 403], [new URL((await fetch(`${BASE}/lessons`, { headers: { Cookie: kid }, redirect: "manual" })).headers.get("location") || "/", BASE).pathname, await code(kid, "GET", "/api/lessons/view")]);
+    const sign = (over = {}) => req(null, "POST", `${P}/sign`, { token: ptoken, readConfirmed: true, parentSignature: "Pat Parent", parentRelationship: "Father", parentConfirmed: true, ...over });
+    check("parent signs without agreeing -> 400; with a bad link -> 404", [400, 404], [(await sign({ parentConfirmed: false })).status, (await sign({ token: "0".repeat(64) })).status]);
+    const mailsBefore = outbox().length;
+    const psigned = await sign();
+    check("parent signs alone -> the agreement is signed at once, with no confirmation email", [200, "signed", "guardian", "pat.parent@example.com", mailsBefore], [psigned.status, psigned.json?.agreement?.status, psigned.json?.agreement?.signedBy, psigned.json?.agreement?.parentEmail, outbox().length]);
+    check("the student's lessons open without the student signing", 200, await code(kid, "GET", "/api/lessons/view"));
+
+    // payment: a link to a page EIB already has, then the super admin's tick
+    check("payment link must be a web address -> 400", 400, await code(admin, "PUT", "/api/agreement", { payment: { url: "javascript:alert(1)" } }));
+    const pay = await req(admin, "PUT", "/api/agreement", { payment: { url: "https://pay.example.com/eib", note: "SMOKE pay note" } });
+    check("payment link and note saved; the button keeps its default words", ["https://pay.example.com/eib", "SMOKE pay note", "Pay the program fee"], [pay.json?.payment?.url, pay.json?.payment?.note, pay.json?.payment?.label]);
+    const after = await req(null, "GET", `/parent?token=${ptoken}`);
+    check("the parent's page: agreement signed, then how to pay", [true, true, true], [after.text.includes("The Student Agreement is signed"), after.text.includes("SMOKE pay note"), after.text.includes("https://pay.example.com/eib")]);
+    check("the student is given the payment step too, not yet paid", ["https://pay.example.com/eib", false], (({ json }) => [json?.payment?.url, json?.paid])(await req(kid, "GET", "/api/agreement")));
+    check("leader cannot tick the fee -> 403", 403, await code(leader, "PATCH", `/api/applications/${seated?.id}`, { paid: true }));
+    check("admin ticks the fee as paid: stored, and both pages say so", [true, true, true], [Boolean((await req(admin, "PATCH", `/api/applications/${seated?.id}`, { paid: true })).json?.paidAt), (await req(kid, "GET", "/api/agreement")).json?.paid, (await req(null, "GET", `/parent?token=${ptoken}`)).text.includes("has been received")]);
+    check("admin unticks it", null, (await req(admin, "PATCH", `/api/applications/${seated?.id}`, { paid: false })).json?.paidAt);
+    check("removing the student ends the parent's link", [200, true], [await code(admin, "DELETE", `/api/applications/${seated?.id}`), (await req(null, "GET", `/parent?token=${ptoken}`)).text.includes("not recognised")]);
+    await req(admin, "PUT", "/api/agreement", { payment: { url: "", note: "" } });
+  }
   const up2 = await upload(admin);
   check("replacing the PDF -> version 2 and the student must sign again", [2, 403], [up2.json?.version, await code(student, "GET", "/api/lessons/view")]);
   check("switching required off reopens lessons", [200, 200], [await code(admin, "PUT", "/api/agreement", { required: false }), await code(student, "GET", "/api/lessons/view")]);

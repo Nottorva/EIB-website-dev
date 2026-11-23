@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Users,ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Mail, Calendar, Link2, UserPlus, Lock, ExternalLink, Send, Pencil, Check, Megaphone, ShieldOff, ShieldCheck, Clock, ChartColumn, Table2, Signature, Upload, Download, X, CircleCheck, Circle } from "lucide-react";
+import { Users, ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Mail, Calendar, Link2, UserPlus, Lock, ExternalLink, Send, Pencil, Copy, Check, CalendarClock, Megaphone, ShieldOff, ShieldCheck, Clock, ChartColumn, Table2, Signature, Upload, Download, X, CircleCheck, Circle } from "lucide-react";
 import { buildDays, TimeChart, DaysTable, Stat } from "./ApplicationsChart";
 import {
   COLORS,
@@ -9,11 +9,8 @@ import {
   fieldStyle,
   questionType,
   EditableInput,
-  ModalShell,
   useDangerConfirm,
   StatusBadge,
-  StatusDropdown,
-  FilterBar,
   Avatar,
   EmptyState,
   Notice,
@@ -25,20 +22,14 @@ import {
   nextId,
 } from "./ui";
 import { api, useDebouncedSaver } from "@/lib/api";
-import { fmtSmart, fmtLongDate, fmtShortDateTime } from "@/lib/format";
+import { fmtSmart, fmtDateTime, fmtLongDate, fmtShortDateTime } from "@/lib/format";
 import { GradeCard, useGrades } from "./Grading";
 
-const STATUSES = [
-  { id: "pending", label: "Pending", color: COLORS.faint, soft: "#f1f3f7", border: COLORS.border },
-  { id: "interview", label: "Interview", color: COLORS.indigo, soft: COLORS.indigoSoft, border: COLORS.indigoBorder },
-  { id: "waitlist", label: "Waitlist", color: COLORS.amber, soft: COLORS.amberSoft, border: COLORS.amberBorder },
-  { id: "approved", label: "Approved", color: COLORS.green, soft: COLORS.greenSoft, border: COLORS.greenBorder },
-  { id: "denied", label: "Denied", color: COLORS.red, soft: COLORS.redSoft, border: COLORS.redBorder },
-];
-const statusOf = (id) => STATUSES.find((s) => s.id === id) || STATUSES[0];
-const FINAL = ["approved", "waitlist", "denied"];
-// A final decision the applicant has not been told about yet.
-const isUnreleased = (a) => FINAL.includes(a.status) && !a.decisionReleased;
+// First come, first served: a person is in the class or on the waitlist.
+// Rows from the old review process that were never accepted are not shown.
+const inClass = (a) => a.status === "approved";
+const onWaitlist = (a) => a.status === "waitlist" && a.fcfs === true;
+const placeOf = (a) => (inClass(a) ? { label: "In the class", color: COLORS.green, soft: COLORS.greenSoft, border: COLORS.greenBorder } : { label: "Waitlist", color: COLORS.amber, soft: COLORS.amberSoft, border: COLORS.amberBorder });
 // Older applications stored a date only; newer ones a full timestamp.
 const fmtDate = (v) => fmtSmart(v, "—");
 
@@ -175,36 +166,47 @@ function NoticeEditor({ question, onChange }) {
 }
 
 /* ================= Students tab ================= */
-function StudentRow({ student, account, onOpen, onStatusChange }) {
+// One person in the list: their number in the class (or in the waitlist
+// line), the state of their account and agreement, and, for someone waiting,
+// the super admin's button to give them a seat.
+function StudentRow({ student, account, number, waiting, onOpen, onGiveSeat }) {
   const suspended = Boolean(account?.suspended);
   return (
     <div onClick={onOpen} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", background: COLORS.card, border: `1px solid ${suspended ? COLORS.redBorder : COLORS.border}`, borderRadius: 14, padding: "12px 16px", cursor: "pointer" }}>
-        <Avatar name={student.name} />
+      <span style={{ width: 26, textAlign: "right", fontSize: 13, fontWeight: 800, color: COLORS.faint, flexShrink: 0 }}>{number}</span>
+      <Avatar name={student.name} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 15, fontWeight: 800, color: COLORS.text }}>
           {student.name}
           {student.studentId && account && <AgreementMark agreement={account.agreement} />}
         </div>
         <div style={{ fontSize: 12.5, color: COLORS.faint, marginTop: 2 }}>
-          Submitted {fmtDate(student.submittedAt)}
-          {suspended ? (
+          Signed up {fmtDate(student.submittedAt)}
+          {waiting ? (
+            ""
+          ) : suspended ? (
             <span style={{ color: COLORS.red, fontWeight: 800 }}> · account suspended</span>
-          ) : student.studentId ? (
-            account ? (
-              account.agreement?.status === "signed" ? <span> · has account · <span style={{ color: COLORS.green, fontWeight: 800 }}>agreement signed</span></span>
-              : account.agreement ? <span> · has account · <span style={{ color: COLORS.amber, fontWeight: 800 }}>guardian confirmation pending</span></span>
-              : <span> · has account · <span style={{ color: COLORS.faint, fontWeight: 800 }}>agreement not started</span></span>
-            ) : " · has account"
-          ) : isUnreleased(student) ? (
-            <span style={{ color: COLORS.amber, fontWeight: 800 }}> · decision not released</span>
-          ) : student.decisionReleased ? (
-            " · decision released"
+          ) : !student.studentId ? (
+            <span style={{ color: COLORS.amber, fontWeight: 800 }}> · no account yet</span>
+          ) : account ? (
+            account.agreement?.status === "signed" ? <span> · <span style={{ color: COLORS.green, fontWeight: 800 }}>agreement signed</span></span>
+            : account.agreement ? <span> · <span style={{ color: COLORS.amber, fontWeight: 800 }}>guardian confirmation pending</span></span>
+            : <span> · <span style={{ color: COLORS.faint, fontWeight: 800 }}>agreement not started</span></span>
           ) : (
             ""
           )}
         </div>
       </div>
-      <StatusDropdown value={student.status} onChange={onStatusChange} statuses={STATUSES} />
+      {!waiting && (
+        <span style={{ fontSize: 12, fontWeight: 800, color: student.paidAt ? COLORS.green : COLORS.faint, background: student.paidAt ? COLORS.greenSoft : "#f1f3f7", border: `1px solid ${student.paidAt ? COLORS.greenBorder : COLORS.border}`, borderRadius: 999, padding: "4px 10px", whiteSpace: "nowrap" }}>
+          {student.paidAt ? "Fee paid" : "Fee not paid"}
+        </span>
+      )}
+      {onGiveSeat && (
+        <button type="button" onClick={(e) => { e.stopPropagation(); onGiveSeat(); }} style={{ display: "flex", alignItems: "center", gap: 6, border: `1px solid ${COLORS.indigoBorder}`, background: COLORS.indigoSoft, color: COLORS.indigo, fontWeight: 800, fontSize: 12.5, borderRadius: 999, padding: "6px 12px", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+          <UserPlus size={13} /> Give a seat
+        </button>
+      )}
     </div>
   );
 }
@@ -226,7 +228,7 @@ function DeliverablesPanel({ student, lessons, saver }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
       {!studentId && (
         <Notice tone="amber">
-          This applicant has no student account yet, so there is nothing to grade. Set their status to <strong>Approved</strong>, then the super admin releases decisions: that creates the account, and they can sign in and submit work.
+          This person is on the waitlist and has no student account yet, so there is nothing to grade. They get an account the moment a seat is theirs.
         </Notice>
       )}
       {lessons.map((lesson) => (
@@ -340,7 +342,7 @@ function AgreementStatus({ account, onAgreement }) {
         {a ? (
           <>
             {signed ? <> · confirmed {fmtDate(a.confirmedAt)}</> : <> · submitted {fmtDate(a.studentSignedAt || a.acceptedAt)}{a.confirmation?.lastSentAt || a.lastSentAt ? <> · email sent {fmtDate(a.confirmation?.lastSentAt || a.lastSentAt)}</> : <> · no email sent yet</>}</>}
-            {" "}· version {a.versionLabel || `v${a.version}`} · student signature <strong>{a.studentInitials}</strong>
+            {" "}· version {a.versionLabel || `v${a.version}`} · {a.signedBy === "guardian" ? <strong>signed by the parent or guardian alone</strong> : <>student signature <strong>{a.studentInitials}</strong></>}
             <br />
             {a.parentRelationship}: <strong>{a.parentName}</strong> ({a.parentInitials}) · {a.parentEmail}
             {fee ? <><br /><span style={{ color: COLORS.faint }}>Fee acknowledged at application on {fmtDate(fee.acknowledgedAt)} ("{fee.answer}")</span></> : null}
@@ -386,14 +388,14 @@ function AgreementStatus({ account, onAgreement }) {
   );
 }
 
-// Super admin only: wipe this applicant so the email can apply again from
-// scratch. Used for test runs; irreversible, so it asks first.
+// Super admin only: remove this person completely so the email can sign up
+// again from scratch. Irreversible, so it asks first.
 function ResetCard({ student, onReset }) {
   const [busy, setBusy] = useState(false);
   const [confirmDanger, confirmUI] = useDangerConfirm();
   const go = async () => {
-    const what = student.studentId ? "their application, their student account and all their submissions" : "their application";
-    if (!(await confirmDanger({ title: `Delete ${student.name} completely?`, body: `${student.email}: this removes ${what}. Nothing is kept, and they can apply again from scratch.`, label: "Delete application and account" }))) return;
+    const what = student.studentId ? "their sign-up, their student account and all their submissions" : "their sign-up";
+    if (!(await confirmDanger({ title: `Delete ${student.name} completely?`, body: `${student.email}: this removes ${what}. Nothing is kept, and they can sign up again from scratch.${inClass(student) ? " Their seat goes to the first person on the waitlist, who is emailed." : ""}`, label: "Delete sign-up and account" }))) return;
     setBusy(true);
     try {
       await onReset();
@@ -405,18 +407,47 @@ function ResetCard({ student, onReset }) {
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: "12px 16px", marginBottom: 16 }}>
       {confirmUI}
       <div style={{ fontSize: 13, color: COLORS.sub }}>
-        <span style={{ fontWeight: 800, color: COLORS.text }}>Clean reset.</span> Deletes the application{student.studentId ? ", the account and their work" : ""} so this email can apply again from scratch.
+        <span style={{ fontWeight: 800, color: COLORS.text }}>Remove.</span> Deletes the sign-up{student.studentId ? ", the account and their work" : ""} so this email can sign up again from scratch.{inClass(student) ? " The free seat goes to the first person on the waitlist." : ""}
       </div>
       <button type="button" onClick={go} disabled={busy} style={{ display: "flex", alignItems: "center", gap: 6, border: `1px solid ${COLORS.redBorder}`, background: COLORS.redSoft, color: COLORS.red, fontWeight: 800, fontSize: 13, borderRadius: 10, padding: "8px 14px", cursor: busy ? "default" : "pointer" }}>
-        <Trash2 size={14} /> {busy ? "Deleting…" : "Delete application and account"}
+        <Trash2 size={14} /> {busy ? "Deleting…" : "Delete sign-up and account"}
       </button>
     </div>
   );
 }
 
-function StudentDetail({ student, account, isSuperAdmin, onSuspend, onAgreement, onReset, questions, lessons, saver, onBack }) {
+// The program fee on a student's page: paid or not, and the super admin's tick.
+function FeeCard({ student, canEdit, onPaid }) {
+  const paid = Boolean(student.paidAt);
+  const [busy, setBusy] = useState(false);
+  const toggle = async () => {
+    setBusy(true);
+    try {
+      await onPaid(!paid);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", background: paid ? COLORS.greenSoft : COLORS.card, border: `1px solid ${paid ? COLORS.greenBorder : COLORS.border}`, borderRadius: 14, padding: "12px 16px", marginBottom: 16 }}>
+      <div style={{ fontSize: 13.5, color: COLORS.sub }}>
+        <span style={{ fontWeight: 800, color: paid ? COLORS.green : COLORS.text }}>{paid ? "Program fee paid" : "Program fee not paid yet"}</span>
+        {paid ? ` · ticked ${fmtDate(student.paidAt)}` : ""}
+      </div>
+      {canEdit && (
+        <button type="button" onClick={toggle} disabled={busy} style={{ border: `1px solid ${paid ? COLORS.border : COLORS.greenBorder}`, background: "#fff", color: paid ? COLORS.sub : COLORS.green, fontWeight: 800, fontSize: 13, borderRadius: 10, padding: "8px 14px", cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1, fontFamily: "inherit" }}>
+          {paid ? "Mark as not paid" : "Mark fee as paid"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function StudentDetail({ student, account, isSuperAdmin, onSuspend, onAgreement, onReset, onPaid, questions, lessons, saver, onBack }) {
   const [view, setView] = useState("application");
   const answerFor = (qid) => student.answers.find((a) => a.questionId === qid)?.answer ?? "";
+  // sign-up is one click now; only people from the old application form have answers
+  const answered = questions.filter((q) => String(answerFor(q.id)).trim() !== "");
 
   return (
     <div style={{ maxWidth: 680, margin: "0 auto" }}>
@@ -430,18 +461,18 @@ function StudentDetail({ student, account, isSuperAdmin, onSuspend, onAgreement,
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ fontSize: 19, fontWeight: 900, color: COLORS.text }}>{student.name}</div>
-              <StatusBadge status={statusOf(student.status)} size="sm" />
+              <StatusBadge status={placeOf(student)} size="sm" />
             </div>
             <div style={{ display: "flex", gap: 14, marginTop: 4, flexWrap: "wrap" }}>
               <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: COLORS.faint, fontWeight: 600 }}>
                 <Mail size={12} /> {student.email}
               </span>
               <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: COLORS.faint, fontWeight: 600 }}>
-                <Calendar size={12} /> Submitted {fmtDate(student.submittedAt)}
+                <Calendar size={12} /> Signed up {fmtDate(student.submittedAt)}
               </span>
-              {FINAL.includes(student.status) && (
-                <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: student.decisionReleased ? COLORS.green : COLORS.amber, fontWeight: 700 }}>
-                  <Megaphone size={12} /> {student.decisionReleased ? `Decision released ${fmtDate(student.releasedAt)}` : "Decision not released yet"}
+              {student.parent && (
+                <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: COLORS.faint, fontWeight: 600 }}>
+                  <UserPlus size={12} /> by their parent or guardian, {student.parent.name} ({student.parent.email})
                 </span>
               )}
             </div>
@@ -452,18 +483,20 @@ function StudentDetail({ student, account, isSuperAdmin, onSuspend, onAgreement,
           onChange={setView}
           style={{ marginTop: 16 }}
           options={[
-            { id: "application", label: "Application" },
+            { id: "application", label: "Sign-up answers" },
             { id: "deliverables", label: "Deliverables" },
           ]}
         />
       </div>
 
       {isSuperAdmin && student.studentId && account && <AccountCard student={student} account={account} onSuspend={onSuspend} onAgreement={onAgreement} />}
+      {inClass(student) && <FeeCard student={student} canEdit={isSuperAdmin} onPaid={onPaid} />}
       {isSuperAdmin && <ResetCard student={student} onReset={onReset} />}
 
       {view === "application" ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {questions.map((q) => {
+          {answered.length === 0 && <EmptyState>Signing up is one click, so there are no answers here. Anything you ask on the Student Agreement shows on the account card above.</EmptyState>}
+          {answered.map((q) => {
             const answer = answerFor(q.id);
             return (
               <div key={q.id} style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 16 }}>
@@ -498,7 +531,143 @@ function StudentDetail({ student, account, isSuperAdmin, onSuspend, onAgreement,
   );
 }
 
-/* ---------- Stats bar: applicants, interviews, class size vs cap ---------- */
+/* ---------- Sign-up link + open/close window (super admin) ---------- */
+const toLocalInput = (iso) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+const fromLocalInput = (v) => (v ? new Date(v).toISOString() : null);
+const fmtWhen = (iso) => fmtDateTime(iso, "not set");
+
+const WINDOW_STATE = {
+  upcoming: { label: "Not open yet", color: COLORS.amber, soft: COLORS.amberSoft, border: COLORS.amberBorder },
+  open: { label: "Live", color: COLORS.green, soft: COLORS.greenSoft, border: COLORS.greenBorder },
+  closed: { label: "Closed", color: COLORS.red, soft: COLORS.redSoft, border: COLORS.redBorder },
+};
+
+function SignupLinkPanel({ saver }) {
+  const [win, setWin] = useState(null);
+  const [draft, setDraft] = useState({ opensAt: "", closesAt: "", applicantDomain: "" });
+  const [dirty, setDirty] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState(null);
+  const link = typeof window !== "undefined" ? `${window.location.origin}/apply` : "/apply";
+
+  useEffect(() => {
+    api
+      .get("/api/application-window")
+      .then((w) => {
+        setWin(w);
+        setDraft({ opensAt: toLocalInput(w.opensAt), closesAt: toLocalInput(w.closesAt), applicantDomain: w.applicantDomain });
+      })
+      .catch((e) => setError(e.message));
+  }, []);
+
+  const edit = (patch) => {
+    setDraft((d) => ({ ...d, ...patch }));
+    setDirty(true);
+  };
+
+  const save = () =>
+    saver.immediate(async () => {
+      try {
+        const w = await api.put("/api/application-window", {
+          opensAt: fromLocalInput(draft.opensAt),
+          closesAt: fromLocalInput(draft.closesAt),
+          applicantDomain: draft.applicantDomain,
+        });
+        setWin(w);
+        setDirty(false);
+        setError(null);
+      } catch (e) {
+        setError(e.message);
+      }
+    });
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      window.prompt("Copy this link:", link);
+    }
+  };
+
+  if (error && !win) return <Notice>{error}</Notice>;
+  if (!win) return <Loading />;
+  const st = WINDOW_STATE[win.state];
+  const inputStyle = { width: "100%", boxSizing: "border-box", border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "9px 12px", fontSize: 14, outline: "none", color: COLORS.text };
+  const label = { fontSize: 11.5, fontWeight: 800, color: COLORS.faint, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 };
+
+  return (
+    <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 18, marginBottom: 18 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
+        <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.text }}>Sign-up link</div>
+        <StatusBadge status={st} size="sm" />
+      </div>
+
+      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
+        <input readOnly value={link} onFocus={(e) => e.target.select()} style={{ ...inputStyle, fontFamily: "ui-monospace, monospace", fontSize: 13.5, background: "#fbfbfd" }} />
+        <PrimaryButton onClick={copy} icon={copied ? Check : Copy} style={{ whiteSpace: "nowrap" }}>
+          {copied ? "Copied" : "Copy link"}
+        </PrimaryButton>
+        <a href="/apply" target="_blank" rel="noreferrer" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 800, color: COLORS.indigo, textDecoration: "none", whiteSpace: "nowrap" }}>
+          Open <ExternalLink size={13} />
+        </a>
+      </div>
+      <div style={{ fontSize: 12.5, color: COLORS.sub, lineHeight: 1.5, marginBottom: 16 }}>
+        Send this link once. It shows "not open yet" until the open time, the sign-up form between the two times, and "closed" after. Seats go in the order people submit. Everyone signs in with their school account, so name and email are collected automatically and only that email domain can sign up.
+      </div>
+
+      {error && <Notice onClose={() => setError(null)}>{error}</Notice>}
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, alignItems: "end" }}>
+        <div>
+          <div style={label}>Opens</div>
+          <input type="datetime-local" value={draft.opensAt} onChange={(e) => edit({ opensAt: e.target.value })} style={inputStyle} />
+        </div>
+        <div>
+          <div style={label}>Closes</div>
+          <input type="datetime-local" value={draft.closesAt} onChange={(e) => edit({ closesAt: e.target.value })} style={inputStyle} />
+        </div>
+        <div>
+          <div style={label}>School email domain</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <span style={{ fontSize: 14, fontWeight: 800, color: COLORS.faint }}>@</span>
+            <input value={draft.applicantDomain} onChange={(e) => edit({ applicantDomain: e.target.value })} placeholder="tfs.ca" style={inputStyle} />
+          </div>
+        </div>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
+        <div style={{ fontSize: 12.5, color: COLORS.faint }}>
+          Currently: opens {fmtWhen(win.opensAt)} · closes {fmtWhen(win.closesAt)}. Leave a field blank for no limit on that side.
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          {dirty && (
+            <button
+              type="button"
+              onClick={() => {
+                setDraft({ opensAt: toLocalInput(win.opensAt), closesAt: toLocalInput(win.closesAt), applicantDomain: win.applicantDomain });
+                setDirty(false);
+              }}
+              style={{ border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.sub, fontWeight: 800, fontSize: 13, borderRadius: 10, padding: "8px 14px", cursor: "pointer" }}
+            >
+              Discard
+            </button>
+          )}
+          <PrimaryButton onClick={save} disabled={!dirty} icon={CalendarClock} style={{ fontSize: 13, padding: "9px 14px" }}>
+            Save window
+          </PrimaryButton>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Class bar: seats, waitlist, and whether class has started ---------- */
 function StatTile({ label, value, sub, tone = "indigo", children }) {
   const color = tone === "amber" ? COLORS.amber : tone === "red" ? COLORS.red : tone === "green" ? COLORS.green : COLORS.indigo;
   return (
@@ -513,123 +682,78 @@ function StatTile({ label, value, sub, tone = "indigo", children }) {
   );
 }
 
-function StatsBar({ applications, cap, canEditCap, onSaveCap }) {
+// A number the super admin changes in place: click the label, type, Enter.
+function EditNumber({ value, min, label, onSave }) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(String(cap));
-  useEffect(() => setDraft(String(cap)), [cap]);
-
-  const total = applications.length;
-  const interviews = applications.filter((a) => a.status === "interview").length;
-  const approved = applications.filter((a) => a.status === "approved").length;
-  const over = approved > cap;
-  const full = approved === cap;
-
+  const [draft, setDraft] = useState(String(value));
+  useEffect(() => setDraft(String(value)), [value]);
   const commit = () => {
     setEditing(false);
     const n = parseInt(draft, 10);
-    if (Number.isFinite(n) && n >= 1 && n !== cap) onSaveCap(n);
-    else setDraft(String(cap));
+    if (Number.isFinite(n) && n >= min && n !== value) onSave(n);
+    else setDraft(String(value));
   };
-
   return (
-    <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
-      <StatTile label="Applicants" value={total} sub="total received" />
-      <StatTile label="Interviews" value={interviews} sub="currently at interview stage" />
-      <StatTile label="Class size" value={`${approved} / ${cap}`} sub={over ? "over the cap" : full ? "class is full" : `${cap - approved} spots left`} tone={over ? "red" : full ? "amber" : "green"}>
-        {canEditCap && (
-          <div style={{ marginTop: 8 }}>
-            {editing ? (
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <input
-                  type="number"
-                  min={1}
-                  autoFocus
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onBlur={commit}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") commit();
-                    if (e.key === "Escape") {
-                      setDraft(String(cap));
-                      setEditing(false);
-                    }
-                  }}
-                  style={{ width: 70, border: `1px solid ${COLORS.indigo}`, borderRadius: 8, padding: "5px 8px", fontSize: 13.5, fontWeight: 800, outline: "none" }}
-                />
-                <span style={{ fontSize: 12, color: COLORS.faint }}>Enter to save</span>
-              </div>
-            ) : (
-              <button type="button" onClick={() => setEditing(true)} style={{ display: "flex", alignItems: "center", gap: 5, border: "none", background: "transparent", color: COLORS.indigo, fontWeight: 800, fontSize: 12.5, cursor: "pointer", padding: 0 }}>
-                <Pencil size={12} /> Set max class size
-              </button>
-            )}
-          </div>
-        )}
-        {!canEditCap && <div style={{ fontSize: 11.5, color: COLORS.faint, marginTop: 8 }}>Cap is set by the super admin.</div>}
-      </StatTile>
+    <div style={{ marginTop: 8 }}>
+      {editing ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <input
+            type="number"
+            min={min}
+            autoFocus
+            aria-label={label}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commit();
+              if (e.key === "Escape") {
+                setDraft(String(value));
+                setEditing(false);
+              }
+            }}
+            style={{ width: 70, border: `1px solid ${COLORS.indigo}`, borderRadius: 8, padding: "5px 8px", fontSize: 13.5, fontWeight: 800, outline: "none" }}
+          />
+          <span style={{ fontSize: 12, color: COLORS.faint }}>Enter to save</span>
+        </div>
+      ) : (
+        <button type="button" onClick={() => setEditing(true)} style={{ display: "flex", alignItems: "center", gap: 5, border: "none", background: "transparent", color: COLORS.indigo, fontWeight: 800, fontSize: 12.5, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
+          <Pencil size={12} /> {label}
+        </button>
+      )}
     </div>
   );
 }
 
-/* ---------- Approve confirmation ---------- */
-function ApproveModal({ student, approvedCount, cap, onConfirm, onCancel }) {
-  const after = approvedCount + 1;
-  const over = after > cap;
+function ClassBar({ seated, waitlisted, settings, canEdit, onSave, onStart, onHold }) {
+  const { classSizeCap: cap, waitlistSpots: spots, classStarted: started } = settings;
+  const over = seated > cap;
+  const full = seated === cap;
+  const waitFull = waitlisted >= spots;
   return (
-    <ModalShell eyebrow="Student Manager · Approve" title={`Approve ${student.name}?`} onClose={onCancel} maxWidth={520}>
-      <div style={{ fontSize: 15, color: COLORS.text, lineHeight: 1.6, marginBottom: 16 }}>
-        This marks <strong>{student.name}</strong> as approved. Nothing happens for them yet: their student account is created, and they find out, when the super admin clicks <strong>Release decisions</strong>.
-      </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, background: over ? COLORS.amberSoft : COLORS.indigoSoft, border: `1px solid ${over ? COLORS.amberBorder : COLORS.indigoBorder}`, borderRadius: 12, padding: "12px 14px", marginBottom: 22, fontSize: 14, fontWeight: 700, color: over ? COLORS.amber : COLORS.indigo }}>
-        <Users size={16} />
-        Class size after approval: {after} / {cap}
-        {over ? " · this goes over the cap" : ""}
-      </div>
-      <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-        <button type="button" onClick={onCancel} style={{ border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.text, fontWeight: 800, fontSize: 14, borderRadius: 10, padding: "10px 16px", cursor: "pointer" }}>
-          Cancel
-        </button>
-        <PrimaryButton onClick={onConfirm} icon={UserPlus}>
-          Mark as approved
-        </PrimaryButton>
-      </div>
-    </ModalShell>
-  );
-}
-
-/* ---------- Release decisions (super admin) ---------- */
-function ReleaseModal({ pending, onConfirm, onCancel }) {
-  const approved = pending.filter((a) => a.status === "approved");
-  const newAccounts = approved.filter((a) => !a.studentId).length;
-  const waitlist = pending.filter((a) => a.status === "waitlist").length;
-  const denied = pending.filter((a) => a.status === "denied").length;
-  return (
-    <ModalShell eyebrow="Student Manager · Release" title={`Release ${pending.length} decision${pending.length === 1 ? "" : "s"}?`} onClose={onCancel} maxWidth={540}>
-      <div style={{ fontSize: 15, color: COLORS.text, lineHeight: 1.6, marginBottom: 16 }}>
-        Every applicant below will see their result the next time they sign in. Approved applicants get their student account now and can open Lessons straight away. Applicants still at Pending or Interview are not affected.
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 22 }}>
-        {[
-          ["Approved", approved.length, COLORS.green, COLORS.greenSoft, COLORS.greenBorder, `${newAccounts} new account${newAccounts === 1 ? "" : "s"}`],
-          ["Waitlist", waitlist, COLORS.amber, COLORS.amberSoft, COLORS.amberBorder, "told to wait"],
-          ["Denied", denied, COLORS.red, COLORS.redSoft, COLORS.redBorder, "told no"],
-        ].map(([label, n, color, soft, border, sub]) => (
-          <div key={label} style={{ background: soft, border: `1px solid ${border}`, borderRadius: 12, padding: "10px 12px" }}>
-            <div style={{ fontSize: 22, fontWeight: 900, color }}>{n}</div>
-            <div style={{ fontSize: 12.5, fontWeight: 800, color }}>{label}</div>
-            <div style={{ fontSize: 11.5, color: COLORS.faint, marginTop: 2 }}>{sub}</div>
+    <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
+      <StatTile label="In the class" value={`${seated} / ${cap}`} sub={over ? "over the class size" : full ? "class is full" : `${cap - seated} seat${cap - seated === 1 ? "" : "s"} left`} tone={over ? "red" : full ? "amber" : "green"}>
+        {canEdit && <EditNumber value={cap} min={1} label="Set class size" onSave={(n) => onSave({ classSizeCap: n })} />}
+      </StatTile>
+      <StatTile label="Waitlist" value={`${waitlisted} / ${spots}`} sub={spots === 0 ? "no waitlist" : waitFull ? "waitlist is full" : `${spots - waitlisted} spot${spots - waitlisted === 1 ? "" : "s"} left`} tone={waitFull && spots > 0 ? "amber" : "indigo"}>
+        {canEdit && <EditNumber value={spots} min={0} label="Set waitlist spots" onSave={(n) => onSave({ waitlistSpots: n })} />}
+      </StatTile>
+      <StatTile label="Class" value={started ? "Started" : "On hold"} sub={started ? "lessons are open" : "seats are held, lessons are closed"} tone={started ? "green" : "amber"}>
+        {canEdit && (
+          <div style={{ marginTop: 10 }}>
+            {started ? (
+              <button type="button" onClick={onHold} style={{ border: "none", background: "transparent", color: COLORS.faint, fontWeight: 800, fontSize: 12.5, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
+                Put the class on hold
+              </button>
+            ) : (
+              <PrimaryButton onClick={onStart} icon={Megaphone} style={{ fontSize: 13.5, padding: "9px 14px" }}>
+                Start class!
+              </PrimaryButton>
+            )}
           </div>
-        ))}
-      </div>
-      <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-        <button type="button" onClick={onCancel} style={{ border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.text, fontWeight: 800, fontSize: 14, borderRadius: 10, padding: "10px 16px", cursor: "pointer" }}>
-          Cancel
-        </button>
-        <PrimaryButton onClick={onConfirm} icon={Megaphone}>
-          Release decisions
-        </PrimaryButton>
-      </div>
-    </ModalShell>
+        )}
+      </StatTile>
+    </div>
   );
 }
 
@@ -637,21 +761,23 @@ function StudentsTab({ saver, user }) {
   const [applications, setApplications] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [lessons, setLessons] = useState([]);
-  const [cap, setCap] = useState(23);
-  const [filter, setFilter] = useState("all");
+  const [settings, setSettings] = useState({ classSizeCap: 23, waitlistSpots: 8, classStarted: true });
   const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState(null);
-  const [pendingApproval, setPendingApproval] = useState(null);
-  const [releasing, setReleasing] = useState(false);
   const [accounts, setAccounts] = useState({}); // student users by id (super admin only)
   const [error, setError] = useState(null);
   const [info, setInfo] = useState(null);
+  const [confirmDanger, confirmUI] = useDangerConfirm();
   const isSuperAdmin = user.role === "superAdmin";
 
   const loadAccounts = () =>
     isSuperAdmin
       ? api.get("/api/users?role=student").then((rows) => setAccounts(Object.fromEntries(rows.map((u) => [u.id, u]))))
       : Promise.resolve();
+  const reload = async () => {
+    const [a] = await Promise.all([api.get("/api/applications"), loadAccounts()]);
+    setApplications(a);
+  };
 
   useEffect(() => {
     Promise.all([api.get("/api/applications"), api.get("/api/form"), api.get("/api/lessons"), api.get("/api/settings"), loadAccounts()])
@@ -659,44 +785,34 @@ function StudentsTab({ saver, user }) {
         setApplications(a);
         setQuestions(q);
         setLessons(l);
-        setCap(s.classSizeCap);
+        setSettings(s);
       })
       .catch((e) => setError(e.message));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const applyStatus = (id, status) => {
-    setApplications((prev) => prev.map((s) => (s.id === id ? { ...s, status, decisionReleased: false } : s)));
+  const names = (people) => people.map((p) => p.name).join(", ");
+
+  // A waitlisted person into the class, whatever the class size says.
+  const giveSeat = async (student) => {
+    if (!(await confirmDanger({ title: `Give ${student.name} a seat?`, body: "They move from the waitlist into the class and get their student account now, even if the class is already full. They are emailed that a seat opened up.", label: "Give a seat", note: "This skips the line" }))) return;
     saver.immediate(async () => {
       try {
-        const saved = await api.patch(`/api/applications/${id}`, { status });
-        setApplications((prev) => prev.map((s) => (s.id === id ? saved : s)));
-        if (status === "approved") setInfo(`${saved.name} marked as approved. ${isSuperAdmin ? "Click Release decisions when you are ready to create accounts and tell applicants." : "The super admin releases decisions, which creates the account."}`);
+        await api.patch(`/api/applications/${student.id}`, { status: "approved" });
+        await reload();
+        setInfo(`${student.name} is in the class and has been emailed.`);
       } catch (e) {
         setError(e.message);
       }
     });
   };
 
-  const release = () =>
-    saver.immediate(async () => {
-      try {
-        const r = await api.post("/api/applications/release");
-        const [a] = await Promise.all([api.get("/api/applications"), loadAccounts()]);
-        setApplications(a);
-        setInfo(`Released ${r.released} decision${r.released === 1 ? "" : "s"}: ${r.approved} approved (${r.accountsCreated} new account${r.accountsCreated === 1 ? "" : "s"}), ${r.waitlisted} waitlisted, ${r.denied} denied.`);
-      } catch (e) {
-        setError(e.message);
-      }
-    });
-
   const resetApplicant = async (student) => {
     try {
       const r = await api.del(`/api/applications/${student.id}`);
-      setApplications((prev) => prev.filter((a) => a.id !== student.id));
-      if (student.studentId) setAccounts((prev) => { const next = { ...prev }; delete next[student.studentId]; return next; });
+      await reload();
       setOpenId(null);
-      setInfo(`${student.name} deleted: application${r.removed.account ? ", account" : ""}${r.removed.submissions ? ` and ${r.removed.submissions} submission${r.removed.submissions === 1 ? "" : "s"}` : ""} removed. ${student.email} can apply again.`);
+      setInfo(`${student.name} deleted: sign-up${r.removed.account ? ", account" : ""}${r.removed.submissions ? ` and ${r.removed.submissions} submission${r.removed.submissions === 1 ? "" : "s"}` : ""} removed. ${student.email} can sign up again.${r.removed.promoted?.length ? ` The free seat went to ${names(r.removed.promoted)} from the waitlist, who has been emailed.` : ""}`);
     } catch (e) {
       setError(e.message);
     }
@@ -711,31 +827,42 @@ function StudentsTab({ saver, user }) {
     }
   };
 
-  // Approval is the one status that creates an account, so it goes through
-  // a confirmation first. Every other status applies straight away.
-  const requestStatus = (student, status) => {
-    if (status === "approved" && student.status !== "approved") setPendingApproval(student);
-    else applyStatus(student.id, status);
+  const setPaid = async (student, paid) => {
+    try {
+      const saved = await api.patch(`/api/applications/${student.id}`, { paid });
+      setApplications((prev) => prev.map((a) => (a.id === saved.id ? saved : a)));
+    } catch (e) {
+      setError(e.message);
+    }
   };
 
-  const saveCap = (n) =>
+  const saveSettings = (patch) =>
     saver.immediate(async () => {
       try {
-        const s = await api.patch("/api/settings", { classSizeCap: n });
-        setCap(s.classSizeCap);
+        const s = await api.patch("/api/settings", patch);
+        setSettings(s);
+        if (s.promoted?.length) {
+          await reload();
+          setInfo(`${names(s.promoted)} moved from the waitlist into the class and ${s.promoted.length === 1 ? "has" : "have"} been emailed.`);
+        }
       } catch (e) {
         setError(e.message);
       }
     });
 
+  const students = (applications || []).filter(inClass);
+  const waitlist = (applications || []).filter(onWaitlist);
+  const hidden = (applications || []).length - students.length - waitlist.length;
+  const matches = (s) => !search || s.name.toLowerCase().includes(search.toLowerCase());
+
+  const startClass = async () => {
+    if (await confirmDanger({ title: "Start class?", body: `Lessons open right away for the ${students.length} student${students.length === 1 ? "" : "s"} in the class (each one still has to sign the Student Agreement first). Anyone who gets a seat later goes straight in.`, label: "Start class", note: "You can put the class back on hold" })) saveSettings({ classStarted: true });
+  };
+  const holdClass = async () => {
+    if (await confirmDanger({ title: "Put the class on hold?", body: "Every student's lessons close until you press Start class. They keep their seat and their work, and can still sign the Student Agreement.", label: "Put on hold", note: "Reversible" })) saveSettings({ classStarted: false });
+  };
+
   const openStudent = applications?.find((s) => s.id === openId);
-  const filtered = (applications || []).filter((s) => {
-    if (filter !== "all" && s.status !== filter) return false;
-    if (search && !s.name.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
-  const approvedCount = (applications || []).filter((a) => a.status === "approved").length;
-  const unreleased = (applications || []).filter(isUnreleased);
 
   if (error) return <Notice onClose={() => setError(null)}>{error}</Notice>;
   if (!applications) return <Loading />;
@@ -749,6 +876,7 @@ function StudentsTab({ saver, user }) {
         onSuspend={(suspended) => suspend(openStudent, suspended)}
         onAgreement={(agreement) => setAccounts((prev) => (prev[openStudent.studentId] ? { ...prev, [openStudent.studentId]: { ...prev[openStudent.studentId], agreement } } : prev))}
         onReset={() => resetApplicant(openStudent)}
+        onPaid={(paid) => setPaid(openStudent, paid)}
         questions={questions}
         lessons={lessons}
         saver={saver}
@@ -757,55 +885,50 @@ function StudentsTab({ saver, user }) {
     );
   }
 
+  const sectionTitle = { fontSize: 13, fontWeight: 800, color: COLORS.indigo, letterSpacing: 0.4, margin: "18px 0 8px" };
+  const shownStudents = students.filter(matches);
+  const shownWaitlist = waitlist.filter(matches);
+
   return (
     <div style={{ maxWidth: 720, margin: "0 auto" }}>
+      {confirmUI}
       {info && (
         <Notice tone="info" onClose={() => setInfo(null)}>
           {info}
         </Notice>
       )}
-      <StatsBar applications={applications} cap={cap} canEditCap={isSuperAdmin} onSaveCap={saveCap} />
-      {isSuperAdmin && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: unreleased.length ? COLORS.amberSoft : COLORS.card, border: `1px solid ${unreleased.length ? COLORS.amberBorder : COLORS.border}`, borderRadius: 14, padding: "12px 16px", marginBottom: 16, flexWrap: "wrap" }}>
-          <div style={{ fontSize: 13.5, color: unreleased.length ? COLORS.amber : COLORS.sub, fontWeight: 700, lineHeight: 1.5 }}>
-            {unreleased.length
-              ? `${unreleased.length} decision${unreleased.length === 1 ? "" : "s"} not yet released. Applicants see "under review" until you release.`
-              : "All decisions are released. Approved, waitlisted and denied applicants can see their result."}
-          </div>
-          <PrimaryButton icon={Megaphone} onClick={() => setReleasing(true)} disabled={!unreleased.length}>
-            Release decisions
-          </PrimaryButton>
-        </div>
-      )}
-      {releasing && (
-        <ReleaseModal
-          pending={unreleased}
-          onCancel={() => setReleasing(false)}
-          onConfirm={() => {
-            setReleasing(false);
-            release();
-          }}
-        />
-      )}
-      <FilterBar filter={filter} setFilter={setFilter} statuses={STATUSES} search={search} setSearch={setSearch} />
-      {pendingApproval && (
-        <ApproveModal
-          student={pendingApproval}
-          approvedCount={approvedCount}
-          cap={cap}
-          onCancel={() => setPendingApproval(null)}
-          onConfirm={() => {
-            applyStatus(pendingApproval.id, "approved");
-            setPendingApproval(null);
-          }}
-        />
-      )}
+      {isSuperAdmin && <SignupLinkPanel saver={saver} />}
+      <ClassBar seated={students.length} waitlisted={waitlist.length} settings={settings} canEdit={isSuperAdmin} onSave={saveSettings} onStart={startClass} onHold={holdClass} />
+      <div style={{ fontSize: 12.5, color: COLORS.faint, margin: "-6px 2px 12px", lineHeight: 1.5 }}>
+        First come, first served: whoever signs up while a seat is free (a student with one click, or a parent for their child) is in the class and goes straight to the Student Agreement and payment. After that, people join the waitlist; when a seat frees up, the first in line moves in and is emailed.
+      </div>
+      <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name" aria-label="Search by name" style={{ ...fieldStyle, padding: "9px 12px", fontSize: 14, borderRadius: 10 }} />
+
+      <div style={sectionTitle}>In the class · {students.length}</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {filtered.length === 0 && <EmptyState>No students match this filter.</EmptyState>}
-        {filtered.map((s) => (
-          <StudentRow key={s.id} student={s} account={s.studentId ? accounts[s.studentId] : null} onOpen={() => setOpenId(s.id)} onStatusChange={(status) => requestStatus(s, status)} />
+        {shownStudents.length === 0 && <EmptyState>{students.length ? "No student matches that name." : "Nobody has signed up yet."}</EmptyState>}
+        {shownStudents.map((s) => (
+          <StudentRow key={s.id} student={s} account={s.studentId ? accounts[s.studentId] : null} number={students.indexOf(s) + 1} onOpen={() => setOpenId(s.id)} />
         ))}
       </div>
+
+      {(waitlist.length > 0 || settings.waitlistSpots > 0) && (
+        <>
+          <div style={sectionTitle}>Waitlist · {waitlist.length} of {settings.waitlistSpots}</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {shownWaitlist.length === 0 && <EmptyState>{waitlist.length ? "Nobody on the waitlist matches that name." : "Nobody is waiting."}</EmptyState>}
+            {shownWaitlist.map((s) => (
+              <StudentRow key={s.id} student={s} account={null} number={waitlist.indexOf(s) + 1} waiting onOpen={() => setOpenId(s.id)} onGiveSeat={isSuperAdmin ? () => giveSeat(s) : null} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {hidden > 0 && (
+        <div style={{ fontSize: 12.5, color: COLORS.faint, marginTop: 18 }}>
+          {hidden} earlier applicant{hidden === 1 ? "" : "s"} who {hidden === 1 ? "was" : "were"} not accepted {hidden === 1 ? "is" : "are"} kept on file but not listed here.
+        </div>
+      )}
     </div>
   );
 }
@@ -928,6 +1051,7 @@ const WORDING_FIELDS = [
   { key: "parentEmailHelp", label: "Guardian email: line underneath", optional: true },
   { key: "relationshipLabel", label: "Relationship: label" },
   { key: "parentStatement", label: "Guardian's tick-box statement", long: true, hint: "{student} is replaced with the student's name." },
+  { key: "parentOnlyStatement", label: "Guardian's tick-box statement when a parent signs up on their own", long: true, hint: "Shown to a parent who signed their child up themselves: their signature alone completes the agreement. {student} is replaced with the student's name." },
 ];
 
 // The signing form: the words on every field, the relationship options, and
@@ -1029,6 +1153,40 @@ function AgreementFields({ meta, saver }) {
 // Upload the PDF students must sign, decide whether signing is required,
 // edit the title and intro, and edit the signing form. Replacing the PDF
 // starts a new version, so everyone signs again.
+// How the program fee is paid: a link to a payment page EIB already has, the
+// words on the button, and a note. Students and parents see it once the
+// agreement is signed.
+function PaymentSettings({ meta, onSave }) {
+  const [draft, setDraft] = useState({ url: meta.payment?.url || "", label: meta.payment?.label || "", note: meta.payment?.note || "" });
+  const saveIfChanged = (key) => () => {
+    if ((meta.payment?.[key] || "") !== draft[key]) onSave({ payment: { [key]: draft[key] } });
+  };
+  const label = { fontSize: 11.5, fontWeight: 800, color: COLORS.faint, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 };
+  const box = { ...fieldStyle, padding: "9px 12px", fontSize: 14, borderRadius: 10 };
+  return (
+    <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 20, marginTop: 16 }}>
+      <div style={{ fontSize: 15, fontWeight: 900, color: COLORS.text }}>Payment</div>
+      <div style={{ fontSize: 12.5, color: COLORS.faint, marginTop: 2, lineHeight: 1.5 }}>
+        Shown right after the agreement is signed, to the student and to a parent who signed up for them. The button opens your payment page in a new tab. When the money arrives, tick "Fee paid" on the student in EIB Students.
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 14 }}>
+        <div>
+          <div style={label}>Payment link</div>
+          <input aria-label="Payment link" value={draft.url} onChange={(e) => setDraft({ ...draft, url: e.target.value })} onBlur={saveIfChanged("url")} placeholder="https://… (leave empty for no button)" style={box} />
+        </div>
+        <div>
+          <div style={label}>Words on the button</div>
+          <input aria-label="Words on the payment button" value={draft.label} onChange={(e) => setDraft({ ...draft, label: e.target.value })} onBlur={saveIfChanged("label")} placeholder="Pay the program fee" style={box} />
+        </div>
+        <div>
+          <div style={label}>Note above the button</div>
+          <textarea aria-label="Note above the payment button" value={draft.note} onChange={(e) => setDraft({ ...draft, note: e.target.value })} onBlur={saveIfChanged("note")} rows={3} placeholder="For example: the amount, the deadline, and what to put in the reference field." style={{ ...box, resize: "vertical" }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AgreementCard({ saver }) {
   const [meta, setMeta] = useState(null);
   const [error, setError] = useState(null);
@@ -1153,6 +1311,7 @@ function AgreementCard({ saver }) {
           </>
         )}
       </div>
+      {meta && <PaymentSettings meta={meta} onSave={save} />}
       {meta && <AgreementFields meta={meta} saver={saver} />}
     </div>
   );
@@ -1245,7 +1404,7 @@ function UnfinishedList({ user, drafts, questions, onChange }) {
       const created = await api.post(`/api/applications/drafts/${d.id}/submit`);
       setDrafts((prev) => prev.filter((x) => x.id !== d.id));
       if (openId === d.id) setOpenId(null);
-      setInfo(`Submitted ${created.name}'s application with what they had. It is now in EIB Students as Pending; interview, approve and release as usual.`);
+      setInfo(`Submitted ${created.name}'s application with what they had. It is now in EIB Students like any sign-up: in the class if a seat was free, otherwise on the waitlist.`);
     } catch (e) {
       setError(e.message);
     }

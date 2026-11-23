@@ -137,9 +137,8 @@ size, headline numbers; the day axis grows on its own while the window is
 open; a table view sits behind a toggle) and, underneath, the unfinished
 applications, newest activity first, with progress and the answers so far;
 the super admin can clear one, or **submit it for them** (two clicks): the
-draft becomes a pending application with whatever answers it holds, skipping
-the public form's checks, and goes through interview / approve / release like
-any other. A returning applicant gets their answers back.
+draft becomes a sign-up with whatever answers it holds, skipping the public
+form's checks, and is placed like any other. A returning applicant gets their answers back.
 
 Things worth trying, in order:
 
@@ -179,19 +178,48 @@ Things worth trying, in order:
    student, then a chapter, and every deliverable in that chapter is there
    to grade. **By deliverable**: pick a deliverable, then grade student by
    student; **Release & next** (or Ctrl+Enter) releases and moves on.
-5. **Approve, then release.** Open the public Application form (link in the
-   top bar). Sign in with the sandbox stand-in (any name, an @tfs.ca email)
-   and submit: the page becomes a single status card ("under review",
-   submitted when). As Jack, Student Manager → the new applicant is Pending.
-   Set them to Approved: a popup confirms and shows the class size after
-   approval. Nothing happens for the applicant yet. As Josef, click
-   **Release decisions**: their account is created and their status card now
-   says they're in, with a button into the platform. Switch to them with the
-   dev URL above (their email) and they can open Lessons. Open their profile
-   as Josef and **Suspend account**: they are locked out until reinstated.
-6. **Class size cap.** The stats bar at the top of the Students tab shows
-   applicants, interviews, and approved / cap. As Josef, "Set max class size"
-   changes the cap. As Jack it is read-only.
+5. **First come, first served.** Open the public Application form (link in
+   the top bar). Sign in with the sandbox stand-in (any name, an @tfs.ca
+   email) and submit: while a seat is free they are in the class at once,
+   their student account exists, and the page becomes a single card ("You're
+   in", with a button into the platform). Once the class is full the next
+   sign-ups join the waitlist and are told their number and that the
+   waitlist has only so many spots (8 by default); when the waitlist is full
+   too, the page says the class is full and takes no more sign-ups. Delete a
+   student as Josef ("Delete sign-up and account" on their page) or raise the
+   class size: the first person waiting moves in and is emailed. Josef can
+   also press **Give a seat** on anyone waiting. Open a profile as Josef and
+   **Suspend account**: they are locked out until reinstated.
+   Signing up is **one click**: there are no questions (`/api/apply` takes
+   no answers; the saved application form is only used to show old
+   applicants' answers). A student who gets a seat is sent straight to the
+   Student Agreement at `/onboarding`, skipping the old welcome page, and
+   sees the payment step once it is signed.
+   **Parents and guardians** can sign their child up without the student
+   (`src/lib/data/parentSignup.js`, the form under the sign-in card on
+   `/apply`): their name and email, the student's name and school email
+   (must be on the school domain). They are emailed a link to `/parent`;
+   the seat is taken the first time that link is opened, and the student is
+   emailed that they were signed up. The same link lets the parent read and
+   sign the agreement alone (`POST /api/apply/parent/sign`): that one
+   signature completes it (`signedBy: "guardian"`), with no student
+   signature and no confirmation email. A waitlisted child's parent gets a
+   new link when a seat opens.
+   **Payment** is a link to a page EIB already has: Student Manager →
+   Student agreement → Payment sets the link, the button's words and a note
+   (`payment` on `PUT /api/agreement`). Josef ticks "Mark fee as paid" on
+   the student's page (`PATCH /api/applications/:id { paid }`); paying does
+   not gate lessons, signing the agreement does.
+6. **Class size, waitlist, Start class.** The bar at the top of the EIB
+   Students tab shows seats taken / class size, waitlist taken / spots, and
+   whether class has started. As Josef, "Set class size" and "Set waitlist
+   spots" change the limits, **Put the class on hold** closes every
+   student's lessons while they keep their seat (they can still sign the
+   Student Agreement; the Lessons page says "Your seat is saved"), and
+   **Start class!** opens them. A database that has never been put on hold
+   counts as started. As Jack it is all read-only. The **Sign-up link** card
+   above it (Josef only) has the link, the open and close times and the
+   school email domain people must sign in with.
 7. **Leaders edit room and time.** As Jack, open Lessons → "Edit location &
    time" on any lesson card. Changes save as you type and show for students.
    The API only accepts room/start/end from this route; anything else is
@@ -300,13 +328,12 @@ src/app/*/page.jsx          Thin server pages: gate by role, render the tool.
 - **`classSizeCap` setting** (default 23), readable by leaders, writable by
   super admin. Approval is not blocked at the cap; the confirmation popup
   warns instead.
-- **Decisions are released in one step, not on approval.** Setting an
-  application to Approved / Waitlist / Denied is a private review step. The
-  super admin's **Release decisions** button (Students tab) makes every
-  unreleased final decision visible on the applicant's status page and
-  creates the student accounts for the approved ones. Changing a status after
-  release un-releases it until the next click. Pending and Interview are never
-  shown to applicants.
+- **No review step.** A sign-up is placed the moment it is submitted
+  (`createApplication` in `src/lib/data/applications.js`): a seat and an
+  account, or a waitlist spot, or 409 when both are full. Two submissions in
+  the same instant are settled by arrival order after both rows are stored.
+  Rows from the old review process (no `fcfs` flag) that were never approved
+  are kept but take no seat or spot and are not listed in EIB Students.
 - **Applicants never see the platform menu.** A signed-in account with no
   allow-list row is sent to `/apply`, which is the form if they have not
   applied and a single status card if they have (submitted when, under review
