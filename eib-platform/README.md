@@ -431,6 +431,14 @@ Copy `.env.example` to `.env.local`, fill in whichever groups you want, and
 `npm run dev`. Any group left blank stays in sandbox mode, so you can test
 Google sign-in against the JSON file store, or Atlas with the dev role-switch URL.
 
+## Micro-credentials (EIB Founder Micro-Credential)
+
+- **Where**: Student Manager > **Graduation** tab (super admin only). Code: `src/lib/data/credentials.js`, `src/app/api/graduation/route.js`, `src/components/GraduationTab.jsx`, `src/components/Credential.jsx`, public page `src/app/c/[id]/page.jsx`. Collection: `credentials` (one per student).
+- **Complete** means every field of every deliverable in the published lessons is filled: text written, a working link, every checklist box ticked, every table cell filled (a row left entirely blank in an add-your-own-rows table is ignored).
+- **Release Credentials** issues one to every student who has completed everything and has none yet. One student can be released or revoked by name; releasing a revoked student again brings back the same link. Releasing emails nobody: the student sees a card on their Lessons page, and the tab has a copy button for each link.
+- **Public page** `/c/<id>`: no sign-in, a 22-character random id, `noindex` (meta tag and `X-Robots-Tag` header in `next.config.mjs`). Shows Verified, the issuer (EIB by Nemosyne LTD), cohort, issue date, criteria, the founder story and the deliverables. A revoked credential shows a Revoked notice and none of the work. An unknown id is a 404.
+- The student's work is **copied at release**. Which deliverable is the founder story and which deliverables are public are set on the tab and read live, so un-ticking one hides it on every credential at once.
+- **Add to LinkedIn** (public page and the student's card) uses `LINKEDIN_ORG_ID`, the number of the issuer's LinkedIn company page. Without it the issuer is sent as plain text.
 ## Not built (per spec)
 
 - Revoking a student's `users` row when they lose "approved" status.

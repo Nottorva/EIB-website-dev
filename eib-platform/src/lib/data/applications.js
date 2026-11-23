@@ -21,6 +21,7 @@ import { findAll, findById, findOneBy, insert, updateOne, newId, removeOne } fro
 import { upsertStudent, setSuspended, deleteUser, markWelcomed } from "./users";
 import { deleteSubmissionsFor } from "./submissions";
 import { deleteAidaFor } from "../aida/store";
+import { deleteCredentialFor } from "./credentials";
 import { deleteDraftByEmail } from "./drafts";
 import { getClassSizeCap, getWaitlistSpots } from "./settings";
 import { sendEmail } from "../mailer";
@@ -203,6 +204,7 @@ export async function deleteApplicant(id, { origin } = {}) {
   if (app.studentId) {
     removed.submissions = await deleteSubmissionsFor(app.studentId);
     await deleteAidaFor(app.studentId);
+    await deleteCredentialFor(app.studentId);
     if (await deleteUser(app.studentId)) removed.account = 1;
   }
   await removeOne("applications", id);

@@ -9,6 +9,7 @@ import { DeliverableInput, DeliverablePreview, ExampleBlock } from "./Deliverabl
 import PdfReader from "./PdfReader";
 import OfficeReader, { officeKind } from "./OfficeReader";
 import AidaPanel from "./AidaPanel";
+import { CredentialCard } from "./Credential";
 
 /* ---------- Modals ---------- */
 // Shown only when a resource button is clicked and no link has been set yet.
@@ -429,6 +430,8 @@ export default function LessonView({ user }) {
 
         {error && <Notice onClose={() => setError(null)}>{error}</Notice>}
         {saver.error && <Notice onClose={saver.clearError}>{saver.error}</Notice>}
+
+        {data?.credential && <CredentialCard credential={data.credential} />}
 
         {!data ? (
           <Loading />

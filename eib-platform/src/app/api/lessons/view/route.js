@@ -8,8 +8,9 @@ import { listSubmissions, stripUnreleased } from "@/lib/data/submissions";
 import { getCohortYear, getClassStarted } from "@/lib/data/settings";
 import { needsAgreement } from "@/lib/data/agreement";
 import { getAidaSettings, aidaOpenFor } from "@/lib/aida/store";
+import { getActiveCredentialFor, credentialUrl, linkedInUrl } from "@/lib/data/credentials";
 
-export const GET = guarded(null, async ({ user }) => {
+export const GET = guarded(null, async ({ req, user }) => {
   if (await needsAgreement(user)) throw new HttpError(403, "Please sign the Student Agreement first.");
   if (user.role === "student" && !(await getClassStarted())) throw new HttpError(403, "Class has not started yet.");
   const [allLessons, mentors, cohortYear] = await Promise.all([listLessons(), listMentors(), getCohortYear()]);
@@ -32,5 +33,10 @@ export const GET = guarded(null, async ({ user }) => {
   // Whether this student gets the "Ask AIDA" button (/api/aida/chat checks again on every message).
   const aida = aidaOpenFor(user, await getAidaSettings());
 
-  return Response.json({ mode, cohortYear, lessons: withMentor, submissions, aida, user: { id: user.id, name: user.name } });
+  // A student whose micro-credential has been released sees it above their lessons.
+  const origin = new URL(req.url).origin;
+  const earned = mode === "student" ? await getActiveCredentialFor(user.id) : null;
+  const credential = earned ? { title: earned.title, issuedAt: earned.issuedAt, url: credentialUrl(earned, origin), linkedIn: linkedInUrl(earned, origin) } : null;
+
+  return Response.json({ mode, cohortYear, lessons: withMentor, submissions, aida, credential, user: { id: user.id, name: user.name } });
 });

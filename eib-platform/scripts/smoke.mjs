@@ -784,6 +784,100 @@ head("AIDA");
   check("switched off again: chat refused", 403, (await chat(student, "lesson_2", "hello")).status);
 }
 
+/* ---- graduation: the EIB Founder Micro-Credential ---- */
+head("graduation and micro-credentials");
+{
+  const G = "/api/graduation";
+  const outboxFile = path.join(process.cwd(), "data", "outbox.jsonl");
+  const outbox = () => (fs.existsSync(outboxFile) ? fs.readFileSync(outboxFile, "utf8").split("\n").filter(Boolean).length : 0);
+  const mailBefore = outbox();
+  const page = async (id) => {
+    const res = await fetch(`${BASE}/c/${id}`, { headers: { Cookie: stranger } });
+    return { status: res.status, text: await res.text(), robots: res.headers.get("x-robots-tag") || "" };
+  };
+  const amara = (j) => j?.students.find((s) => s.id === "user_amara");
+  const put = (d, payload) => req(student, "PUT", "/api/submissions", { lessonId: d.lessonId, deliverableId: d.id, payload });
+
+  check("graduation: only the super admin reads it or releases", [403, 403, 401, 403, 403], [await code(leader, "GET", G), await code(student, "GET", G), await code(stranger, "GET", G), await code(leader, "POST", G, { action: "releaseAll" }), await code(student, "POST", G, { action: "release", studentId: "user_amara" })]);
+  await req(admin, "PATCH", G, { hidden: [], storyDeliverableId: "", criteria: "" });
+  const start = (await req(admin, "GET", G)).json;
+  check("graduation: each student with their progress, nobody released", [true, true, false, null], [start.students.length > 0, start.deliverables.length > 1, amara(start)?.complete, amara(start)?.credential ?? null]);
+  check("graduation: nobody has completed everything -> Release Credentials releases nobody; one unfinished student is refused", [[], 409, 404, 400], [(await req(admin, "POST", G, { action: "releaseAll" })).json.released, await code(admin, "POST", G, { action: "release", studentId: "user_amara" }), await code(admin, "POST", G, { action: "release", studentId: "user_jack" }), await code(admin, "POST", G, { action: "nope" })]);
+
+  // The student fills every field of every deliverable (the last table is left one cell short first).
+  const lessons = (await req(admin, "GET", "/api/lessons")).json.filter((l) => l.studentVisible);
+  const dels = lessons.flatMap((l) => l.deliverables.map((d) => ({ ...d, lessonId: l.id })));
+  const mark = (d) => `SMOKE-CRED-${d.id}`;
+  const answer = (d) => {
+    if (d.type === "text") return { text: mark(d) };
+    if (d.type === "link") return { url: `https://example.com/${mark(d)}` };
+    if (d.type === "checklist") return { items: d.checklistItems.map((label) => ({ label, checked: true })) };
+    const columns = d.columns.length ? d.columns : ["Column 1", "Column 2"];
+    const rows = d.rowLabels.length ? d.rowLabels.map(() => columns.map(() => mark(d))) : [columns.map(() => mark(d)), columns.map(() => "")];
+    return { columns, rowLabels: d.rowLabels, rows };
+  };
+  for (const d of dels) await put(d, answer(d));
+  const table = dels.find((d) => d.type === "table");
+  const checklist = dels.find((d) => d.type === "checklist" && d.checklistItems.length > 1);
+  const short = answer(table);
+  short.rows[0][short.rows[0].length - 1] = " ";
+  await put(table, short);
+  await put(checklist, { items: checklist.checklistItems.map((label, i) => ({ label, checked: i > 0 })) });
+  const nearly = amara((await req(admin, "GET", G)).json);
+  check("complete = every field filled: a table one cell short and a checklist one box short do not count", [nearly.total - 2, false, [table.id, checklist.id].sort()], [nearly.done, nearly.complete, nearly.missing.map((m) => m.id).sort()]);
+  await put(table, answer(table));
+  await put(checklist, answer(checklist));
+  check("every field filled -> complete", [true, 0], (({ complete, missing }) => [complete, missing.length])(amara((await req(admin, "GET", G)).json)));
+
+  // What the page shows: a founder story, and one deliverable kept private.
+  const story = dels.find((d) => d.type === "text");
+  const secret = dels.find((d) => d.type === "link");
+  const set = await req(admin, "PATCH", G, { storyDeliverableId: story.id, hidden: [secret.id], criteria: "SMOKE criteria: finished everything." });
+  check("graduation settings are saved; student and leader cannot change them", [story.id, [secret.id], 403, 403, 400], [set.json?.settings.storyDeliverableId, set.json?.settings.hidden, await code(student, "PATCH", G, { hidden: [] }), await code(leader, "PATCH", G, { hidden: [] }), await code(admin, "PATCH", G, {})]);
+  check("nothing is public before release", [null, null], [amara(set.json).credential, (await req(student, "GET", "/api/lessons/view")).json?.credential ?? null]);
+
+  const rel = (await req(admin, "POST", G, { action: "releaseAll" })).json;
+  const cred = amara(rel).credential;
+  const id = cred?.id || "none";
+  check("Release Credentials: the student who completed everything gets one, with an unguessable id", [true, true, "active"], [rel.released.includes("Amara Chen"), /^[A-Za-z0-9_-]{22}$/.test(id), cred?.status]);
+  check("only students who completed everything got one", true, rel.students.every((s) => Boolean(s.credential) === s.complete));
+  check("releasing emails nobody", mailBefore, outbox());
+
+  const pub = await page(id);
+  check("public page: opens with no account, marked noindex", [200, true, true], [pub.status, /noindex/.test(pub.robots), /<meta name="robots" content="noindex/.test(pub.text)]);
+  check("public page: Verified, the student, title, issuer, cohort, criteria", [true, true, true, true, true, true], [pub.text.includes("Verified"), pub.text.includes("Amara Chen"), pub.text.includes("EIB Founder Micro-Credential"), pub.text.includes("EIB by Nemosyne LTD"), pub.text.includes(rel.cohort), pub.text.includes("SMOKE criteria: finished everything.")]);
+  check("public page: the founder story and the deliverables, without the private one", [true, true, true, false], [pub.text.includes("Founder story"), pub.text.includes(mark(story)), pub.text.includes(mark(table)), pub.text.includes(mark(secret))]);
+  check("public page: Add to LinkedIn", true, pub.text.includes("Add to LinkedIn") && pub.text.includes("linkedin.com/profile/add?startTask=CERTIFICATION_NAME"));
+  check("a made-up or malformed link is not found", [404, 404, true], [(await page("abcdefghijklmnopqrstuv")).status, (await page("x")).status, (await page("abcdefghijklmnopqrstuv")).text.includes("not valid")]);
+
+  const mine = (await req(student, "GET", "/api/lessons/view")).json?.credential;
+  const li = new URL(mine?.linkedIn || "https://x.invalid");
+  const q = Object.fromEntries(li.searchParams);
+  const issued = new Date(cred.issuedAt);
+  check("student portal: their credential link", [`${BASE}/c/${id}`, "EIB Founder Micro-Credential"], [mine?.url, mine?.title]);
+  check("LinkedIn link: the certification fields", ["https://www.linkedin.com/profile/add", "CERTIFICATION_NAME", "EIB Founder Micro-Credential", `${BASE}/c/${id}`, id, true, true, true], [li.origin + li.pathname, q.startTask, q.name, q.certUrl, q.certId, Math.abs(Number(q.issueYear) - issued.getUTCFullYear()) <= 1, Number(q.issueMonth) >= 1 && Number(q.issueMonth) <= 12, Boolean(q.organizationId || q.organizationName === "EIB by Nemosyne LTD")]);
+  check("a leader has no credential on their lessons page", null, (await req(leader, "GET", "/api/lessons/view")).json?.credential ?? null);
+
+  // The work is copied at release; what the super admin shows is read live.
+  await put(story, { text: "SMOKE-CRED-EDITED-LATER" });
+  check("an answer edited after release does not change the credential", [true, false], (({ text }) => [text.includes(mark(story)), text.includes("SMOKE-CRED-EDITED-LATER")])(await page(id)));
+  await req(admin, "PATCH", G, { hidden: [secret.id, table.id] });
+  check("un-ticking a deliverable takes it off a released credential at once", false, (await page(id)).text.includes(mark(table)));
+  await req(admin, "PATCH", G, { hidden: [secret.id] });
+  check("pressing Release Credentials again releases nobody twice; an active one cannot be released again", [[], 409, id], [(await req(admin, "POST", G, { action: "releaseAll" })).json.released, await code(admin, "POST", G, { action: "release", studentId: "user_amara" }), amara((await req(admin, "GET", G)).json).credential.id]);
+
+  const rev = await req(admin, "POST", G, { action: "revoke", studentId: "user_amara" });
+  const gone = await page(id);
+  check("revoke: the page says Revoked and shows none of the work", ["revoked", 200, true, false, true, false, false, false], [amara(rev.json).credential.status, gone.status, gone.text.includes("Revoked"), gone.text.includes("Verified"), gone.text.includes("Amara Chen"), gone.text.includes(mark(table)), gone.text.includes(mark(story)), gone.text.includes("Add to LinkedIn")]);
+  check("revoke: gone from the student's lessons page; revoking someone with no credential -> 404", [null, 404], [(await req(student, "GET", "/api/lessons/view")).json?.credential ?? null, await code(admin, "POST", G, { action: "revoke", studentId: "user_jack" })]);
+  check("Release Credentials leaves a revoked student alone", [[], "revoked"], (({ json }) => [json.released, amara(json).credential.status])(await req(admin, "POST", G, { action: "releaseAll" })));
+  const back = await req(admin, "POST", G, { action: "release", studentId: "user_amara" });
+  const again = await page(id);
+  check("releasing one student again: same link, active, with their work as it is now", [id, "active", true, true], [amara(back.json).credential.id, amara(back.json).credential.status, again.text.includes("Verified"), again.text.includes("SMOKE-CRED-EDITED-LATER")]);
+  check("still no email after revoke and re-release", mailBefore, outbox());
+  await req(admin, "PATCH", G, { hidden: [], storyDeliverableId: "", criteria: "" });
+}
+
 /* ---- cleanup of things this run created that later runs would trip on ---- */
 head("cleanup");
 {

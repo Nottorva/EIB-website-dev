@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Users, ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Mail, Calendar, Link2, UserPlus, Lock, ExternalLink, Send, Pencil, Copy, Check, CalendarClock, Megaphone, ShieldOff, ShieldCheck, Clock, ChartColumn, Table2, Signature, Upload, Download, X, CircleCheck, Circle } from "lucide-react";
+import { Users, ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Mail, Calendar, Link2, UserPlus, Lock, ExternalLink, Send, Pencil, Copy, Check, CalendarClock, Megaphone, ShieldOff, ShieldCheck, Clock, ChartColumn, Table2, Signature, Upload, Download, X, CircleCheck, Circle, Award } from "lucide-react";
 import { buildDays, TimeChart, DaysTable, Stat } from "./ApplicationsChart";
 import {
   COLORS,
@@ -24,6 +24,7 @@ import {
 import { api, useDebouncedSaver } from "@/lib/api";
 import { fmtSmart, fmtDateTime, fmtLongDate, fmtShortDateTime } from "@/lib/format";
 import { GradeCard, useGrades } from "./Grading";
+import GraduationTab from "./GraduationTab";
 
 // First come, first served: a person is in the class or on the waitlist.
 // Rows from the old review process that were never accepted are not shown.
@@ -1506,7 +1507,7 @@ export default function StudentManager({ user }) {
   // /manager?tab=agreement deep-links to a tab (forms is the old name of the agreement tab).
   useEffect(() => {
     const wanted = new URLSearchParams(window.location.search).get("tab");
-    if (wanted && ["agreement", "students", "analytics", "accmanager"].includes(wanted)) setTab(wanted);
+    if (wanted && ["agreement", "students", "analytics", "accmanager", "graduation"].includes(wanted)) setTab(wanted);
     if (wanted === "forms") setTab("agreement");
     if (wanted === "unfinished") setTab("analytics");
   }, []);
@@ -1526,6 +1527,7 @@ export default function StudentManager({ user }) {
     ...(isSuperAdmin ? [{ id: "agreement", label: "Student agreement", icon: Signature }] : []),
     { id: "students", label: "EIB Students", icon: Users },
     // Analytics has no tab; it still opens at /manager?tab=analytics.
+    ...(isSuperAdmin ? [{ id: "graduation", label: "Graduation", icon: Award }] : []),
     ...(isSuperAdmin ? [{ id: "accmanager", label: "Acc Manager", icon: UserPlus }] : []),
   ];
 
@@ -1542,7 +1544,7 @@ export default function StudentManager({ user }) {
       />
       <div style={{ maxWidth: 720, margin: "0 auto" }}>{saver.error && <Notice onClose={saver.clearError}>{saver.error}</Notice>}</div>
 
-      {tab === "agreement" && isSuperAdmin ? <AgreementCard saver={saver} /> : tab === "analytics" ? <AnalyticsTab key={listKey} user={user} /> : tab === "accmanager" && isSuperAdmin ? <AccManagerTab saver={saver} /> : <StudentsTab key={listKey} saver={saver} user={user} />}
+      {tab === "agreement" && isSuperAdmin ? <AgreementCard saver={saver} /> : tab === "analytics" ? <AnalyticsTab key={listKey} user={user} /> : tab === "graduation" && isSuperAdmin ? <GraduationTab /> : tab === "accmanager" && isSuperAdmin ? <AccManagerTab saver={saver} /> : <StudentsTab key={listKey} saver={saver} user={user} />}
     </div>
   );
 }
