@@ -2,58 +2,41 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, Pencil, Users, ClipboardList, GraduationCap, Globe, Bot, CheckCheck, Sparkles, Rocket } from "lucide-react";
-import { COLORS } from "./ui";
+import { TOKENS, initialsOf } from "./ui";
 import { GoogleSignInButton, GoogleSignOutButton } from "./GoogleButtons";
 
 import { ROLE_LABEL } from "@/lib/roles";
 
 const NAV = [
-  { href: "/editor", label: "Lesson Editor", icon: Pencil, roles: ["superAdmin"] },
-  { href: "/crm", label: "Mentor CRM", icon: Users, roles: ["superAdmin", "studentLeader", "advancement"] },
-  { href: "/manager", label: "Student Manager", icon: ClipboardList, roles: ["superAdmin", "studentLeader"] },
-  { href: "/grading", label: "Grading", icon: CheckCheck, roles: ["superAdmin", "studentLeader"] },
+  { href: "/editor", label: "Lesson Editor", roles: ["superAdmin"] },
+  { href: "/crm", label: "Mentor CRM", roles: ["superAdmin", "studentLeader", "advancement"] },
+  { href: "/manager", label: "Student Manager", roles: ["superAdmin", "studentLeader"] },
+  { href: "/grading", label: "Grading", roles: ["superAdmin", "studentLeader"] },
   // The super admin's bar leaves out Lessons, Website and Changes. Those pages
   // still open from the home menu (/platform).
-  { href: "/lessons", label: "Lessons", icon: GraduationCap, roles: ["studentLeader", "student"] },
-  { href: "/aida", label: "AIDA", icon: Sparkles, roles: ["superAdmin"] },
-  { href: "/aida-unlocked", label: "AIDA Unlocked", icon: Rocket, roles: ["superAdmin"] },
-  { href: "/agent", label: "Assistant", icon: Bot, roles: ["superAdmin"] },
+  { href: "/lessons", label: "Lessons", roles: ["studentLeader", "student"] },
+  { href: "/aida", label: "AIDA", roles: ["superAdmin"] },
+  { href: "/aida-unlocked", label: "AIDA Unlocked", roles: ["superAdmin"] },
+  { href: "/agent", label: "Assistant", roles: ["superAdmin"] },
 ];
 
 function Identity({ user, identity, authMode, pathname }) {
   const shown = identity || user;
   if (!shown) {
     if (authMode !== "google" || pathname === "/apply" || pathname === "/signin") return null;
-    return <GoogleSignInButton callbackUrl={pathname || "/platform"} label="Sign in" style={{ padding: "8px 14px", fontSize: 13.5 }} />;
+    return <GoogleSignInButton callbackUrl={pathname || "/platform"} label="Sign in" style={{ minHeight: 40, padding: "0 16px", fontSize: 14 }} />;
   }
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
       <div
-        style={{
-          width: 34,
-          height: 34,
-          borderRadius: "50%",
-          background: COLORS.indigoSoft,
-          color: COLORS.indigo,
-          fontWeight: 800,
-          fontSize: 12.5,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
+        aria-hidden="true"
+        style={{ width: 36, height: 36, background: TOKENS.bg, border: `1px solid ${TOKENS.border2}`, color: TOKENS.ink, fontWeight: 600, fontSize: 13, letterSpacing: "0.04em", display: "flex", alignItems: "center", justifyContent: "center" }}
       >
-        {String(shown.name || "?")
-          .split(" ")
-          .filter(Boolean)
-          .map((p) => p[0])
-          .join("")
-          .slice(0, 2)
-          .toUpperCase()}
+        {initialsOf(shown.name)}
       </div>
-      <div style={{ textAlign: "left" }}>
-        <div style={{ fontSize: 13.5, fontWeight: 800, color: COLORS.text }}>{shown.name}</div>
-        {user && <div style={{ fontSize: 11.5, color: COLORS.faint }}>{ROLE_LABEL[user.role]}</div>}
+      <div style={{ textAlign: "left", lineHeight: 1.3 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: TOKENS.ink }}>{shown.name}</div>
+        {user && <div style={{ fontSize: 13, color: TOKENS.muted }}>{ROLE_LABEL[user.role]}</div>}
       </div>
       {authMode === "google" && <GoogleSignOutButton callbackUrl={pathname === "/apply" ? "/apply" : "/"} />}
     </div>
@@ -69,45 +52,40 @@ export default function TopBar({ user, authMode, identity }) {
   const home = user?.role === "student" ? "/lessons" : user?.role === "advancement" ? "/" : "/platform";
 
   return (
-    <header
-      className="eib-topbar"
-      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "12px 28px", borderBottom: `1px solid ${COLORS.border}`, background: "#fff", position: "sticky", top: 0, zIndex: 50, flexWrap: "wrap" }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
-        <Link href={home} style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: COLORS.indigo, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <BookOpen size={18} color="#fff" strokeWidth={2.25} />
-          </div>
-          <span style={{ fontSize: 18, fontWeight: 800, color: COLORS.text }}>EIB</span>
-        </Link>
+    <header className="eib-topbar">
+      <Link href={home} style={{ display: "flex", alignItems: "baseline", gap: 12, textDecoration: "none" }}>
+        <span className="eib-wordmark">EIB</span>
+        <span style={{ fontSize: 13, color: TOKENS.muted }}>joineib.ca</span>
+      </Link>
 
-        <nav aria-label="Tools" style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "10px 28px", flexWrap: "wrap" }}>
+        <nav aria-label="Tools" style={{ display: "flex", gap: "4px 22px", flexWrap: "wrap" }}>
           {visibleNav.map((n) => {
             const active = pathname === n.href || pathname.startsWith(n.href + "/");
-            const Icon = n.icon;
             return (
               <Link
                 key={n.href}
                 href={n.href}
+                className="eib-navlink"
+                aria-current={active ? "page" : undefined}
                 // Clicking a tool in the bar always lands on that tool's home
                 // view, even when it is already open (a Link to the same URL
                 // does not remount), so tools listen for this and reset.
                 onClick={() => window.dispatchEvent(new CustomEvent("eib:tool-home", { detail: n.href }))}
-                style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13.5, fontWeight: 800, color: active ? COLORS.indigo : COLORS.sub, background: active ? COLORS.indigoSoft : "transparent", borderRadius: 9, padding: "7px 12px", textDecoration: "none" }}
               >
-                <Icon size={15} /> {n.label}
+                {n.label}
               </Link>
             );
           })}
           {user && user.role === "advancement" && (
-            <Link href="/" style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13.5, fontWeight: 800, color: COLORS.sub, borderRadius: 9, padding: "7px 12px", textDecoration: "none" }}>
-              <Globe size={15} /> Back to the website
+            <Link href="/" className="eib-navlink">
+              Back to the website
             </Link>
           )}
         </nav>
-      </div>
 
-      <Identity user={user} identity={identity} authMode={authMode} pathname={pathname} />
+        <Identity user={user} identity={identity} authMode={authMode} pathname={pathname} />
+      </div>
     </header>
   );
 }

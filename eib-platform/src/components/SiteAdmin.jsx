@@ -15,7 +15,7 @@ function TickerPanel({ ticker, defaults, onChange }) {
   return (
     <Card style={{ padding: 26 }}>
       <SectionLabel style={{ marginBottom: 6 }}>Ticker strip</SectionLabel>
-      <div style={{ fontSize: 14, color: COLORS.sub, lineHeight: 1.55, marginBottom: 18 }}>
+      <div style={{ fontSize: 14, color: COLORS.text2, lineHeight: 1.55, marginBottom: 18 }}>
         The thin strip along the very top of the site. The first item is written for you from the application window
         (open until / opens on / closed); these follow it. Keep them short.
       </div>
@@ -23,7 +23,7 @@ function TickerPanel({ ticker, defaults, onChange }) {
         {ticker.map((t, i) => (
           <div key={i} style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <input value={t} onChange={(e) => set(i, e.target.value)} placeholder="Student Showcase on April 23" aria-label={`Ticker item ${i + 1}`} style={{ ...fieldStyle, padding: "10px 14px" }} />
-            <IconButton icon={Trash2} title="Remove" onClick={() => remove(i)} color={COLORS.red} />
+            <IconButton icon={Trash2} title="Remove" onClick={() => remove(i)} color={COLORS.errorText} />
           </div>
         ))}
       </div>
@@ -34,7 +34,7 @@ function TickerPanel({ ticker, defaults, onChange }) {
         <button
           type="button"
           onClick={() => onChange(defaults)}
-          style={{ display: "flex", alignItems: "center", gap: 6, border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.sub, fontWeight: 800, fontSize: 13.5, borderRadius: 10, padding: "9px 14px", cursor: "pointer", fontFamily: "inherit" }}
+          style={{ display: "flex", alignItems: "center", gap: 6, border: `1px solid ${COLORS.border}`, background: COLORS.surface, color: COLORS.text2, fontWeight: 600, fontSize: 13.5, padding: "9px 14px", cursor: "pointer", fontFamily: "inherit" }}
         >
           <RotateCcw size={14} /> Reset to defaults
         </button>
@@ -71,7 +71,7 @@ export default function SiteAdmin() {
               href="/"
               target="_blank"
               rel="noreferrer"
-              style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13.5, fontWeight: 800, color: COLORS.indigo, textDecoration: "none", border: `1px solid ${COLORS.indigoBorder}`, background: COLORS.indigoSoft, borderRadius: 10, padding: "8px 14px" }}
+              style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13.5, fontWeight: 600, color: COLORS.ink, textDecoration: "none", border: `1px solid ${COLORS.border2}`, background: COLORS.bg, padding: "8px 14px" }}
             >
               <Globe size={15} /> Open the site
             </a>
@@ -92,8 +92,8 @@ export default function SiteAdmin() {
       <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
         <TickerPanel ticker={data.ticker} defaults={data.defaultTicker} onChange={setTicker} />
 
-        <Card style={{ padding: 22, background: COLORS.indigoSoft, border: `1px solid ${COLORS.indigoBorder}` }}>
-          <div style={{ fontSize: 14, color: COLORS.text, lineHeight: 1.6 }}>
+        <Card style={{ padding: 22, background: COLORS.bg, border: `1px solid ${COLORS.border2}` }}>
+          <div style={{ fontSize: 14, color: COLORS.ink, lineHeight: 1.6 }}>
             <strong>Curriculum.</strong> The lessons on the site come from the Lesson Editor: open a lesson, click <strong>Website</strong>,
             set it to Shown and give it a stage, week and public description. Until any lesson is shown, the site displays the
             curriculum from <code>siteContent.js</code>.

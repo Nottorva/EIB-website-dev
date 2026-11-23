@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { Users, ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Mail, Calendar, Link2, UserPlus, Lock, ExternalLink, Send, Pencil, Copy, Check, CalendarClock, Megaphone, ShieldOff, ShieldCheck, Clock, ChartColumn, Table2, Signature, Upload, Download, X, CircleCheck, Circle, Award } from "lucide-react";
 import { buildDays, TimeChart, DaysTable, Stat } from "./ApplicationsChart";
 import {
-  COLORS,
+  COLORS, FONTS,
   QUESTION_TYPES,
   fieldStyle,
   questionType,
@@ -30,7 +30,7 @@ import GraduationTab from "./GraduationTab";
 // Rows from the old review process that were never accepted are not shown.
 const inClass = (a) => a.status === "approved";
 const onWaitlist = (a) => a.status === "waitlist" && a.fcfs === true;
-const placeOf = (a) => (inClass(a) ? { label: "In the class", color: COLORS.green, soft: COLORS.greenSoft, border: COLORS.greenBorder } : { label: "Waitlist", color: COLORS.amber, soft: COLORS.amberSoft, border: COLORS.amberBorder });
+const placeOf = (a) => (inClass(a) ? { label: "In the class", color: COLORS.successText, soft: COLORS.successBg, border: COLORS.successBorder } : { label: "Waitlist", color: COLORS.warnText, soft: COLORS.warnBg, border: COLORS.warnBorder });
 // Older applications stored a date only; newer ones a full timestamp.
 const fmtDate = (v) => fmtSmart(v, "—");
 
@@ -41,31 +41,31 @@ function QuestionEditor({ question, index, total, onChange, onDelete, onMove, he
   const locked = Boolean(question.locked);
 
   return (
-    <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 16, display: "flex", gap: 12 }}>
+    <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: 16, display: "flex", gap: 12 }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 2, paddingTop: 2 }}>
-        <button type="button" onClick={() => onMove(-1)} disabled={index === 0} style={{ border: "none", background: "transparent", cursor: index === 0 ? "default" : "pointer", color: index === 0 ? "#d7dbe4" : COLORS.faint, padding: 2 }}>
+        <button type="button" onClick={() => onMove(-1)} disabled={index === 0} style={{ border: "none", background: "transparent", cursor: index === 0 ? "default" : "pointer", color: index === 0 ? COLORS.disabled : COLORS.muted, padding: 2 }}>
           <ChevronUp size={16} />
         </button>
-        <button type="button" onClick={() => onMove(1)} disabled={index === total - 1} style={{ border: "none", background: "transparent", cursor: index === total - 1 ? "default" : "pointer", color: index === total - 1 ? "#d7dbe4" : COLORS.faint, padding: 2 }}>
+        <button type="button" onClick={() => onMove(1)} disabled={index === total - 1} style={{ border: "none", background: "transparent", cursor: index === total - 1 ? "default" : "pointer", color: index === total - 1 ? COLORS.disabled : COLORS.muted, padding: 2 }}>
           <ChevronDown size={16} />
         </button>
       </div>
 
       <div style={{ flex: 1 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
-          <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 800, color: COLORS.indigo, background: COLORS.indigoSoft, borderRadius: 999, padding: "4px 10px" }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: COLORS.ink, background: COLORS.bg, padding: "4px 10px" }}>
             <Icon size={13} />
             {info.label}
           </span>
           {locked ? (
-            <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 700, color: COLORS.amber, background: COLORS.amberSoft, border: `1px solid ${COLORS.amberBorder}`, borderRadius: 999, padding: "3px 9px" }} title="Used to create the student's account on approval">
+            <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: COLORS.warnText, background: COLORS.warnBg, border: `1px solid ${COLORS.warnBorder}`, padding: "3px 9px" }} title="Used to create the student's account on approval">
               <Lock size={11} /> Identity field
             </span>
           ) : (
             <select
               value={question.type}
               onChange={(e) => onChange({ ...question, type: e.target.value })}
-              style={{ fontSize: 12.5, fontWeight: 700, color: COLORS.sub, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "4px 6px", background: "#fff" }}
+              style={{ fontSize: 12.5, fontWeight: 600, color: COLORS.text2, border: `1px solid ${COLORS.border}`, padding: "4px 6px", background: COLORS.surface }}
             >
               {QUESTION_TYPES.map((t) => (
                 <option key={t.id} value={t.id}>
@@ -75,11 +75,11 @@ function QuestionEditor({ question, index, total, onChange, onDelete, onMove, he
             </select>
           )}
           {headerExtra}
-          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: COLORS.sub, fontWeight: 700, marginLeft: "auto" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: COLORS.text2, fontWeight: 600, marginLeft: "auto" }}>
             <input type="checkbox" checked={question.required} disabled={locked} onChange={(e) => onChange({ ...question, required: e.target.checked })} />
             {question.type === "notice" ? "Must be ticked to submit" : "Required"}
           </label>
-          <button type="button" onClick={onDelete} disabled={locked} style={{ border: "none", background: "transparent", color: locked ? "#d7dbe4" : COLORS.faint, cursor: locked ? "default" : "pointer", padding: 4 }}>
+          <button type="button" onClick={onDelete} disabled={locked} style={{ border: "none", background: "transparent", color: locked ? COLORS.disabled : COLORS.muted, cursor: locked ? "default" : "pointer", padding: 4 }}>
             <Trash2 size={16} />
           </button>
         </div>
@@ -88,10 +88,10 @@ function QuestionEditor({ question, index, total, onChange, onDelete, onMove, he
           <NoticeEditor question={question} onChange={onChange} />
         ) : (
           <>
-            <EditableInput value={question.label} onChange={(v) => onChange({ ...question, label: v })} placeholder="Question" style={{ fontSize: 15.5, fontWeight: 700, color: COLORS.text }} />
-            <EditableInput value={question.help || ""} onChange={(v) => onChange({ ...question, help: v })} placeholder="Helper text under the question (optional)" style={{ fontSize: 13.5, color: COLORS.sub, marginTop: 2 }} />
+            <EditableInput value={question.label} onChange={(v) => onChange({ ...question, label: v })} placeholder="Question" style={{ fontSize: 15.5, fontWeight: 600, color: COLORS.ink }} />
+            <EditableInput value={question.help || ""} onChange={(v) => onChange({ ...question, help: v })} placeholder="Helper text under the question (optional)" style={{ fontSize: 13.5, color: COLORS.text2, marginTop: 2 }} />
             {question.type === "long" && (
-              <label style={{ display: "inline-flex", alignItems: "center", gap: 8, marginTop: 8, fontSize: 12.5, fontWeight: 700, color: COLORS.sub }}>
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 8, marginTop: 8, fontSize: 12.5, fontWeight: 600, color: COLORS.text2 }}>
                 Word limit
                 <input
                   type="number"
@@ -99,7 +99,7 @@ function QuestionEditor({ question, index, total, onChange, onDelete, onMove, he
                   value={question.maxWords || ""}
                   onChange={(e) => onChange({ ...question, maxWords: parseInt(e.target.value, 10) || 0 })}
                   placeholder="none"
-                  style={{ width: 80, fontSize: 13, fontWeight: 700, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "4px 8px" }}
+                  style={{ width: 80, fontSize: 13, fontWeight: 600, border: `1px solid ${COLORS.border}`, padding: "4px 8px" }}
                 />
               </label>
             )}
@@ -110,7 +110,7 @@ function QuestionEditor({ question, index, total, onChange, onDelete, onMove, he
           <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
             {question.options.map((opt, oi) => (
               <div key={oi} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ width: 6, height: 6, borderRadius: 999, background: COLORS.faint, flexShrink: 0 }} />
+                <span style={{ width: 6, height: 6, background: COLORS.muted, flexShrink: 0 }} />
                 <EditableInput
                   value={opt}
                   onChange={(v) => {
@@ -118,9 +118,9 @@ function QuestionEditor({ question, index, total, onChange, onDelete, onMove, he
                     options[oi] = v;
                     onChange({ ...question, options });
                   }}
-                  style={{ fontSize: 14, color: COLORS.sub }}
+                  style={{ fontSize: 14, color: COLORS.text2 }}
                 />
-                <button type="button" onClick={() => onChange({ ...question, options: question.options.filter((_, i) => i !== oi) })} style={{ border: "none", background: "transparent", color: COLORS.faint, cursor: "pointer" }}>
+                <button type="button" onClick={() => onChange({ ...question, options: question.options.filter((_, i) => i !== oi) })} style={{ border: "none", background: "transparent", color: COLORS.muted, cursor: "pointer" }}>
                   <Trash2 size={13} />
                 </button>
               </div>
@@ -128,7 +128,7 @@ function QuestionEditor({ question, index, total, onChange, onDelete, onMove, he
             <button
               type="button"
               onClick={() => onChange({ ...question, options: [...question.options, "New option"] })}
-              style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.indigo, fontWeight: 700, fontSize: 13, cursor: "pointer", padding: "4px 0", alignSelf: "flex-start" }}
+              style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.ink, fontWeight: 600, fontSize: 13, cursor: "pointer", padding: "4px 0", alignSelf: "flex-start" }}
             >
               <Plus size={14} /> Add option
             </button>
@@ -143,24 +143,24 @@ function QuestionEditor({ question, index, total, onChange, onDelete, onMove, he
 // big and bold, the detail under it, and the tick-box text.
 function NoticeEditor({ question, onChange }) {
   return (
-    <div style={{ background: COLORS.amberSoft, border: `1px solid ${COLORS.amberBorder}`, borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 8 }}>
+    <div style={{ background: COLORS.warnBg, border: `1px solid ${COLORS.warnBorder}`, padding: 14, display: "flex", flexDirection: "column", gap: 8 }}>
       <textarea
         value={question.label}
         onChange={(e) => onChange({ ...question, label: e.target.value })}
         placeholder="The statement, shown bold. A short one is set large; a paragraph is set as bold text."
         rows={Math.min(6, Math.max(1, Math.ceil((question.label || "").length / 70)))}
-        style={{ ...fieldStyle, resize: "vertical", fontSize: question.label && question.label.length > 70 ? 15 : 20, fontWeight: 800, color: COLORS.text, background: "#fff", lineHeight: 1.4 }}
+        style={{ ...fieldStyle, resize: "vertical", fontSize: question.label && question.label.length > 70 ? 15 : 20, fontWeight: 600, color: COLORS.ink, background: COLORS.surface, lineHeight: 1.4 }}
       />
       <textarea
         value={question.detail || ""}
         onChange={(e) => onChange({ ...question, detail: e.target.value })}
         placeholder="Smaller text under the headline (optional)"
         rows={3}
-        style={{ ...fieldStyle, resize: "vertical", fontSize: 14, background: "#fff" }}
+        style={{ ...fieldStyle, resize: "vertical", fontSize: 14, background: COLORS.surface }}
       />
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ fontSize: 12, fontWeight: 800, color: COLORS.faint, textTransform: "uppercase", letterSpacing: 0.4, whiteSpace: "nowrap" }}>Tick-box says</span>
-        <EditableInput value={question.ack ?? "I understand"} onChange={(v) => onChange({ ...question, ack: v })} placeholder="I understand" style={{ fontSize: 14, fontWeight: 800, color: COLORS.text, background: "#fff", flex: 1 }} />
+        <span style={{ fontSize: 12, fontWeight: 600, color: COLORS.muted, textTransform: "uppercase", letterSpacing: "0.12em", whiteSpace: "nowrap" }}>Tick-box says</span>
+        <EditableInput value={question.ack ?? "I understand"} onChange={(v) => onChange({ ...question, ack: v })} placeholder="I understand" style={{ fontSize: 14, fontWeight: 600, color: COLORS.ink, background: COLORS.surface, flex: 1 }} />
       </div>
     </div>
   );
@@ -173,38 +173,38 @@ function NoticeEditor({ question, onChange }) {
 function StudentRow({ student, account, number, waiting, onOpen, onGiveSeat }) {
   const suspended = Boolean(account?.suspended);
   return (
-    <div onClick={onOpen} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", background: COLORS.card, border: `1px solid ${suspended ? COLORS.redBorder : COLORS.border}`, borderRadius: 14, padding: "12px 16px", cursor: "pointer" }}>
-      <span style={{ width: 26, textAlign: "right", fontSize: 13, fontWeight: 800, color: COLORS.faint, flexShrink: 0 }}>{number}</span>
+    <div onClick={onOpen} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", background: COLORS.surface, border: `1px solid ${suspended ? COLORS.errorBorder : COLORS.border}`, padding: "12px 16px", cursor: "pointer" }}>
+      <span style={{ width: 26, textAlign: "right", fontSize: 13, fontWeight: 600, color: COLORS.muted, flexShrink: 0 }}>{number}</span>
       <Avatar name={student.name} />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 15, fontWeight: 800, color: COLORS.text }}>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 15, fontWeight: 600, color: COLORS.ink }}>
           {student.name}
           {student.studentId && account && <AgreementMark agreement={account.agreement} />}
         </div>
-        <div style={{ fontSize: 12.5, color: COLORS.faint, marginTop: 2 }}>
+        <div style={{ fontSize: 12.5, color: COLORS.muted, marginTop: 2 }}>
           Signed up {fmtDate(student.submittedAt)}
           {waiting ? (
             ""
           ) : suspended ? (
-            <span style={{ color: COLORS.red, fontWeight: 800 }}> · account suspended</span>
+            <span style={{ color: COLORS.errorText, fontWeight: 600 }}> · account suspended</span>
           ) : !student.studentId ? (
-            <span style={{ color: COLORS.amber, fontWeight: 800 }}> · no account yet</span>
+            <span style={{ color: COLORS.warnText, fontWeight: 600 }}> · no account yet</span>
           ) : account ? (
-            account.agreement?.status === "signed" ? <span> · <span style={{ color: COLORS.green, fontWeight: 800 }}>agreement signed</span></span>
-            : account.agreement ? <span> · <span style={{ color: COLORS.amber, fontWeight: 800 }}>guardian confirmation pending</span></span>
-            : <span> · <span style={{ color: COLORS.faint, fontWeight: 800 }}>agreement not started</span></span>
+            account.agreement?.status === "signed" ? <span> · <span style={{ color: COLORS.successText, fontWeight: 600 }}>agreement signed</span></span>
+            : account.agreement ? <span> · <span style={{ color: COLORS.warnText, fontWeight: 600 }}>guardian confirmation pending</span></span>
+            : <span> · <span style={{ color: COLORS.muted, fontWeight: 600 }}>agreement not started</span></span>
           ) : (
             ""
           )}
         </div>
       </div>
       {!waiting && (
-        <span style={{ fontSize: 12, fontWeight: 800, color: student.paidAt ? COLORS.green : COLORS.faint, background: student.paidAt ? COLORS.greenSoft : "#f1f3f7", border: `1px solid ${student.paidAt ? COLORS.greenBorder : COLORS.border}`, borderRadius: 999, padding: "4px 10px", whiteSpace: "nowrap" }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: student.paidAt ? COLORS.successText : COLORS.muted, background: student.paidAt ? COLORS.successBg : COLORS.bg, border: `1px solid ${student.paidAt ? COLORS.successBorder : COLORS.border}`, padding: "4px 10px", whiteSpace: "nowrap" }}>
           {student.paidAt ? "Fee paid" : "Fee not paid"}
         </span>
       )}
       {onGiveSeat && (
-        <button type="button" onClick={(e) => { e.stopPropagation(); onGiveSeat(); }} style={{ display: "flex", alignItems: "center", gap: 6, border: `1px solid ${COLORS.indigoBorder}`, background: COLORS.indigoSoft, color: COLORS.indigo, fontWeight: 800, fontSize: 12.5, borderRadius: 999, padding: "6px 12px", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
+        <button type="button" onClick={(e) => { e.stopPropagation(); onGiveSeat(); }} style={{ display: "flex", alignItems: "center", gap: 6, border: `1px solid ${COLORS.border2}`, background: COLORS.bg, color: COLORS.ink, fontWeight: 600, fontSize: 12.5, padding: "6px 12px", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" }}>
           <UserPlus size={13} /> Give a seat
         </button>
       )}
@@ -235,11 +235,11 @@ function DeliverablesPanel({ student, lessons, saver }) {
       {lessons.map((lesson) => (
         <div key={lesson.id}>
           <div style={{ marginBottom: 10 }}>
-            <div style={{ fontSize: 12, fontWeight: 800, color: COLORS.indigo, textTransform: "uppercase", letterSpacing: 0.4 }}>{lesson.chapterLabel}</div>
-            <div style={{ fontSize: 17, fontWeight: 800, color: COLORS.text }}>{lesson.title}</div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: COLORS.ink, textTransform: "uppercase", letterSpacing: "0.12em" }}>{lesson.chapterLabel}</div>
+            <div style={{ fontSize: 17, fontWeight: 600, color: COLORS.ink }}>{lesson.title}</div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {lesson.deliverables.length === 0 && <div style={{ fontSize: 13.5, color: COLORS.faint, fontStyle: "italic" }}>No deliverables in this lesson.</div>}
+            {lesson.deliverables.length === 0 && <div style={{ fontSize: 13.5, color: COLORS.muted, fontStyle: "italic" }}>No deliverables in this lesson.</div>}
             {lesson.deliverables.map((d) => {
               const id = { studentId, lessonId: lesson.id, deliverableId: d.id };
               return <GradeCard key={d.id} deliverable={d} submission={sub(id)} canGrade={Boolean(studentId)} onChange={(fields) => change(id, fields)} onRelease={(released) => change(id, { released })} />;
@@ -269,13 +269,13 @@ function AccountCard({ student, account, onSuspend, onAgreement }) {
     }
   };
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: suspended ? COLORS.redSoft : COLORS.card, border: `1px solid ${suspended ? COLORS.redBorder : COLORS.border}`, borderRadius: 16, padding: "14px 18px", marginBottom: 16, flexWrap: "wrap" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: suspended ? COLORS.errorBg : COLORS.surface, border: `1px solid ${suspended ? COLORS.errorBorder : COLORS.border}`, padding: "14px 18px", marginBottom: 16, flexWrap: "wrap" }}>
       {confirmUI}
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        {suspended ? <ShieldOff size={18} color={COLORS.red} /> : <ShieldCheck size={18} color={COLORS.green} />}
+        {suspended ? <ShieldOff size={18} color={COLORS.errorText} /> : <ShieldCheck size={18} color={COLORS.successText} />}
         <div>
-          <div style={{ fontSize: 14, fontWeight: 800, color: COLORS.text }}>{suspended ? "Account suspended" : "Account active"}</div>
-          <div style={{ fontSize: 12.5, color: COLORS.faint }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.ink }}>{suspended ? "Account suspended" : "Account active"}</div>
+          <div style={{ fontSize: 12.5, color: COLORS.muted }}>
             {suspended ? `Since ${fmtDate(account.suspendedAt)} · cannot sign in` : `${student.email} can sign in and open Lessons`}
           </div>
         </div>
@@ -284,7 +284,7 @@ function AccountCard({ student, account, onSuspend, onAgreement }) {
         type="button"
         onClick={toggle}
         disabled={busy}
-        style={{ border: `1px solid ${suspended ? COLORS.greenBorder : COLORS.redBorder}`, background: "#fff", color: suspended ? COLORS.green : COLORS.red, fontWeight: 800, fontSize: 13, borderRadius: 10, padding: "8px 14px", cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1 }}
+        style={{ border: `1px solid ${suspended ? COLORS.successBorder : COLORS.errorBorder}`, background: COLORS.surface, color: suspended ? COLORS.successText : COLORS.errorText, fontWeight: 600, fontSize: 13, padding: "8px 14px", cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1 }}
       >
         {suspended ? "Reinstate account" : "Suspend account"}
       </button>
@@ -331,22 +331,22 @@ function AgreementStatus({ account, onAgreement }) {
       setBusy(false);
     }
   };
-  const pill = { border: `1px solid ${COLORS.indigoBorder}`, background: COLORS.indigoSoft, color: COLORS.indigo, fontWeight: 800, fontSize: 12.5, borderRadius: 999, padding: "6px 12px", cursor: busy ? "default" : "pointer", fontFamily: "inherit" };
-  const tone = signed ? COLORS.green : a ? COLORS.amber : COLORS.faint;
+  const pill = { border: `1px solid ${COLORS.border2}`, background: COLORS.bg, color: COLORS.ink, fontWeight: 600, fontSize: 12.5, padding: "6px 12px", cursor: busy ? "default" : "pointer", fontFamily: "inherit" };
+  const tone = signed ? COLORS.successText : a ? COLORS.warnText : COLORS.muted;
   const title = signed ? "Student Agreement signed" : a ? "Student Agreement: guardian confirmation pending" : "Student Agreement not started";
   const fee = a?.feeAcknowledgement;
   return (
     <div style={{ width: "100%", borderTop: `1px solid ${COLORS.border}`, paddingTop: 12, marginTop: 2, display: "flex", alignItems: "flex-start", gap: 10 }}>
       <Signature size={17} color={tone} style={{ marginTop: 1, flexShrink: 0 }} />
-      <div style={{ flex: 1, fontSize: 13, color: COLORS.sub, lineHeight: 1.5 }}>
-        <span style={{ fontWeight: 800, color: tone }}>{title}</span>
+      <div style={{ flex: 1, fontSize: 13, color: COLORS.text2, lineHeight: 1.5 }}>
+        <span style={{ fontWeight: 600, color: tone }}>{title}</span>
         {a ? (
           <>
             {signed ? <> · confirmed {fmtDate(a.confirmedAt)}</> : <> · submitted {fmtDate(a.studentSignedAt || a.acceptedAt)}{a.confirmation?.lastSentAt || a.lastSentAt ? <> · email sent {fmtDate(a.confirmation?.lastSentAt || a.lastSentAt)}</> : <> · no email sent yet</>}</>}
             {" "}· version {a.versionLabel || `v${a.version}`} · {a.signedBy === "guardian" ? <strong>signed by the parent or guardian alone</strong> : <>student signature <strong>{a.studentInitials}</strong></>}
             <br />
             {a.parentRelationship}: <strong>{a.parentName}</strong> ({a.parentInitials}) · {a.parentEmail}
-            {fee ? <><br /><span style={{ color: COLORS.faint }}>Fee acknowledged at application on {fmtDate(fee.acknowledgedAt)} ("{fee.answer}")</span></> : null}
+            {fee ? <><br /><span style={{ color: COLORS.muted }}>Fee acknowledged at application on {fmtDate(fee.acknowledgedAt)} ("{fee.answer}")</span></> : null}
             {(a.answers || []).map((x) => (
               <span key={x.questionId}><br />{x.askedOf === "guardian" ? "Guardian" : "Student"} · {x.label.length > 90 ? `${x.label.slice(0, 90)}…` : x.label}: <strong style={{ whiteSpace: "pre-wrap" }}>{x.answer}</strong></span>
             ))}
@@ -362,22 +362,22 @@ function AgreementStatus({ account, onAgreement }) {
                       onChange={(e) => setNewEmail(e.target.value)}
                       placeholder="Guardian's correct email"
                       aria-label="Guardian's correct email"
-                      style={{ flex: "1 1 220px", minWidth: 0, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "7px 10px", fontSize: 13, fontFamily: "inherit", color: COLORS.text }}
+                      style={{ flex: "1 1 220px", minWidth: 0, border: `1px solid ${COLORS.border}`, padding: "7px 10px", fontSize: 13, fontFamily: "inherit", color: COLORS.ink }}
                     />
                     <button type="submit" disabled={busy} style={pill}>{busy ? "Saving…" : "Save and send confirmation"}</button>
-                    <button type="button" onClick={() => setEditing(false)} disabled={busy} style={{ ...pill, border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.sub }}>Cancel</button>
+                    <button type="button" onClick={() => setEditing(false)} disabled={busy} style={{ ...pill, border: `1px solid ${COLORS.border}`, background: COLORS.surface, color: COLORS.text2 }}>Cancel</button>
                   </form>
                 ) : (
                   <>
                     <button type="button" onClick={resend} disabled={busy} style={pill}>
                       {busy ? "Sending…" : "Resend confirmation email"}
                     </button>
-                    <button type="button" onClick={() => { setNewEmail(a.parentEmail || ""); setMsg(null); setEditing(true); }} disabled={busy} style={{ ...pill, border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.sub }}>
+                    <button type="button" onClick={() => { setNewEmail(a.parentEmail || ""); setMsg(null); setEditing(true); }} disabled={busy} style={{ ...pill, border: `1px solid ${COLORS.border}`, background: COLORS.surface, color: COLORS.text2 }}>
                       Edit guardian's email
                     </button>
                   </>
                 )}
-                {msg && <span style={{ fontSize: 12.5, fontWeight: 700, color: msg.ok ? COLORS.green : COLORS.red }}>{msg.text}</span>}
+                {msg && <span style={{ fontSize: 12.5, fontWeight: 600, color: msg.ok ? COLORS.successText : COLORS.errorText }}>{msg.text}</span>}
               </div>
             )}
           </>
@@ -405,12 +405,12 @@ function ResetCard({ student, onReset }) {
     }
   };
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: "12px 16px", marginBottom: 16 }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: "12px 16px", marginBottom: 16 }}>
       {confirmUI}
-      <div style={{ fontSize: 13, color: COLORS.sub }}>
-        <span style={{ fontWeight: 800, color: COLORS.text }}>Remove.</span> Deletes the sign-up{student.studentId ? ", the account and their work" : ""} so this email can sign up again from scratch.{inClass(student) ? " The free seat goes to the first person on the waitlist." : ""}
+      <div style={{ fontSize: 13, color: COLORS.text2 }}>
+        <span style={{ fontWeight: 600, color: COLORS.ink }}>Remove.</span> Deletes the sign-up{student.studentId ? ", the account and their work" : ""} so this email can sign up again from scratch.{inClass(student) ? " The free seat goes to the first person on the waitlist." : ""}
       </div>
-      <button type="button" onClick={go} disabled={busy} style={{ display: "flex", alignItems: "center", gap: 6, border: `1px solid ${COLORS.redBorder}`, background: COLORS.redSoft, color: COLORS.red, fontWeight: 800, fontSize: 13, borderRadius: 10, padding: "8px 14px", cursor: busy ? "default" : "pointer" }}>
+      <button type="button" onClick={go} disabled={busy} style={{ display: "flex", alignItems: "center", gap: 6, border: `1px solid ${COLORS.errorBorder}`, background: COLORS.errorBg, color: COLORS.errorText, fontWeight: 600, fontSize: 13, padding: "8px 14px", cursor: busy ? "default" : "pointer" }}>
         <Trash2 size={14} /> {busy ? "Deleting…" : "Delete sign-up and account"}
       </button>
     </div>
@@ -430,13 +430,13 @@ function FeeCard({ student, canEdit, onPaid }) {
     }
   };
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", background: paid ? COLORS.greenSoft : COLORS.card, border: `1px solid ${paid ? COLORS.greenBorder : COLORS.border}`, borderRadius: 14, padding: "12px 16px", marginBottom: 16 }}>
-      <div style={{ fontSize: 13.5, color: COLORS.sub }}>
-        <span style={{ fontWeight: 800, color: paid ? COLORS.green : COLORS.text }}>{paid ? "Program fee paid" : "Program fee not paid yet"}</span>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", background: paid ? COLORS.successBg : COLORS.surface, border: `1px solid ${paid ? COLORS.successBorder : COLORS.border}`, padding: "12px 16px", marginBottom: 16 }}>
+      <div style={{ fontSize: 13.5, color: COLORS.text2 }}>
+        <span style={{ fontWeight: 600, color: paid ? COLORS.successText : COLORS.ink }}>{paid ? "Program fee paid" : "Program fee not paid yet"}</span>
         {paid ? ` · ticked ${fmtDate(student.paidAt)}` : ""}
       </div>
       {canEdit && (
-        <button type="button" onClick={toggle} disabled={busy} style={{ border: `1px solid ${paid ? COLORS.border : COLORS.greenBorder}`, background: "#fff", color: paid ? COLORS.sub : COLORS.green, fontWeight: 800, fontSize: 13, borderRadius: 10, padding: "8px 14px", cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1, fontFamily: "inherit" }}>
+        <button type="button" onClick={toggle} disabled={busy} style={{ border: `1px solid ${paid ? COLORS.border : COLORS.successBorder}`, background: COLORS.surface, color: paid ? COLORS.text2 : COLORS.successText, fontWeight: 600, fontSize: 13, padding: "8px 14px", cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1, fontFamily: "inherit" }}>
           {paid ? "Mark as not paid" : "Mark fee as paid"}
         </button>
       )}
@@ -452,27 +452,27 @@ function StudentDetail({ student, account, isSuperAdmin, onSuspend, onAgreement,
 
   return (
     <div style={{ maxWidth: 680, margin: "0 auto" }}>
-      <button type="button" onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.sub, fontWeight: 700, fontSize: 13.5, cursor: "pointer", padding: "4px 0", marginBottom: 14 }}>
+      <button type="button" onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.text2, fontWeight: 600, fontSize: 13.5, cursor: "pointer", padding: "4px 0", marginBottom: 14 }}>
         <ArrowLeft size={15} /> Back to list
       </button>
 
-      <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 20, marginBottom: 16 }}>
+      <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: 20, marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <Avatar name={student.name} size={48} />
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ fontSize: 19, fontWeight: 900, color: COLORS.text }}>{student.name}</div>
+              <div style={{ fontSize: 19, fontWeight: 600, color: COLORS.ink }}>{student.name}</div>
               <StatusBadge status={placeOf(student)} size="sm" />
             </div>
             <div style={{ display: "flex", gap: 14, marginTop: 4, flexWrap: "wrap" }}>
-              <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: COLORS.faint, fontWeight: 600 }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: COLORS.muted, fontWeight: 600 }}>
                 <Mail size={12} /> {student.email}
               </span>
-              <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: COLORS.faint, fontWeight: 600 }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: COLORS.muted, fontWeight: 600 }}>
                 <Calendar size={12} /> Signed up {fmtDate(student.submittedAt)}
               </span>
               {student.parent && (
-                <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: COLORS.faint, fontWeight: 600 }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: COLORS.muted, fontWeight: 600 }}>
                   <UserPlus size={12} /> by their parent or guardian, {student.parent.name} ({student.parent.email})
                 </span>
               )}
@@ -500,26 +500,26 @@ function StudentDetail({ student, account, isSuperAdmin, onSuspend, onAgreement,
           {answered.map((q) => {
             const answer = answerFor(q.id);
             return (
-              <div key={q.id} style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 16 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.sub, marginBottom: 8 }}>{q.label}</div>
+              <div key={q.id} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: 16 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.text2, marginBottom: 8 }}>{q.label}</div>
                 {q.type === "notice" ? (
                   answer ? (
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 14, fontWeight: 800, color: COLORS.green }}>
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 14, fontWeight: 600, color: COLORS.successText }}>
                       <Check size={15} /> Ticked "{String(answer)}"
                     </div>
                   ) : (
-                    <div style={{ fontSize: 13.5, color: COLORS.faint, fontStyle: "italic" }}>Not acknowledged</div>
+                    <div style={{ fontSize: 13.5, color: COLORS.muted, fontStyle: "italic" }}>Not acknowledged</div>
                   )
                 ) : q.type === "link" ? (
                   answer ? (
-                    <a href={String(answer)} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 14, color: COLORS.indigo, fontWeight: 700, textDecoration: "none", wordBreak: "break-all" }}>
+                    <a href={String(answer)} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 14, color: COLORS.ink, fontWeight: 600, textDecoration: "none", wordBreak: "break-all" }}>
                       <Link2 size={14} /> {String(answer)} <ExternalLink size={13} />
                     </a>
                   ) : (
-                    <div style={{ fontSize: 13.5, color: COLORS.faint, fontStyle: "italic" }}>No link provided</div>
+                    <div style={{ fontSize: 13.5, color: COLORS.muted, fontStyle: "italic" }}>No link provided</div>
                   )
                 ) : (
-                  <div style={{ fontSize: 15, color: COLORS.text, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{answer || "—"}</div>
+                  <div style={{ fontSize: 15, color: COLORS.ink, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{answer || "—"}</div>
                 )}
               </div>
             );
@@ -543,9 +543,9 @@ const fromLocalInput = (v) => (v ? new Date(v).toISOString() : null);
 const fmtWhen = (iso) => fmtDateTime(iso, "not set");
 
 const WINDOW_STATE = {
-  upcoming: { label: "Not open yet", color: COLORS.amber, soft: COLORS.amberSoft, border: COLORS.amberBorder },
-  open: { label: "Live", color: COLORS.green, soft: COLORS.greenSoft, border: COLORS.greenBorder },
-  closed: { label: "Closed", color: COLORS.red, soft: COLORS.redSoft, border: COLORS.redBorder },
+  upcoming: { label: "Not open yet", color: COLORS.warnText, soft: COLORS.warnBg, border: COLORS.warnBorder },
+  open: { label: "Live", color: COLORS.successText, soft: COLORS.successBg, border: COLORS.successBorder },
+  closed: { label: "Closed", color: COLORS.errorText, soft: COLORS.errorBg, border: COLORS.errorBorder },
 };
 
 function SignupLinkPanel({ saver }) {
@@ -600,26 +600,26 @@ function SignupLinkPanel({ saver }) {
   if (error && !win) return <Notice>{error}</Notice>;
   if (!win) return <Loading />;
   const st = WINDOW_STATE[win.state];
-  const inputStyle = { width: "100%", boxSizing: "border-box", border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "9px 12px", fontSize: 14, outline: "none", color: COLORS.text };
-  const label = { fontSize: 11.5, fontWeight: 800, color: COLORS.faint, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 };
+  const inputStyle = { width: "100%", boxSizing: "border-box", border: `1px solid ${COLORS.border}`, padding: "9px 12px", fontSize: 14, color: COLORS.ink };
+  const label = { fontSize: 11.5, fontWeight: 600, color: COLORS.muted, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 6 };
 
   return (
-    <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 18, marginBottom: 18 }}>
+    <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: 18, marginBottom: 18 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
-        <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.text }}>Sign-up link</div>
+        <div style={{ fontSize: 15, fontWeight: 600, color: COLORS.ink }}>Sign-up link</div>
         <StatusBadge status={st} size="sm" />
       </div>
 
       <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
-        <input readOnly value={link} onFocus={(e) => e.target.select()} style={{ ...inputStyle, fontFamily: "ui-monospace, monospace", fontSize: 13.5, background: "#fbfbfd" }} />
+        <input readOnly value={link} onFocus={(e) => e.target.select()} style={{ ...inputStyle, fontFamily: "ui-monospace, monospace", fontSize: 13.5, background: COLORS.bg }} />
         <PrimaryButton onClick={copy} icon={copied ? Check : Copy} style={{ whiteSpace: "nowrap" }}>
           {copied ? "Copied" : "Copy link"}
         </PrimaryButton>
-        <a href="/apply" target="_blank" rel="noreferrer" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 800, color: COLORS.indigo, textDecoration: "none", whiteSpace: "nowrap" }}>
+        <a href="/apply" target="_blank" rel="noreferrer" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 600, color: COLORS.ink, textDecoration: "none", whiteSpace: "nowrap" }}>
           Open <ExternalLink size={13} />
         </a>
       </div>
-      <div style={{ fontSize: 12.5, color: COLORS.sub, lineHeight: 1.5, marginBottom: 16 }}>
+      <div style={{ fontSize: 12.5, color: COLORS.text2, lineHeight: 1.5, marginBottom: 16 }}>
         Send this link once. It shows "not open yet" until the open time, the sign-up form between the two times, and "closed" after. Seats go in the order people submit. Everyone signs in with their school account, so name and email are collected automatically and only that email domain can sign up.
       </div>
 
@@ -637,13 +637,13 @@ function SignupLinkPanel({ saver }) {
         <div>
           <div style={label}>School email domain</div>
           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <span style={{ fontSize: 14, fontWeight: 800, color: COLORS.faint }}>@</span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: COLORS.muted }}>@</span>
             <input value={draft.applicantDomain} onChange={(e) => edit({ applicantDomain: e.target.value })} placeholder="tfs.ca" style={inputStyle} />
           </div>
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
-        <div style={{ fontSize: 12.5, color: COLORS.faint }}>
+        <div style={{ fontSize: 12.5, color: COLORS.muted }}>
           Currently: opens {fmtWhen(win.opensAt)} · closes {fmtWhen(win.closesAt)}. Leave a field blank for no limit on that side.
         </div>
         <div style={{ display: "flex", gap: 8 }}>
@@ -654,7 +654,7 @@ function SignupLinkPanel({ saver }) {
                 setDraft({ opensAt: toLocalInput(win.opensAt), closesAt: toLocalInput(win.closesAt), applicantDomain: win.applicantDomain });
                 setDirty(false);
               }}
-              style={{ border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.sub, fontWeight: 800, fontSize: 13, borderRadius: 10, padding: "8px 14px", cursor: "pointer" }}
+              style={{ border: `1px solid ${COLORS.border}`, background: COLORS.surface, color: COLORS.text2, fontWeight: 600, fontSize: 13, padding: "8px 14px", cursor: "pointer" }}
             >
               Discard
             </button>
@@ -670,13 +670,13 @@ function SignupLinkPanel({ saver }) {
 
 /* ---------- Class bar: seats, waitlist, and whether class has started ---------- */
 function StatTile({ label, value, sub, tone = "indigo", children }) {
-  const color = tone === "amber" ? COLORS.amber : tone === "red" ? COLORS.red : tone === "green" ? COLORS.green : COLORS.indigo;
+  const color = tone === "amber" ? COLORS.warnText : tone === "red" ? COLORS.errorText : tone === "green" ? COLORS.successText : COLORS.ink;
   return (
-    <div style={{ flex: "1 1 160px", background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: "14px 16px" }}>
-      <div style={{ fontSize: 11.5, fontWeight: 800, color: COLORS.faint, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>{label}</div>
+    <div style={{ flex: "1 1 160px", background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: "14px 16px" }}>
+      <div style={{ fontSize: 11.5, fontWeight: 600, color: COLORS.muted, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 6 }}>{label}</div>
       <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-        <div style={{ fontSize: 26, fontWeight: 900, color, lineHeight: 1 }}>{value}</div>
-        {sub && <div style={{ fontSize: 12.5, color: COLORS.sub, fontWeight: 600 }}>{sub}</div>}
+        <div style={{ fontSize: 26, fontWeight: 600, color, lineHeight: 1 }}>{value}</div>
+        {sub && <div style={{ fontSize: 12.5, color: COLORS.text2, fontWeight: 600 }}>{sub}</div>}
       </div>
       {children}
     </div>
@@ -713,12 +713,12 @@ function EditNumber({ value, min, label, onSave }) {
                 setEditing(false);
               }
             }}
-            style={{ width: 70, border: `1px solid ${COLORS.indigo}`, borderRadius: 8, padding: "5px 8px", fontSize: 13.5, fontWeight: 800, outline: "none" }}
+            style={{ width: 70, border: `1px solid ${COLORS.ink}`, padding: "5px 8px", fontSize: 13.5, fontWeight: 600 }}
           />
-          <span style={{ fontSize: 12, color: COLORS.faint }}>Enter to save</span>
+          <span style={{ fontSize: 12, color: COLORS.muted }}>Enter to save</span>
         </div>
       ) : (
-        <button type="button" onClick={() => setEditing(true)} style={{ display: "flex", alignItems: "center", gap: 5, border: "none", background: "transparent", color: COLORS.indigo, fontWeight: 800, fontSize: 12.5, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
+        <button type="button" onClick={() => setEditing(true)} style={{ display: "flex", alignItems: "center", gap: 5, border: "none", background: "transparent", color: COLORS.ink, fontWeight: 600, fontSize: 12.5, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
           <Pencil size={12} /> {label}
         </button>
       )}
@@ -743,7 +743,7 @@ function ClassBar({ seated, waitlisted, settings, canEdit, onSave, onStart, onHo
         {canEdit && (
           <div style={{ marginTop: 10 }}>
             {started ? (
-              <button type="button" onClick={onHold} style={{ border: "none", background: "transparent", color: COLORS.faint, fontWeight: 800, fontSize: 12.5, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
+              <button type="button" onClick={onHold} style={{ border: "none", background: "transparent", color: COLORS.muted, fontWeight: 600, fontSize: 12.5, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
                 Put the class on hold
               </button>
             ) : (
@@ -886,7 +886,7 @@ function StudentsTab({ saver, user }) {
     );
   }
 
-  const sectionTitle = { fontSize: 13, fontWeight: 800, color: COLORS.indigo, letterSpacing: 0.4, margin: "18px 0 8px" };
+  const sectionTitle = { fontSize: 13, fontWeight: 600, color: COLORS.ink, letterSpacing: 0.4, margin: "18px 0 8px" };
   const shownStudents = students.filter(matches);
   const shownWaitlist = waitlist.filter(matches);
 
@@ -900,10 +900,10 @@ function StudentsTab({ saver, user }) {
       )}
       {isSuperAdmin && <SignupLinkPanel saver={saver} />}
       <ClassBar seated={students.length} waitlisted={waitlist.length} settings={settings} canEdit={isSuperAdmin} onSave={saveSettings} onStart={startClass} onHold={holdClass} />
-      <div style={{ fontSize: 12.5, color: COLORS.faint, margin: "-6px 2px 12px", lineHeight: 1.5 }}>
+      <div style={{ fontSize: 12.5, color: COLORS.muted, margin: "-6px 2px 12px", lineHeight: 1.5 }}>
         First come, first served: whoever signs up while a seat is free (a student with one click, or a parent for their child) is in the class and goes straight to the Student Agreement and payment. After that, people join the waitlist; when a seat frees up, the first in line moves in and is emailed.
       </div>
-      <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name" aria-label="Search by name" style={{ ...fieldStyle, padding: "9px 12px", fontSize: 14, borderRadius: 10 }} />
+      <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search name" aria-label="Search by name" style={{ ...fieldStyle, padding: "9px 12px", fontSize: 14 }} />
 
       <div style={sectionTitle}>In the class · {students.length}</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -926,7 +926,7 @@ function StudentsTab({ saver, user }) {
       )}
 
       {hidden > 0 && (
-        <div style={{ fontSize: 12.5, color: COLORS.faint, marginTop: 18 }}>
+        <div style={{ fontSize: 12.5, color: COLORS.muted, marginTop: 18 }}>
           {hidden} earlier applicant{hidden === 1 ? "" : "s"} who {hidden === 1 ? "was" : "were"} not accepted {hidden === 1 ? "is" : "are"} kept on file but not listed here.
         </div>
       )}
@@ -974,25 +974,25 @@ function AccManagerTab({ saver }) {
     });
   };
 
-  const inputStyle = { width: "100%", boxSizing: "border-box", border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "9px 12px", fontSize: 14, outline: "none" };
+  const inputStyle = { width: "100%", boxSizing: "border-box", border: `1px solid ${COLORS.border}`, padding: "9px 12px", fontSize: 14 };
 
   return (
     <div style={{ maxWidth: 720, margin: "0 auto" }}>
       {confirmUI}
       <div style={{ marginBottom: 18 }}>
-        <div style={{ fontSize: 22, fontWeight: 900, color: COLORS.text }}>Student Leaders</div>
-        <div style={{ fontSize: 14, color: COLORS.sub, marginTop: 4 }}>Enter a name and email, then create the student leader. They can sign in with that Google account straight away.</div>
+        <div style={{ fontFamily: FONTS.serif, fontSize: 26, fontWeight: 600, color: COLORS.ink }}>Student Leaders</div>
+        <div style={{ fontSize: 14, color: COLORS.text2, marginTop: 4 }}>Enter a name and email, then create the student leader. They can sign in with that Google account straight away.</div>
       </div>
 
       {error && <Notice onClose={() => setError(null)}>{error}</Notice>}
 
-      <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 16, marginBottom: 18, display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
+      <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: 16, marginBottom: 18, display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
         <div style={{ flex: "1 1 200px" }}>
-          <div style={{ fontSize: 11.5, fontWeight: 800, color: COLORS.faint, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>Name</div>
+          <div style={{ fontSize: 11.5, fontWeight: 600, color: COLORS.muted, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 6 }}>Name</div>
           <input value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && createLeader()} placeholder="Full name" style={inputStyle} />
         </div>
         <div style={{ flex: "1 1 220px" }}>
-          <div style={{ fontSize: 11.5, fontWeight: 800, color: COLORS.faint, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 }}>Email</div>
+          <div style={{ fontSize: 11.5, fontWeight: 600, color: COLORS.muted, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 6 }}>Email</div>
           <input value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && createLeader()} placeholder="name@tfs.ca" style={inputStyle} />
         </div>
         <PrimaryButton onClick={createLeader} disabled={!canCreate} icon={UserPlus}>
@@ -1006,15 +1006,15 @@ function AccManagerTab({ saver }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {leaders.length === 0 && <EmptyState>No student leaders yet.</EmptyState>}
           {leaders.map((l) => (
-            <div key={l.id} style={{ display: "flex", alignItems: "center", gap: 12, background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: "12px 16px" }}>
+            <div key={l.id} style={{ display: "flex", alignItems: "center", gap: 12, background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: "12px 16px" }}>
               <Avatar name={l.name} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.text }}>{l.name}</div>
-                <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: COLORS.faint, marginTop: 2 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: COLORS.ink }}>{l.name}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: COLORS.muted, marginTop: 2 }}>
                   <Mail size={12} /> {l.email}
                 </div>
               </div>
-              <button type="button" onClick={() => removeLeader(l)} style={{ border: "none", background: "transparent", color: COLORS.faint, cursor: "pointer", padding: 4 }}>
+              <button type="button" onClick={() => removeLeader(l)} style={{ border: "none", background: "transparent", color: COLORS.muted, cursor: "pointer", padding: 4 }}>
                 <Trash2 size={15} />
               </button>
             </div>
@@ -1034,7 +1034,7 @@ function AgreementMark({ agreement }) {
   const title = signed ? "Student Agreement signed" : pending ? "Student Agreement: guardian confirmation pending" : "Student Agreement not signed";
   return (
     <span title={title} aria-label={title} role="img" style={{ display: "inline-flex", alignItems: "center", flexShrink: 0 }}>
-      {signed ? <CircleCheck size={16} color={COLORS.green} strokeWidth={2.5} /> : pending ? <Clock size={15} color={COLORS.amber} strokeWidth={2.5} /> : <Circle size={15} color={COLORS.faint} strokeWidth={2} />}
+      {signed ? <CircleCheck size={16} color={COLORS.successText} strokeWidth={2} /> : pending ? <Clock size={15} color={COLORS.warnText} strokeWidth={2} /> : <Circle size={15} color={COLORS.muted} strokeWidth={2} />}
     </span>
   );
 }
@@ -1074,14 +1074,14 @@ function AgreementFields({ meta, saver }) {
   };
   const add = (q) => setQuestions([...questions, { id: nextId("aq"), help: "", detail: "", ack: "I understand", required: true, options: [], maxWords: 0, askedOf: "student", ...q }]);
 
-  const label = { fontSize: 11.5, fontWeight: 800, color: COLORS.faint, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 };
-  const box = { ...fieldStyle, padding: "9px 12px", fontSize: 14, borderRadius: 10 };
-  const heading = { fontSize: 13, fontWeight: 800, color: COLORS.indigo, letterSpacing: 0.4, margin: "22px 0 10px" };
+  const label = { fontSize: 11.5, fontWeight: 600, color: COLORS.muted, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 6 };
+  const box = { ...fieldStyle, padding: "9px 12px", fontSize: 14 };
+  const heading = { fontSize: 13, fontWeight: 600, color: COLORS.ink, letterSpacing: 0.4, margin: "22px 0 10px" };
 
   return (
-    <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 20, marginTop: 16 }}>
-      <div style={{ fontSize: 15, fontWeight: 900, color: COLORS.text }}>What students fill out</div>
-      <div style={{ fontSize: 12.5, color: COLORS.faint, marginTop: 2, lineHeight: 1.5 }}>
+    <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: 20, marginTop: 16 }}>
+      <div style={{ fontSize: 15, fontWeight: 600, color: COLORS.ink }}>What students fill out</div>
+      <div style={{ fontSize: 12.5, color: COLORS.muted, marginTop: 2, lineHeight: 1.5 }}>
         The signing form under the PDF. Changes apply to everyone who signs from now on; students who have already signed are not asked again. The student's name and the dates are filled in automatically.
       </div>
 
@@ -1095,7 +1095,7 @@ function AgreementFields({ meta, saver }) {
             ) : (
               <input aria-label={w.label} value={wording[w.key] ?? ""} onChange={(e) => commit({ wording: { ...wording, [w.key]: e.target.value } })} placeholder={w.optional ? "Leave empty to hide this" : "Leave empty to use the original wording"} style={box} />
             )}
-            {w.hint && <div style={{ fontSize: 12, color: COLORS.faint, marginTop: 4 }}>{w.hint}</div>}
+            {w.hint && <div style={{ fontSize: 12, color: COLORS.muted, marginTop: 4 }}>{w.hint}</div>}
           </div>
         ))}
       </div>
@@ -1104,20 +1104,20 @@ function AgreementFields({ meta, saver }) {
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         {relationships.map((r, i) => (
           <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ width: 6, height: 6, borderRadius: 999, background: COLORS.faint, flexShrink: 0 }} />
-            <EditableInput value={r} onChange={(v) => commit({ relationships: relationships.map((x, j) => (j === i ? v : x)) })} style={{ fontSize: 14, color: COLORS.sub }} />
-            <button type="button" aria-label={`Remove ${r}`} onClick={() => commit({ relationships: relationships.filter((_, j) => j !== i) })} disabled={relationships.length === 1} style={{ border: "none", background: "transparent", color: relationships.length === 1 ? "#d7dbe4" : COLORS.faint, cursor: relationships.length === 1 ? "default" : "pointer" }}>
+            <span style={{ width: 6, height: 6, background: COLORS.muted, flexShrink: 0 }} />
+            <EditableInput value={r} onChange={(v) => commit({ relationships: relationships.map((x, j) => (j === i ? v : x)) })} style={{ fontSize: 14, color: COLORS.text2 }} />
+            <button type="button" aria-label={`Remove ${r}`} onClick={() => commit({ relationships: relationships.filter((_, j) => j !== i) })} disabled={relationships.length === 1} style={{ border: "none", background: "transparent", color: relationships.length === 1 ? COLORS.disabled : COLORS.muted, cursor: relationships.length === 1 ? "default" : "pointer" }}>
               <Trash2 size={13} />
             </button>
           </div>
         ))}
-        <button type="button" onClick={() => commit({ relationships: [...relationships, "New option"] })} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.indigo, fontWeight: 700, fontSize: 13, cursor: "pointer", padding: "4px 0", alignSelf: "flex-start", fontFamily: "inherit" }}>
+        <button type="button" onClick={() => commit({ relationships: [...relationships, "New option"] })} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.ink, fontWeight: 600, fontSize: 13, cursor: "pointer", padding: "4px 0", alignSelf: "flex-start", fontFamily: "inherit" }}>
           <Plus size={14} /> Add option
         </button>
       </div>
 
       <div style={heading}>Your own questions</div>
-      <div style={{ fontSize: 12.5, color: COLORS.faint, marginBottom: 10, lineHeight: 1.5 }}>
+      <div style={{ fontSize: 12.5, color: COLORS.muted, marginBottom: 10, lineHeight: 1.5 }}>
         Extra fields on the signing form. A question asked of the student sits under the student's signature; one asked of the parent or guardian sits in the guardian's part. The answers show on each student's account card in EIB Students.
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1131,7 +1131,7 @@ function AgreementFields({ meta, saver }) {
             onDelete={() => setQuestions(questions.filter((x) => x.id !== q.id))}
             onMove={(dir) => move(i, dir)}
             headerExtra={
-              <select aria-label="Who answers this" value={q.askedOf === "guardian" ? "guardian" : "student"} onChange={(e) => setQuestions(questions.map((x) => (x.id === q.id ? { ...x, askedOf: e.target.value } : x)))} style={{ fontSize: 12.5, fontWeight: 700, color: COLORS.sub, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "4px 6px", background: "#fff" }}>
+              <select aria-label="Who answers this" value={q.askedOf === "guardian" ? "guardian" : "student"} onChange={(e) => setQuestions(questions.map((x) => (x.id === q.id ? { ...x, askedOf: e.target.value } : x)))} style={{ fontSize: 12.5, fontWeight: 600, color: COLORS.text2, border: `1px solid ${COLORS.border}`, padding: "4px 6px", background: COLORS.surface }}>
                 <option value="student">Asked of the student</option>
                 <option value="guardian">Asked of the parent or guardian</option>
               </select>
@@ -1140,10 +1140,10 @@ function AgreementFields({ meta, saver }) {
         ))}
       </div>
       <div style={{ display: "flex", gap: 10, marginTop: 14, flexWrap: "wrap" }}>
-        <button type="button" onClick={() => add({ type: "short", label: "New question" })} style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, border: `1px dashed ${COLORS.border}`, background: "#fff", color: COLORS.indigo, fontWeight: 800, fontSize: 14, borderRadius: 14, padding: "12px 16px", cursor: "pointer", justifyContent: "center", fontFamily: "inherit" }}>
+        <button type="button" onClick={() => add({ type: "short", label: "New question" })} style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, border: `1px dashed ${COLORS.border}`, background: COLORS.surface, color: COLORS.ink, fontWeight: 600, fontSize: 14, padding: "12px 16px", cursor: "pointer", justifyContent: "center", fontFamily: "inherit" }}>
           <Plus size={16} /> Add question
         </button>
-        <button type="button" onClick={() => add({ type: "notice", label: "Important notice" })} title="A bold statement that must be ticked to sign" style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, border: `1px dashed ${COLORS.amberBorder}`, background: COLORS.amberSoft, color: COLORS.amber, fontWeight: 800, fontSize: 14, borderRadius: 14, padding: "12px 16px", cursor: "pointer", justifyContent: "center", fontFamily: "inherit" }}>
+        <button type="button" onClick={() => add({ type: "notice", label: "Important notice" })} title="A bold statement that must be ticked to sign" style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, border: `1px dashed ${COLORS.warnBorder}`, background: COLORS.warnBg, color: COLORS.warnText, fontWeight: 600, fontSize: 14, padding: "12px 16px", cursor: "pointer", justifyContent: "center", fontFamily: "inherit" }}>
           <Megaphone size={16} /> Add notice
         </button>
       </div>
@@ -1162,12 +1162,12 @@ function PaymentSettings({ meta, onSave }) {
   const saveIfChanged = (key) => () => {
     if ((meta.payment?.[key] || "") !== draft[key]) onSave({ payment: { [key]: draft[key] } });
   };
-  const label = { fontSize: 11.5, fontWeight: 800, color: COLORS.faint, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 };
-  const box = { ...fieldStyle, padding: "9px 12px", fontSize: 14, borderRadius: 10 };
+  const label = { fontSize: 11.5, fontWeight: 600, color: COLORS.muted, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 6 };
+  const box = { ...fieldStyle, padding: "9px 12px", fontSize: 14 };
   return (
-    <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 20, marginTop: 16 }}>
-      <div style={{ fontSize: 15, fontWeight: 900, color: COLORS.text }}>Payment</div>
-      <div style={{ fontSize: 12.5, color: COLORS.faint, marginTop: 2, lineHeight: 1.5 }}>
+    <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: 20, marginTop: 16 }}>
+      <div style={{ fontSize: 15, fontWeight: 600, color: COLORS.ink }}>Payment</div>
+      <div style={{ fontSize: 12.5, color: COLORS.muted, marginTop: 2, lineHeight: 1.5 }}>
         Shown right after the agreement is signed, to the student and to a parent who signed up for them. The button opens your payment page in a new tab. When the money arrives, tick "Fee paid" on the student in EIB Students.
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 14 }}>
@@ -1240,24 +1240,24 @@ function AgreementCard({ saver }) {
     }
   };
 
-  const label = { fontSize: 11.5, fontWeight: 800, color: COLORS.faint, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 };
-  const box = { ...fieldStyle, padding: "9px 12px", fontSize: 14, borderRadius: 10 };
+  const label = { fontSize: 11.5, fontWeight: 600, color: COLORS.muted, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 6 };
+  const box = { ...fieldStyle, padding: "9px 12px", fontSize: 14 };
   const kb = (n) => (n > 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${Math.round(n / 1024)} KB`);
 
   return (
     <div style={{ maxWidth: 720, margin: "0 auto 22px" }}>
       {confirmUI}
-      <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 20 }}>
+      <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: 20 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <Signature size={18} color={COLORS.indigo} />
+            <Signature size={18} color={COLORS.ink} />
             <div>
-              <div style={{ fontSize: 15, fontWeight: 900, color: COLORS.text }}>Student agreement</div>
-              <div style={{ fontSize: 12.5, color: COLORS.faint }}>Students read it to the end and sign (with a parent or legal guardian) before their lessons open.</div>
+              <div style={{ fontSize: 15, fontWeight: 600, color: COLORS.ink }}>Student agreement</div>
+              <div style={{ fontSize: 12.5, color: COLORS.muted }}>Students read it to the end and sign (with a parent or legal guardian) before their lessons open.</div>
             </div>
           </div>
           {meta && (
-            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 800, color: COLORS.text, cursor: "pointer" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: COLORS.ink, cursor: "pointer" }}>
               <input type="checkbox" checked={Boolean(meta.required)} onChange={(e) => save({ required: e.target.checked })} style={{ width: 16, height: 16 }} />
               Required before lessons
             </label>
@@ -1269,8 +1269,8 @@ function AgreementCard({ saver }) {
           <Loading />
         ) : (
           <>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 16, background: meta.pdf ? COLORS.greenSoft : COLORS.amberSoft, border: `1px solid ${meta.pdf ? COLORS.greenBorder : COLORS.amberBorder}`, borderRadius: 12, padding: "12px 14px", flexWrap: "wrap" }}>
-              <div style={{ flex: 1, minWidth: 200, fontSize: 13.5, color: COLORS.text }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 16, background: meta.pdf ? COLORS.successBg : COLORS.warnBg, border: `1px solid ${meta.pdf ? COLORS.successBorder : COLORS.warnBorder}`, padding: "12px 14px", flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: 200, fontSize: 13.5, color: COLORS.ink }}>
                 {meta.pdf ? (
                   <>
                     <strong>{meta.pdf.name}</strong> · {kb(meta.pdf.size)} · version {meta.version} · uploaded {fmtDate(meta.pdf.uploadedAt)}
@@ -1281,16 +1281,16 @@ function AgreementCard({ saver }) {
               </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {meta.pdf && (
-                  <a href="/api/agreement/pdf?download=1" style={{ display: "inline-flex", alignItems: "center", gap: 6, border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.sub, fontWeight: 800, fontSize: 12.5, borderRadius: 999, padding: "6px 12px", textDecoration: "none" }}>
+                  <a href="/api/agreement/pdf?download=1" style={{ display: "inline-flex", alignItems: "center", gap: 6, border: `1px solid ${COLORS.border}`, background: COLORS.surface, color: COLORS.text2, fontWeight: 600, fontSize: 12.5, padding: "6px 12px", textDecoration: "none" }}>
                     <Download size={13} /> Download
                   </a>
                 )}
-                <label style={{ display: "inline-flex", alignItems: "center", gap: 6, background: COLORS.indigo, color: "#fff", fontWeight: 800, fontSize: 12.5, borderRadius: 999, padding: "6px 12px", cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1 }}>
+                <label style={{ display: "inline-flex", alignItems: "center", gap: 6, background: COLORS.ink, color: COLORS.white, fontWeight: 600, fontSize: 12.5, padding: "6px 12px", cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1 }}>
                   <Upload size={13} /> {busy ? "Uploading…" : meta.pdf ? "Replace PDF" : "Upload PDF"}
                   <input ref={fileRef} type="file" accept="application/pdf" onChange={(e) => upload(e.target.files?.[0])} disabled={busy} style={{ display: "none" }} />
                 </label>
                 {meta.pdf && (
-                  <button type="button" onClick={remove} style={{ display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.faint, fontWeight: 700, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>
+                  <button type="button" onClick={remove} style={{ display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.muted, fontWeight: 600, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>
                     <Trash2 size={13} /> Remove
                   </button>
                 )}
@@ -1306,8 +1306,8 @@ function AgreementCard({ saver }) {
                 <textarea value={draft.intro} onChange={(e) => setDraft({ ...draft, intro: e.target.value })} onBlur={() => draft.intro !== meta.intro && save({ intro: draft.intro })} rows={3} style={{ ...box, resize: "vertical" }} />
               </div>
             </div>
-            <div style={{ fontSize: 12, color: COLORS.faint, marginTop: 10 }}>
-              Preview what students see at <a href="/onboarding" style={{ color: COLORS.indigo, fontWeight: 700 }}>/onboarding</a>. Signatures show on each student's account card in EIB Students.
+            <div style={{ fontSize: 12, color: COLORS.muted, marginTop: 10 }}>
+              Preview what students see at <a href="/onboarding" style={{ color: COLORS.ink, fontWeight: 600 }}>/onboarding</a>. Signatures show on each student's account card in EIB Students.
             </div>
           </>
         )}
@@ -1355,8 +1355,8 @@ function AnalyticsTab({ user }) {
       </div>
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-        <div style={{ fontSize: 13, fontWeight: 800, color: COLORS.indigo, letterSpacing: 0.4 }}>Applications over time</div>
-        <button type="button" onClick={() => setTable((t) => !t)} style={{ display: "flex", alignItems: "center", gap: 6, border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.sub, fontWeight: 800, fontSize: 12.5, borderRadius: 999, padding: "6px 12px", cursor: "pointer", fontFamily: "inherit" }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.ink, letterSpacing: 0.4 }}>Applications over time</div>
+        <button type="button" onClick={() => setTable((t) => !t)} style={{ display: "flex", alignItems: "center", gap: 6, border: `1px solid ${COLORS.border}`, background: COLORS.surface, color: COLORS.text2, fontWeight: 600, fontSize: 12.5, padding: "6px 12px", cursor: "pointer", fontFamily: "inherit" }}>
           {table ? <ChartColumn size={13} /> : <Table2 size={13} />} {table ? "Show charts" : "Show as table"}
         </button>
       </div>
@@ -1369,7 +1369,7 @@ function AnalyticsTab({ user }) {
         </>
       )}
 
-      <div style={{ fontSize: 13, fontWeight: 800, color: COLORS.indigo, letterSpacing: 0.4, marginTop: 8 }}>Unfinished applications</div>
+      <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.ink, letterSpacing: 0.4, marginTop: 8 }}>Unfinished applications</div>
       <UnfinishedList user={user} drafts={drafts} questions={questions} onChange={(next) => setData((d) => ({ ...d, drafts: next }))} />
     </div>
   );
@@ -1427,7 +1427,7 @@ function UnfinishedList({ user, drafts, questions, onChange }) {
       {confirmUI}
       {error && <Notice onClose={() => setError(null)}>{error}</Notice>}
       {info && <Notice tone="info" onClose={() => setInfo(null)}>{info}</Notice>}
-      <div style={{ fontSize: 12.5, color: COLORS.faint, marginBottom: 12 }}>
+      <div style={{ fontSize: 12.5, color: COLORS.muted, marginBottom: 12 }}>
         Someone appears here the moment they sign in to the application form, and leaves the list when they submit. Newest activity first.
       </div>
       {!drafts ? (
@@ -1440,21 +1440,21 @@ function UnfinishedList({ user, drafts, questions, onChange }) {
             const p = progress(d);
             const open = openId === d.id;
             return (
-              <div key={d.id} style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 14, overflow: "hidden" }}>
+              <div key={d.id} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, overflow: "hidden" }}>
                 <div onClick={() => setOpenId(open ? null : d.id)} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", cursor: "pointer" }}>
                   <Avatar name={d.name} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.text }}>{d.name}</div>
-                    <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 2, fontSize: 12.5, color: COLORS.faint, fontWeight: 600 }}>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: COLORS.ink }}>{d.name}</div>
+                    <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 2, fontSize: 12.5, color: COLORS.muted, fontWeight: 600 }}>
                       <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Mail size={12} /> {d.email}</span>
                       <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Clock size={12} /> last seen {when(d.lastSeenAt)}</span>
                       <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Calendar size={12} /> started {when(d.startedAt)}</span>
                     </div>
                   </div>
-                  <span style={{ fontSize: 12.5, fontWeight: 800, color: p.filled ? COLORS.amber : COLORS.faint, background: p.filled ? COLORS.amberSoft : "#f1f3f7", border: `1px solid ${p.filled ? COLORS.amberBorder : COLORS.border}`, borderRadius: 999, padding: "4px 10px", whiteSpace: "nowrap" }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 600, color: p.filled ? COLORS.warnText : COLORS.muted, background: p.filled ? COLORS.warnBg : COLORS.bg, border: `1px solid ${p.filled ? COLORS.warnBorder : COLORS.border}`, padding: "4px 10px", whiteSpace: "nowrap" }}>
                     {p.filled} of {p.total} answered
                   </span>
-                  {open ? <ChevronUp size={16} color={COLORS.faint} /> : <ChevronDown size={16} color={COLORS.faint} />}
+                  {open ? <ChevronUp size={16} color={COLORS.muted} /> : <ChevronDown size={16} color={COLORS.muted} />}
                 </div>
                 {open && (
                   <div style={{ borderTop: `1px solid ${COLORS.border}`, padding: "12px 16px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
@@ -1462,8 +1462,8 @@ function UnfinishedList({ user, drafts, questions, onChange }) {
                       const a = String((d.answers || []).find((x) => x.questionId === q.id)?.answer || "").trim();
                       return (
                         <div key={q.id}>
-                          <div style={{ fontSize: 12.5, fontWeight: 800, color: COLORS.sub }}>{q.label}</div>
-                          <div style={{ fontSize: 13.5, color: a ? COLORS.text : COLORS.faint, fontStyle: a ? "normal" : "italic", lineHeight: 1.5, whiteSpace: "pre-wrap", marginTop: 2 }}>{a || "Not answered yet"}</div>
+                          <div style={{ fontSize: 12.5, fontWeight: 600, color: COLORS.text2 }}>{q.label}</div>
+                          <div style={{ fontSize: 13.5, color: a ? COLORS.ink : COLORS.muted, fontStyle: a ? "normal" : "italic", lineHeight: 1.5, whiteSpace: "pre-wrap", marginTop: 2 }}>{a || "Not answered yet"}</div>
                         </div>
                       );
                     })}
@@ -1474,13 +1474,13 @@ function UnfinishedList({ user, drafts, questions, onChange }) {
                             type="button"
                             onClick={() => submitFor(d)}
                             onBlur={() => setArmedId((a) => (a === d.id ? null : a))}
-                            style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: armedId === d.id ? COLORS.amber : COLORS.indigo, color: "#fff", fontWeight: 800, fontSize: 13, borderRadius: 999, padding: "8px 14px", cursor: "pointer", fontFamily: "inherit" }}
+                            style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: armedId === d.id ? COLORS.warnText : COLORS.ink, color: COLORS.white, fontWeight: 600, fontSize: 13, padding: "8px 14px", cursor: "pointer", fontFamily: "inherit" }}
                           >
                             <Send size={14} /> {armedId === d.id ? "Click again to submit it for them" : "Submit this for them"}
                           </button>
-                          <span style={{ fontSize: 12, color: COLORS.faint }}>Creates their application with what they have, as if they had pressed Submit.</span>
+                          <span style={{ fontSize: 12, color: COLORS.muted }}>Creates their application with what they have, as if they had pressed Submit.</span>
                         </div>
-                        <button type="button" onClick={() => remove(d)} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.faint, fontWeight: 700, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>
+                        <button type="button" onClick={() => remove(d)} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.muted, fontWeight: 600, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>
                           <Trash2 size={14} /> Clear this unfinished application
                         </button>
                       </div>
@@ -1538,7 +1538,7 @@ export default function StudentManager({ user }) {
         right={
           <>
             <SaveIndicator status={saver.status} />
-            <SegmentedTabs value={tab} onChange={setTab} options={tabs} style={{ background: "#fff", borderRadius: 12 }} />
+            <SegmentedTabs value={tab} onChange={setTab} options={tabs} style={{ background: COLORS.surface }} />
           </>
         }
       />

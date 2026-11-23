@@ -13,7 +13,7 @@ import { api } from "@/lib/api";
 import { fmtDate } from "@/lib/format";
 
 const API = "/api/graduation";
-const smallButton = (tone) => ({ border: `1px solid ${tone === "red" ? COLORS.redBorder : COLORS.indigoBorder}`, background: tone === "red" ? COLORS.redSoft : COLORS.indigoSoft, color: tone === "red" ? COLORS.red : COLORS.indigo, fontWeight: 800, fontSize: 12.5, borderRadius: 9, padding: "7px 12px", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" });
+const smallButton = (tone) => ({ border: `1px solid ${tone === "red" ? COLORS.errorBorder : COLORS.border2}`, background: tone === "red" ? COLORS.errorBg : COLORS.bg, color: tone === "red" ? COLORS.errorText : COLORS.ink, fontWeight: 600, fontSize: 12.5, padding: "7px 12px", cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap" });
 const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 function CopyLinkButton({ url }) {
@@ -34,13 +34,13 @@ function CopyLinkButton({ url }) {
 
 function StatusPill({ credential }) {
   const look = !credential
-    ? { label: "Not released", color: COLORS.faint, bg: "#f1f3f7", border: COLORS.border }
+    ? { label: "Not released", color: COLORS.muted, bg: COLORS.bg, border: COLORS.border }
     : credential.status === "active"
-      ? { label: "Active", color: COLORS.green, bg: COLORS.greenSoft, border: COLORS.greenBorder, icon: BadgeCheck }
-      : { label: "Revoked", color: COLORS.red, bg: COLORS.redSoft, border: COLORS.redBorder, icon: Ban };
+      ? { label: "Active", color: COLORS.successText, bg: COLORS.successBg, border: COLORS.successBorder, icon: BadgeCheck }
+      : { label: "Revoked", color: COLORS.errorText, bg: COLORS.errorBg, border: COLORS.errorBorder, icon: Ban };
   const Icon = look.icon;
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 800, color: look.color, background: look.bg, border: `1px solid ${look.border}`, borderRadius: 999, padding: "4px 10px", whiteSpace: "nowrap" }}>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 600, color: look.color, background: look.bg, border: `1px solid ${look.border}`, padding: "4px 10px", whiteSpace: "nowrap" }}>
       {Icon && <Icon size={13} />} {look.label}
     </span>
   );
@@ -55,8 +55,8 @@ function StudentRow({ s, busy, onRelease, onRevoke }) {
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <Avatar name={s.name} />
         <div style={{ flex: 1, minWidth: 160 }}>
-          <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.text }}>{s.name}</div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: s.complete ? COLORS.green : COLORS.sub, marginTop: 2 }}>
+          <div style={{ fontSize: 15, fontWeight: 600, color: COLORS.ink }}>{s.name}</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: s.complete ? COLORS.successText : COLORS.text2, marginTop: 2 }}>
             {s.done} of {s.total} deliverables{s.complete ? " · all complete" : ""}
           </div>
         </div>
@@ -72,13 +72,13 @@ function StudentRow({ s, busy, onRelease, onRevoke }) {
         ) : null}
       </div>
       {!s.complete && s.missing.length > 0 && (
-        <div style={{ fontSize: 12.5, color: COLORS.faint, marginTop: 10, lineHeight: 1.55 }}>
-          <strong style={{ color: COLORS.sub }}>Still to complete:</strong> {s.missing.map((m) => `${m.short} ${m.title}`).join(", ")}
+        <div style={{ fontSize: 12.5, color: COLORS.muted, marginTop: 10, lineHeight: 1.55 }}>
+          <strong style={{ color: COLORS.text2 }}>Still to complete:</strong> {s.missing.map((m) => `${m.short} ${m.title}`).join(", ")}
         </div>
       )}
       {active && (
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginTop: 12, paddingTop: 12, borderTop: `1px solid ${COLORS.border}` }}>
-          <span style={{ fontSize: 12.5, color: COLORS.faint, flex: 1, minWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <span style={{ fontSize: 12.5, color: COLORS.muted, flex: 1, minWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             Issued {fmtDate(c.issuedAt)} · {url}
           </span>
           <CopyLinkButton url={url} />
@@ -87,7 +87,7 @@ function StudentRow({ s, busy, onRelease, onRevoke }) {
           </a>
         </div>
       )}
-      {c?.status === "revoked" && <div style={{ fontSize: 12.5, color: COLORS.faint, marginTop: 10 }}>Revoked {fmtDate(c.revokedAt)}. Their link now shows a "Revoked" notice and none of their work.</div>}
+      {c?.status === "revoked" && <div style={{ fontSize: 12.5, color: COLORS.muted, marginTop: 10 }}>Revoked {fmtDate(c.revokedAt)}. Their link now shows a "Revoked" notice and none of their work.</div>}
     </Card>
   );
 }
@@ -108,21 +108,21 @@ function PageSettings({ data, onSave }) {
     timer.current = setTimeout(() => onSave({ criteria: v }), 600);
   };
   const toggle = (id) => onSave({ hidden: hidden.has(id) ? [...hidden].filter((x) => x !== id) : [...hidden, id] });
-  const label = { fontSize: 12, fontWeight: 800, color: COLORS.faint, textTransform: "uppercase", letterSpacing: 0.4, margin: "18px 0 6px" };
+  const label = { fontSize: 12, fontWeight: 600, color: COLORS.muted, textTransform: "uppercase", letterSpacing: "0.12em", margin: "18px 0 6px" };
 
   return (
     <Card style={{ marginBottom: 16 }}>
       <button type="button" onClick={() => setOpen((v) => !v)} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", border: "none", background: "transparent", padding: 0, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
-        {open ? <ChevronDown size={16} color={COLORS.faint} /> : <ChevronRight size={16} color={COLORS.faint} />}
-        <span style={{ fontSize: 15, fontWeight: 800, color: COLORS.text }}>What a credential page shows</span>
-        <span style={{ fontSize: 12.5, color: story ? COLORS.faint : COLORS.amber, fontWeight: 700, marginLeft: "auto", textAlign: "right" }}>
+        {open ? <ChevronDown size={16} color={COLORS.muted} /> : <ChevronRight size={16} color={COLORS.muted} />}
+        <span style={{ fontSize: 15, fontWeight: 600, color: COLORS.ink }}>What a credential page shows</span>
+        <span style={{ fontSize: 12.5, color: story ? COLORS.muted : COLORS.warnText, fontWeight: 600, marginLeft: "auto", textAlign: "right" }}>
           {story ? `Founder story: ${story.short}` : "No founder story chosen"} · {shown} of {data.deliverables.length} deliverables public
         </span>
       </button>
       {open && (
         <div>
           <div style={label}>Founder story</div>
-          <select value={data.settings.storyDeliverableId} onChange={(e) => onSave({ storyDeliverableId: e.target.value })} style={{ ...fieldStyle, padding: "9px 12px", fontSize: 14, borderRadius: 10 }} aria-label="Founder story deliverable">
+          <select value={data.settings.storyDeliverableId} onChange={(e) => onSave({ storyDeliverableId: e.target.value })} style={{ ...fieldStyle, padding: "9px 12px", fontSize: 14 }} aria-label="Founder story deliverable">
             <option value="">None (the page has no founder story)</option>
             {data.deliverables.map((d) => (
               <option key={d.id} value={d.id}>
@@ -130,23 +130,23 @@ function PageSettings({ data, onSave }) {
               </option>
             ))}
           </select>
-          <div style={{ fontSize: 12.5, color: COLORS.faint, marginTop: 6, lineHeight: 1.5 }}>The student's answer to this deliverable is shown as their founder story, above the rest of their work. Add a "Founder Story" deliverable in the Lesson Editor, then pick it here.</div>
+          <div style={{ fontSize: 12.5, color: COLORS.muted, marginTop: 6, lineHeight: 1.5 }}>The student's answer to this deliverable is shown as their founder story, above the rest of their work. Add a "Founder Story" deliverable in the Lesson Editor, then pick it here.</div>
 
           <div style={label}>Criteria</div>
           <textarea value={criteria} onChange={(e) => typeCriteria(e.target.value)} rows={4} style={{ ...fieldStyle, resize: "vertical", fontSize: 14, lineHeight: 1.55 }} aria-label="Criteria" />
-          <div style={{ fontSize: 12.5, color: COLORS.faint, marginTop: 6 }}>Printed on a credential when it is released. Credentials already released keep the wording they were released with.</div>
+          <div style={{ fontSize: 12.5, color: COLORS.muted, marginTop: 6 }}>Printed on a credential when it is released. Credentials already released keep the wording they were released with.</div>
 
           <div style={label}>Deliverables on the public page</div>
-          <div style={{ fontSize: 12.5, color: COLORS.faint, marginBottom: 8, lineHeight: 1.5 }}>Anyone with a student's link can read these. Un-tick anything that should stay private, such as work that names other people. This applies at once to every credential, released or not.</div>
+          <div style={{ fontSize: 12.5, color: COLORS.muted, marginBottom: 8, lineHeight: 1.5 }}>Anyone with a student's link can read these. Un-tick anything that should stay private, such as work that names other people. This applies at once to every credential, released or not.</div>
           {data.deliverables.length === 0 ? (
-            <div style={{ fontSize: 13.5, color: COLORS.faint, fontStyle: "italic" }}>No published lesson has a deliverable yet.</div>
+            <div style={{ fontSize: 13.5, color: COLORS.muted, fontStyle: "italic" }}>No published lesson has a deliverable yet.</div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               {data.deliverables.map((d) => (
-                <label key={d.id} style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 14, fontWeight: 600, color: hidden.has(d.id) ? COLORS.faint : COLORS.text, padding: "5px 0", cursor: "pointer" }}>
+                <label key={d.id} style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 14, fontWeight: 600, color: hidden.has(d.id) ? COLORS.muted : COLORS.ink, padding: "5px 0", cursor: "pointer" }}>
                   <input type="checkbox" checked={!hidden.has(d.id)} onChange={() => toggle(d.id)} />
                   <span>
-                    <strong style={{ color: COLORS.indigo }}>{d.short}</strong> · {d.title}
+                    <strong style={{ color: COLORS.ink }}>{d.short}</strong> · {d.title}
                     {d.id === data.settings.storyDeliverableId ? " (founder story)" : ""}
                   </span>
                 </label>
@@ -227,10 +227,10 @@ export default function GraduationTab() {
       <Card style={{ marginBottom: 16, padding: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
           <div style={{ flex: 1, minWidth: 220 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 17, fontWeight: 900, color: COLORS.text }}>
-              <Award size={19} color={COLORS.indigo} /> {data.title}
+            <div style={{ display: "flex", alignItems: "center", gap: 9, fontSize: 17, fontWeight: 600, color: COLORS.ink }}>
+              <Award size={19} color={COLORS.ink} /> {data.title}
             </div>
-            <div style={{ fontSize: 13.5, color: COLORS.sub, marginTop: 6, lineHeight: 1.55 }}>
+            <div style={{ fontSize: 13.5, color: COLORS.text2, marginTop: 6, lineHeight: 1.55 }}>
               Cohort {data.cohort} · {complete.length} of {plural(data.students.length, "student")} completed all {plural(data.deliverables.length, "deliverable")} · {active.length} released
             </div>
           </div>
@@ -238,10 +238,10 @@ export default function GraduationTab() {
             Release Credentials{ready.length ? ` (${ready.length})` : ""}
           </PrimaryButton>
         </div>
-        <div style={{ fontSize: 12.5, color: COLORS.faint, marginTop: 12, lineHeight: 1.55 }}>
+        <div style={{ fontSize: 12.5, color: COLORS.muted, marginTop: 12, lineHeight: 1.55 }}>
           A deliverable is complete when every field is filled: text written, a working link, every checklist box ticked, every table cell filled. Release Credentials gives one to every student who has completed them all and does not have one yet. Nothing is public before that, and nobody is emailed: the student sees it on their Lessons page, and you can copy any link below.
         </div>
-        {!data.linkedInOrgSet && <div style={{ fontSize: 12.5, color: COLORS.amber, fontWeight: 700, marginTop: 8, lineHeight: 1.55 }}>The LinkedIn company page number (LINKEDIN_ORG_ID) is not set, so "Add to LinkedIn" names the issuer as plain text instead of linking to the company page.</div>}
+        {!data.linkedInOrgSet && <div style={{ fontSize: 12.5, color: COLORS.warnText, fontWeight: 600, marginTop: 8, lineHeight: 1.55 }}>The LinkedIn company page number (LINKEDIN_ORG_ID) is not set, so "Add to LinkedIn" names the issuer as plain text instead of linking to the company page.</div>}
       </Card>
 
       <PageSettings data={data} onSave={(patch) => run(() => api.patch(API, patch))} />

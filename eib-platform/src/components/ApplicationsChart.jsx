@@ -14,8 +14,8 @@ import { COLORS } from "./ui";
 import { TZ } from "@/lib/format";
 
 const DAY = 86400000;
-const INK = { text: COLORS.text, sub: COLORS.sub, faint: COLORS.faint, grid: "#e9ecf3", axis: "#d6dbe6" };
-const SERIES = COLORS.indigo; // validated on the light surface (3:1+, L in band)
+const INK = { text: COLORS.ink, sub: COLORS.text2, faint: COLORS.muted, grid: COLORS.border, axis: COLORS.border2 };
+const SERIES = COLORS.ink; // validated on the light surface (3:1+, L in band)
 
 // Calendar day in Toronto, as YYYY-MM-DD.
 export const dayKey = (d) => new Date(d).toLocaleDateString("en-CA", { timeZone: TZ });
@@ -125,9 +125,9 @@ export function TimeChart({ days, field, kind, title, refLine, empty }) {
   }, [days, field, width]);
 
   return (
-    <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: "14px 16px 10px" }}>
+    <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: "14px 16px 10px" }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, marginBottom: 4 }}>
-        <div style={{ fontSize: 13, fontWeight: 800, color: INK.text }}>{title}</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: INK.text }}>{title}</div>
         <div style={{ fontSize: 12, color: INK.faint, fontWeight: 600 }}>{n ? `${days[0].label} to ${days[n - 1].label}` : ""}</div>
       </div>
       <div ref={ref} style={{ position: "relative", width: "100%" }}>
@@ -169,7 +169,7 @@ export function TimeChart({ days, field, kind, title, refLine, empty }) {
               <>
                 <path d={path} fill="none" stroke={SERIES} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
                 {/* end value, direct label */}
-                <circle cx={xc(n - 1)} cy={y(days[n - 1][field])} r={4} fill={SERIES} stroke="#fff" strokeWidth={2} />
+                <circle cx={xc(n - 1)} cy={y(days[n - 1][field])} r={4} fill={SERIES} stroke={COLORS.white} strokeWidth={2} />
                 <text x={Math.min(xc(n - 1) + 8, width - M.right)} y={y(days[n - 1][field]) - 8} textAnchor={xc(n - 1) + 40 > width - M.right ? "end" : "start"} fontSize={12} fontWeight={800} fill={INK.text} fontFamily="inherit">
                   {days[n - 1][field]}
                 </text>
@@ -179,7 +179,7 @@ export function TimeChart({ days, field, kind, title, refLine, empty }) {
             {h && kind === "line" && (
               <>
                 <line x1={xc(hover)} x2={xc(hover)} y1={M.top} y2={M.top + ih} stroke={INK.axis} strokeWidth={1} />
-                <circle cx={xc(hover)} cy={y(h[field])} r={5} fill={SERIES} stroke="#fff" strokeWidth={2} />
+                <circle cx={xc(hover)} cy={y(h[field])} r={5} fill={SERIES} stroke={COLORS.white} strokeWidth={2} />
               </>
             )}
             {/* x labels */}
@@ -192,11 +192,11 @@ export function TimeChart({ days, field, kind, title, refLine, empty }) {
           </svg>
         )}
         {h && (
-          <div style={{ position: "absolute", top: 6, left: tipLeft, pointerEvents: "none", background: "#fff", border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "7px 10px", boxShadow: "0 8px 24px -12px rgba(15,18,34,0.3)", minWidth: 140 }}>
-            <div style={{ fontSize: 11.5, color: INK.sub, fontWeight: 700 }}>{h.long}</div>
+          <div style={{ position: "absolute", top: 6, left: tipLeft, pointerEvents: "none", background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: "7px 10px", minWidth: 140 }}>
+            <div style={{ fontSize: 11.5, color: INK.sub, fontWeight: 600 }}>{h.long}</div>
             <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 3 }}>
-              <span style={{ width: 12, height: 2, background: SERIES, borderRadius: 1, display: "inline-block" }} />
-              <span style={{ fontSize: 15, fontWeight: 900, color: INK.text }}>{h[field]}</span>
+              <span style={{ width: 12, height: 2, background: SERIES, display: "inline-block" }} />
+              <span style={{ fontSize: 15, fontWeight: 600, color: INK.text }}>{h[field]}</span>
               <span style={{ fontSize: 12, color: INK.sub }}>{field === "count" ? (h.count === 1 ? "new application" : "new applications") : "in total"}</span>
             </div>
           </div>
@@ -210,20 +210,20 @@ export function TimeChart({ days, field, kind, title, refLine, empty }) {
 export function DaysTable({ days }) {
   const rows = [...days].reverse();
   return (
-    <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 14, overflow: "hidden" }}>
+    <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, overflow: "hidden" }}>
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13.5 }}>
         <thead>
           <tr style={{ color: INK.sub, fontSize: 12, textAlign: "left" }}>
-            <th style={{ padding: "10px 16px", fontWeight: 800 }}>Day</th>
-            <th style={{ padding: "10px 16px", fontWeight: 800, textAlign: "right" }}>New</th>
-            <th style={{ padding: "10px 16px", fontWeight: 800, textAlign: "right" }}>Total</th>
+            <th style={{ padding: "10px 16px", fontWeight: 600 }}>Day</th>
+            <th style={{ padding: "10px 16px", fontWeight: 600, textAlign: "right" }}>New</th>
+            <th style={{ padding: "10px 16px", fontWeight: 600, textAlign: "right" }}>Total</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((d) => (
             <tr key={d.key} style={{ borderTop: `1px solid ${COLORS.border}`, color: d.count ? INK.text : INK.faint }}>
               <td style={{ padding: "8px 16px" }}>{d.long}</td>
-              <td style={{ padding: "8px 16px", textAlign: "right", fontWeight: d.count ? 800 : 500 }}>{d.count}</td>
+              <td style={{ padding: "8px 16px", textAlign: "right", fontWeight: d.count ? 600 : 500 }}>{d.count}</td>
               <td style={{ padding: "8px 16px", textAlign: "right" }}>{d.total}</td>
             </tr>
           ))}
@@ -236,9 +236,9 @@ export function DaysTable({ days }) {
 /* ---------- stat tile ---------- */
 export function Stat({ label, value, sub }) {
   return (
-    <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: "12px 16px", minWidth: 0 }}>
-      <div style={{ fontSize: 11.5, fontWeight: 800, color: INK.faint, letterSpacing: 0.4, textTransform: "uppercase" }}>{label}</div>
-      <div style={{ fontSize: 28, fontWeight: 900, color: INK.text, lineHeight: 1.15, marginTop: 4 }}>{value}</div>
+    <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: "12px 16px", minWidth: 0 }}>
+      <div style={{ fontSize: 11.5, fontWeight: 600, color: INK.faint, letterSpacing: "0.12em", textTransform: "uppercase" }}>{label}</div>
+      <div style={{ fontSize: 28, fontWeight: 600, color: INK.text, lineHeight: 1.15, marginTop: 4 }}>{value}</div>
       {sub && <div style={{ fontSize: 12, color: INK.sub, marginTop: 2 }}>{sub}</div>}
     </div>
   );

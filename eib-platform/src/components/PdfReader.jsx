@@ -25,8 +25,8 @@ export default function PdfReader({ src, onReachEnd, onError, loadingText = "Loa
 
   return (
     <div ref={colRef} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      {error && <div style={{ fontSize: 13.5, color: COLORS.red }}>{error}</div>}
-      {!error && !doc && <div style={{ fontSize: 13.5, color: COLORS.faint }}>{loadingText}</div>}
+      {error && <div style={{ fontSize: 13.5, color: COLORS.errorText }}>{error}</div>}
+      {!error && !doc && <div style={{ fontSize: 13.5, color: COLORS.muted }}>{loadingText}</div>}
       {doc && width > 0 && Array.from({ length: count }, (_, i) => (
         <Page key={i} doc={doc} index={i + 1} count={count} width={width} last={i + 1 === count} onSeen={reachEnd} />
       ))}
@@ -49,9 +49,9 @@ function Page({ doc, index, count, width, last, onSeen }) {
   }, [last]);
 
   return (
-    <figure ref={boxRef} style={{ margin: 0, position: "relative", background: "#fff", border: `1px solid ${COLORS.border}`, borderRadius: 10, overflow: "hidden", aspectRatio: `1 / ${ratio}`, boxShadow: "0 8px 24px -18px rgba(15,23,42,0.3)" }}>
+    <figure ref={boxRef} style={{ margin: 0, position: "relative", background: COLORS.surface, border: `1px solid ${COLORS.border}`, overflow: "hidden", aspectRatio: `1 / ${ratio}` }}>
       <canvas ref={canvasRef} aria-label={`Page ${index} of ${count}`} style={{ display: "block", width: "100%", height: "100%" }} />
-      <figcaption style={{ position: "absolute", right: 10, bottom: 8, fontSize: 11.5, fontWeight: 800, color: COLORS.sub, background: "rgba(255,255,255,0.9)", border: `1px solid ${COLORS.border}`, padding: "3px 8px", borderRadius: 999 }}>
+      <figcaption style={{ position: "absolute", right: 10, bottom: 8, fontSize: 11.5, fontWeight: 600, color: COLORS.text2, background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: "3px 8px" }}>
         {index} / {count}
       </figcaption>
     </figure>

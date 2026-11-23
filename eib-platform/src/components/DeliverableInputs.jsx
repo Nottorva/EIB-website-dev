@@ -10,13 +10,11 @@ import { COLORS } from "./ui";
 const inputBox = {
   width: "100%",
   border: `1px solid ${COLORS.border}`,
-  borderRadius: 12,
   padding: "14px 16px",
   fontSize: 14.5,
-  color: COLORS.text,
+  color: COLORS.ink,
   boxSizing: "border-box",
-  background: "#fbfbfd",
-  outline: "none",
+  background: COLORS.bg,
 };
 
 export function TextInput({ item, payload, onChange }) {
@@ -45,12 +43,12 @@ export function TableInput({ item, payload, onChange }) {
       : [columns.map(() => "")];
   const commit = (nextRows) => onChange({ columns, rowLabels, rows: nextRows });
 
-  const th = { textAlign: "left", fontSize: 12, fontWeight: 800, color: COLORS.indigo, background: COLORS.indigoSoft, padding: "8px 12px", borderBottom: `1px solid ${COLORS.border}` };
-  const cellStyle = { border: "none", background: "transparent", padding: "8px 10px", fontSize: 13.5, color: COLORS.text, width: "100%", outline: "none", boxSizing: "border-box", minWidth: 90 };
+  const th = { textAlign: "left", fontSize: 12, fontWeight: 600, color: COLORS.ink, background: COLORS.bg, padding: "8px 12px", borderBottom: `1px solid ${COLORS.border}` };
+  const cellStyle = { border: "none", background: "transparent", padding: "8px 10px", fontSize: 13.5, color: COLORS.ink, width: "100%", boxSizing: "border-box", minWidth: 90 };
 
   return (
     <div>
-      <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 12, overflow: "auto", background: "#fff" }}>
+      <div style={{ border: `1px solid ${COLORS.border}`, overflow: "auto", background: COLORS.surface }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr>
@@ -67,7 +65,7 @@ export function TableInput({ item, payload, onChange }) {
             {rows.map((row, ri) => (
               <tr key={ri}>
                 {fixed && (
-                  <td style={{ borderBottom: `1px solid ${COLORS.border}`, padding: "8px 12px", fontSize: 13, fontWeight: 800, color: COLORS.sub, background: "#fbfbfd", verticalAlign: "top" }}>
+                  <td style={{ borderBottom: `1px solid ${COLORS.border}`, padding: "8px 12px", fontSize: 13, fontWeight: 600, color: COLORS.text2, background: COLORS.bg, verticalAlign: "top" }}>
                     {rowLabels[ri]}
                   </td>
                 )}
@@ -86,7 +84,7 @@ export function TableInput({ item, payload, onChange }) {
                 ))}
                 {!fixed && (
                   <td style={{ borderBottom: `1px solid ${COLORS.border}`, textAlign: "center" }}>
-                    <button type="button" onClick={() => commit(rows.filter((_, i) => i !== ri))} disabled={rows.length === 1} style={{ border: "none", background: "transparent", color: rows.length === 1 ? "#d7dbe4" : COLORS.faint, cursor: rows.length === 1 ? "default" : "pointer", padding: 4 }}>
+                    <button type="button" onClick={() => commit(rows.filter((_, i) => i !== ri))} disabled={rows.length === 1} style={{ border: "none", background: "transparent", color: rows.length === 1 ? COLORS.disabled : COLORS.muted, cursor: rows.length === 1 ? "default" : "pointer", padding: 4 }}>
                       <Trash2 size={13} />
                     </button>
                   </td>
@@ -97,7 +95,7 @@ export function TableInput({ item, payload, onChange }) {
         </table>
       </div>
       {!fixed && (
-        <button type="button" onClick={() => commit([...rows, columns.map(() => "")])} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.indigo, fontWeight: 700, fontSize: 13, cursor: "pointer", padding: "8px 0 0" }}>
+        <button type="button" onClick={() => commit([...rows, columns.map(() => "")])} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.ink, fontWeight: 600, fontSize: 13, cursor: "pointer", padding: "8px 0 0" }}>
           <Plus size={14} /> Add row
         </button>
       )}
@@ -108,7 +106,7 @@ export function TableInput({ item, payload, onChange }) {
 export function ChecklistInput({ item, payload, onChange }) {
   const labels = item.checklistItems?.length ? item.checklistItems : [];
   const items = labels.map((label) => ({ label, checked: Boolean(payload?.items?.find((p) => p.label === label)?.checked) }));
-  if (labels.length === 0) return <div style={{ fontSize: 14, color: COLORS.faint, fontStyle: "italic" }}>No checklist items have been defined for this deliverable yet.</div>;
+  if (labels.length === 0) return <div style={{ fontSize: 14, color: COLORS.muted, fontStyle: "italic" }}>No checklist items have been defined for this deliverable yet.</div>;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       {items.map((it, i) => (
@@ -116,10 +114,10 @@ export function ChecklistInput({ item, payload, onChange }) {
           key={i}
           type="button"
           onClick={() => onChange({ items: items.map((x, j) => (j === i ? { ...x, checked: !x.checked } : x)) })}
-          style={{ display: "flex", alignItems: "center", gap: 9, border: `1px solid ${it.checked ? COLORS.indigoBorder : COLORS.border}`, borderRadius: 10, padding: "10px 12px", background: it.checked ? COLORS.indigoSoft : "#fff", cursor: "pointer", textAlign: "left" }}
+          style={{ display: "flex", alignItems: "center", gap: 9, border: `1px solid ${it.checked ? COLORS.border2 : COLORS.border}`, padding: "10px 12px", background: it.checked ? COLORS.bg : COLORS.white, cursor: "pointer", textAlign: "left" }}
         >
-          {it.checked ? <CheckSquare size={16} color={COLORS.indigo} strokeWidth={2.5} /> : <Square size={16} color={COLORS.faint} strokeWidth={2.25} />}
-          <span style={{ fontSize: 14, fontWeight: 600, color: it.checked ? COLORS.text : COLORS.sub }}>{it.label}</span>
+          {it.checked ? <CheckSquare size={16} color={COLORS.ink} strokeWidth={2} /> : <Square size={16} color={COLORS.muted} strokeWidth={2} />}
+          <span style={{ fontSize: 14, fontWeight: 600, color: it.checked ? COLORS.ink : COLORS.text2 }}>{it.label}</span>
         </button>
       ))}
     </div>
@@ -144,22 +142,22 @@ export function LinkInput({ payload, onChange }) {
     <div>
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         <div style={{ position: "relative", flex: 1 }}>
-          <Link2 size={15} color={COLORS.faint} style={{ position: "absolute", left: 14, top: 16 }} />
+          <Link2 size={15} color={COLORS.muted} style={{ position: "absolute", left: 14, top: 16 }} />
           <input
             type="url"
             value={url}
             onChange={(e) => onChange({ url: e.target.value })}
             placeholder="https://docs.google.com/..."
-            style={{ ...inputBox, paddingLeft: 38, borderColor: valid ? COLORS.border : COLORS.redBorder }}
+            style={{ ...inputBox, paddingLeft: 38, borderColor: valid ? COLORS.border : COLORS.errorBorder }}
           />
         </div>
         {isValidUrl(url) && (
-          <a href={url} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 14, color: "#fff", background: COLORS.indigo, fontWeight: 700, textDecoration: "none", borderRadius: 12, padding: "13px 16px", whiteSpace: "nowrap" }}>
+          <a href={url} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 14, color: COLORS.white, background: COLORS.ink, fontWeight: 600, textDecoration: "none", padding: "13px 16px", whiteSpace: "nowrap" }}>
             Open <ExternalLink size={14} />
           </a>
         )}
       </div>
-      <div style={{ fontSize: 12, color: valid ? COLORS.faint : COLORS.red, marginTop: 8 }}>
+      <div style={{ fontSize: 12, color: valid ? COLORS.muted : COLORS.errorText, marginTop: 8 }}>
         {valid ? "Make sure the link is shared so anyone with it can view." : "That does not look like a web address. It should start with https://"}
       </div>
     </div>
@@ -179,7 +177,7 @@ export function isPayloadEmpty(type, payload) {
 export function PayloadView({ type, payload, emptyLabel = "Not submitted yet." }) {
   if (isPayloadEmpty(type, payload) && type !== "checklist") {
     return (
-      <div style={{ border: `1px dashed ${COLORS.border}`, borderRadius: 12, padding: "12px 14px", fontSize: 13.5, fontWeight: 600, color: COLORS.faint, fontStyle: "italic" }}>
+      <div style={{ border: `1px dashed ${COLORS.border}`, padding: "12px 14px", fontSize: 13.5, fontWeight: 600, color: COLORS.muted, fontStyle: "italic" }}>
         {emptyLabel}
       </div>
     );
@@ -187,7 +185,7 @@ export function PayloadView({ type, payload, emptyLabel = "Not submitted yet." }
 
   if (type === "text") {
     return (
-      <div style={{ background: "#fbfbfd", border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "12px 14px", fontSize: 14, color: COLORS.text, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>
+      <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, padding: "12px 14px", fontSize: 14, color: COLORS.ink, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>
         {payload.text}
       </div>
     );
@@ -197,9 +195,9 @@ export function PayloadView({ type, payload, emptyLabel = "Not submitted yet." }
     const columns = payload.columns || [];
     const rows = payload.rows || [];
     const rowLabels = payload.rowLabels || [];
-    const th = { textAlign: "left", fontSize: 12, fontWeight: 800, color: COLORS.indigo, background: COLORS.indigoSoft, padding: "8px 12px", borderBottom: `1px solid ${COLORS.border}` };
+    const th = { textAlign: "left", fontSize: 12, fontWeight: 600, color: COLORS.ink, background: COLORS.bg, padding: "8px 12px", borderBottom: `1px solid ${COLORS.border}` };
     return (
-      <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 12, overflow: "auto", background: "#fff" }}>
+      <div style={{ border: `1px solid ${COLORS.border}`, overflow: "auto", background: COLORS.surface }}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr>
@@ -217,10 +215,10 @@ export function PayloadView({ type, payload, emptyLabel = "Not submitted yet." }
               return (
                 <tr key={ri}>
                   {rowLabels.length > 0 && (
-                    <td style={{ fontSize: 13, fontWeight: 800, color: COLORS.sub, background: "#fbfbfd", padding: "8px 12px", borderBottom: last ? "none" : `1px solid ${COLORS.border}` }}>{rowLabels[ri]}</td>
+                    <td style={{ fontSize: 13, fontWeight: 600, color: COLORS.text2, background: COLORS.bg, padding: "8px 12px", borderBottom: last ? "none" : `1px solid ${COLORS.border}` }}>{rowLabels[ri]}</td>
                   )}
                   {columns.map((_, ci) => (
-                    <td key={ci} style={{ fontSize: 13.5, color: COLORS.text, padding: "8px 12px", borderBottom: last ? "none" : `1px solid ${COLORS.border}` }}>
+                    <td key={ci} style={{ fontSize: 13.5, color: COLORS.ink, padding: "8px 12px", borderBottom: last ? "none" : `1px solid ${COLORS.border}` }}>
                       {row[ci] || ""}
                     </td>
                   ))}
@@ -235,13 +233,13 @@ export function PayloadView({ type, payload, emptyLabel = "Not submitted yet." }
 
   if (type === "checklist") {
     const items = payload?.items || [];
-    if (items.length === 0) return <div style={{ fontSize: 13.5, color: COLORS.faint, fontStyle: "italic" }}>{emptyLabel}</div>;
+    if (items.length === 0) return <div style={{ fontSize: 13.5, color: COLORS.muted, fontStyle: "italic" }}>{emptyLabel}</div>;
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         {items.map((item, i) => (
-          <div key={i} style={{ display: "flex", alignItems: "center", gap: 9, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "8px 12px", background: item.checked ? COLORS.indigoSoft : "#fff" }}>
-            {item.checked ? <CheckSquare size={15} color={COLORS.indigo} strokeWidth={2.5} /> : <Square size={15} color={COLORS.faint} strokeWidth={2.25} />}
-            <span style={{ fontSize: 13.5, fontWeight: 600, color: item.checked ? COLORS.text : COLORS.sub }}>{item.label}</span>
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 9, border: `1px solid ${COLORS.border}`, padding: "8px 12px", background: item.checked ? COLORS.bg : COLORS.white }}>
+            {item.checked ? <CheckSquare size={15} color={COLORS.ink} strokeWidth={2} /> : <Square size={15} color={COLORS.muted} strokeWidth={2} />}
+            <span style={{ fontSize: 13.5, fontWeight: 600, color: item.checked ? COLORS.ink : COLORS.text2 }}>{item.label}</span>
           </div>
         ))}
       </div>
@@ -254,11 +252,11 @@ export function PayloadView({ type, payload, emptyLabel = "Not submitted yet." }
         href={payload.url}
         target="_blank"
         rel="noreferrer"
-        style={{ display: "flex", alignItems: "center", gap: 9, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "10px 14px", background: "#fbfbfd", textDecoration: "none", minWidth: 0 }}
+        style={{ display: "flex", alignItems: "center", gap: 9, border: `1px solid ${COLORS.border}`, padding: "10px 14px", background: COLORS.bg, textDecoration: "none", minWidth: 0 }}
       >
-        <Link2 size={15} color={COLORS.indigo} />
-        <span style={{ fontSize: 13.5, fontWeight: 700, color: COLORS.indigo, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{payload.url}</span>
-        <ExternalLink size={14} color={COLORS.faint} />
+        <Link2 size={15} color={COLORS.ink} />
+        <span style={{ fontSize: 13.5, fontWeight: 600, color: COLORS.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{payload.url}</span>
+        <ExternalLink size={14} color={COLORS.muted} />
       </a>
     );
   }
@@ -269,9 +267,9 @@ export function PayloadView({ type, payload, emptyLabel = "Not submitted yet." }
 export function ExampleBlock({ item }) {
   const empty = isPayloadEmpty(item.type, item.example);
   return (
-    <div style={{ background: "#f7f8fb", border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "14px 16px" }}>
-      <div style={{ fontSize: 12, fontWeight: 800, color: COLORS.faint, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 8 }}>Example</div>
-      {empty ? <div style={{ fontSize: 14, color: COLORS.faint, fontStyle: "italic" }}>No example added yet.</div> : <PayloadView type={item.type} payload={item.example} />}
+    <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, padding: "14px 16px" }}>
+      <div style={{ fontSize: 12, fontWeight: 600, color: COLORS.muted, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 8 }}>Example</div>
+      {empty ? <div style={{ fontSize: 14, color: COLORS.muted, fontStyle: "italic" }}>No example added yet.</div> : <PayloadView type={item.type} payload={item.example} />}
     </div>
   );
 }
@@ -289,16 +287,16 @@ export function DeliverableInput({ item, payload, onChange }) {
 export function DeliverablePreview({ item }) {
   const [payload, setPayload] = useState(null);
   return (
-    <div style={{ border: `1px dashed ${COLORS.indigoBorder}`, background: "#fbfbfd", borderRadius: 14, padding: 16 }}>
+    <div style={{ border: `1px dashed ${COLORS.border2}`, background: COLORS.bg, padding: 16 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
-        <div style={{ fontSize: 11.5, fontWeight: 800, color: COLORS.indigo, textTransform: "uppercase", letterSpacing: 0.4 }}>Student preview · interactive, not saved</div>
+        <div style={{ fontSize: 11.5, fontWeight: 600, color: COLORS.ink, textTransform: "uppercase", letterSpacing: "0.12em" }}>Student preview · interactive, not saved</div>
         {payload && (
-          <button type="button" onClick={() => setPayload(null)} style={{ border: "none", background: "transparent", color: COLORS.faint, fontWeight: 700, fontSize: 12, cursor: "pointer", padding: 0 }}>
+          <button type="button" onClick={() => setPayload(null)} style={{ border: "none", background: "transparent", color: COLORS.muted, fontWeight: 600, fontSize: 12, cursor: "pointer", padding: 0 }}>
             Reset
           </button>
         )}
       </div>
-      {item.instructions && <div style={{ fontSize: 14, color: COLORS.sub, lineHeight: 1.55, marginBottom: 12 }}>{item.instructions}</div>}
+      {item.instructions && <div style={{ fontSize: 14, color: COLORS.text2, lineHeight: 1.55, marginBottom: 12 }}>{item.instructions}</div>}
       <DeliverableInput item={item} payload={payload} onChange={setPayload} />
     </div>
   );

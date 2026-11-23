@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
-import { BookOpen } from "lucide-react";
 import { getCurrentUser, authMode } from "@/lib/auth";
 import { GoogleSignInButton } from "@/components/GoogleButtons";
+import { COLORS } from "@/lib/tokens";
 
 export default async function SignInPage({ searchParams }) {
   const params = await searchParams;
@@ -12,17 +12,18 @@ export default async function SignInPage({ searchParams }) {
   if (user) redirect(callbackUrl);
 
   return (
-    <div style={{ maxWidth: 440, margin: "80px auto", padding: "0 24px" }}>
-      <div style={{ background: "#fff", border: "1px solid #eef1f6", borderRadius: 20, padding: 32, textAlign: "center" }}>
-        <div style={{ width: 52, height: 52, borderRadius: 14, background: "#4f46e5", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
-          <BookOpen size={24} color="#fff" strokeWidth={2.25} />
+    <div style={{ maxWidth: 480, margin: "64px auto", padding: "0 20px" }}>
+      <div className="eib-card eib-card--feature" style={{ textAlign: "center" }}>
+        <div className="eib-eyebrow" style={{ marginBottom: 10 }}>
+          Sign in
         </div>
-        <div style={{ fontSize: 24, fontWeight: 800, color: "#0f1222", marginBottom: 8 }}>EIB Platform</div>
-        <div style={{ fontSize: 14.5, color: "#64748b", lineHeight: 1.6, marginBottom: 22 }}>
+        <h1 className="eib-h2">EIB Platform</h1>
+        <hr className="eib-rule" style={{ marginLeft: "auto", marginRight: "auto" }} />
+        <div style={{ fontSize: 15, color: COLORS.text2, lineHeight: 1.6, marginBottom: 24 }}>
           Sign in with the Google account that was added to EIB. Students, student leaders and admins all sign in here.
         </div>
         <GoogleSignInButton callbackUrl={callbackUrl} style={{ width: "100%" }} />
-        <div style={{ fontSize: 12.5, color: "#94a3b8", marginTop: 16, lineHeight: 1.5 }}>
+        <div style={{ fontSize: 13, color: COLORS.muted, marginTop: 16, lineHeight: 1.5 }}>
           Applying to EIB? Use the application link you were sent instead.
         </div>
       </div>

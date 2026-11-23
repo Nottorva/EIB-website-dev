@@ -33,7 +33,7 @@ const SEARCHING = "[[searching]]";
 const visible = (content) => String(content).replaceAll(SEARCHING, "").replace(CARD, "").replace(/\[\[[^\]]*\]?$/, "").replace(/\n{3,}/g, "\n\n").trim();
 // Text with its web addresses as links.
 const LINK = /(https?:\/\/[^\s<>"]+[^\s<>".,;:!?)\]])/;
-const linked = (str) => (LINK.test(str) ? str.split(LINK).map((part, i) => (i % 2 ? <a key={i} href={part} target="_blank" rel="noopener noreferrer" style={{ color: COLORS.indigo }}>{part}</a> : part)) : str);
+const linked = (str) => (LINK.test(str) ? str.split(LINK).map((part, i) => (i % 2 ? <a key={i} href={part} target="_blank" rel="noopener noreferrer" style={{ color: COLORS.ink }}>{part}</a> : part)) : str);
 const shownIn = (content) => [...new Set([...String(content).matchAll(CARD)].map((m) => m[1]))];
 // The deliverables AIDA wrote out in a reply (finished ones only).
 const draftedIn = (content) => splitReply(content).filter((p) => p.draft?.done).map((p) => p.draft.id);
@@ -41,7 +41,7 @@ const draftedIn = (content) => splitReply(content).filter((p) => p.draft?.done).
 /* A deliverable AIDA wrote out: the answer as it will look, and the button that puts it in. */
 function Draft({ draft, d, onAdd }) {
   const payload = d?.item ? draftPayload(d.item, draft.body) : null;
-  const box = { border: `1px solid ${COLORS.indigoBorder}`, borderRadius: 12, padding: 10, margin: "8px 0", background: COLORS.indigoSoft };
+  const box = { border: `1px solid ${COLORS.border2}`, padding: 10, margin: "8px 0", background: COLORS.bg };
   // Still being written, or not something a button can put in: plain text.
   if (!payload) return <div style={box}>{draft.body}</div>;
   const isIn = sameAnswer(d.item, d.payload, payload);
@@ -50,7 +50,7 @@ function Draft({ draft, d, onAdd }) {
     <div style={box} data-draft={draft.id}>
       {d.item.type === "table" ? <PayloadView type="table" payload={payload} /> : <div>{payload.text}</div>}
       {draft.done && d.apply && (
-        <button type="button" disabled={isIn} onClick={() => onAdd(draft.id, payload)} style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 10, border: "none", borderRadius: 10, padding: "8px 13px", fontSize: 13.5, fontWeight: 800, fontFamily: "inherit", cursor: isIn ? "default" : "pointer", background: isIn ? "transparent" : COLORS.indigo, color: isIn ? COLORS.indigo : "#fff" }}>
+        <button type="button" disabled={isIn} onClick={() => onAdd(draft.id, payload)} style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 10, border: "none", padding: "8px 13px", fontSize: 13.5, fontWeight: 600, fontFamily: "inherit", cursor: isIn ? "default" : "pointer", background: isIn ? "transparent" : COLORS.ink, color: isIn ? COLORS.ink : COLORS.white }}>
           {isIn ? <Check size={15} /> : <FilePlus2 size={15} />}
           {isIn ? `Added to ${d.label}` : hasOther ? `Replace ${d.label} with this` : `Add to ${d.label}`}
         </button>
@@ -74,21 +74,21 @@ function Catalog({ catalog, startOpen, active, onPick }) {
         const isOpen = openGroups.has(g.id);
         return (
           <div key={g.id}>
-            <button type="button" aria-expanded={isOpen} onClick={() => toggle(g.id)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", padding: "8px 6px", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
-              {isOpen ? <ChevronDown size={15} color={COLORS.sub} /> : <ChevronRight size={15} color={COLORS.sub} />}
+            <button type="button" aria-expanded={isOpen} onClick={() => toggle(g.id)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", padding: "8px 6px", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+              {isOpen ? <ChevronDown size={15} color={COLORS.text2} /> : <ChevronRight size={15} color={COLORS.text2} />}
               <span style={{ minWidth: 0 }}>
-                <span style={{ display: "block", fontSize: 13.5, fontWeight: 800, color: COLORS.text }}>{g.label}</span>
-                <span style={{ display: "block", fontSize: 12, color: COLORS.faint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.title}</span>
+                <span style={{ display: "block", fontSize: 13.5, fontWeight: 600, color: COLORS.ink }}>{g.label}</span>
+                <span style={{ display: "block", fontSize: 12, color: COLORS.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.title}</span>
               </span>
             </button>
             {isOpen && (
               <div style={{ display: "flex", flexDirection: "column", gap: 2, margin: "0 0 6px 21px" }}>
-                {g.items.length === 0 && <span style={{ fontSize: 12.5, color: COLORS.faint, padding: "4px 8px" }}>No deliverables.</span>}
+                {g.items.length === 0 && <span style={{ fontSize: 12.5, color: COLORS.muted, padding: "4px 8px" }}>No deliverables.</span>}
                 {g.items.map((d) => {
                   const on = active.includes(d.id);
                   return (
-                    <button key={d.id} type="button" aria-pressed={on} title={on ? "Remove from the chat" : "Bring into the chat"} onClick={() => onPick(d.id)} style={{ display: "flex", alignItems: "baseline", gap: 8, border: "none", borderRadius: 8, padding: "6px 8px", cursor: "pointer", fontFamily: "inherit", textAlign: "left", background: on ? COLORS.indigoSoft : "transparent", color: on ? COLORS.indigo : COLORS.text }}>
-                      <span style={{ fontSize: 12.5, fontWeight: 800, color: COLORS.indigo, flexShrink: 0 }}>{d.label}</span>
+                    <button key={d.id} type="button" aria-pressed={on} title={on ? "Remove from the chat" : "Bring into the chat"} onClick={() => onPick(d.id)} style={{ display: "flex", alignItems: "baseline", gap: 8, border: "none", padding: "6px 8px", cursor: "pointer", fontFamily: "inherit", textAlign: "left", background: on ? COLORS.bg : "transparent", color: on ? COLORS.ink : COLORS.ink }}>
+                      <span style={{ fontSize: 12.5, fontWeight: 600, color: COLORS.ink, flexShrink: 0 }}>{d.label}</span>
                       <span style={{ fontSize: 13, lineHeight: 1.35 }}>{d.title}</span>
                     </button>
                   );
@@ -209,9 +209,9 @@ export default function AidaChat({ messages, setMessages, post, emptyHint, disab
     const waiting = searching ? "Searching the web…" : writing ? "AIDA is thinking…" : deliverableOf ? "Your deliverables are just above the reply box." : "";
     return (
       <div key={i} style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start" }}>
-        <div style={{ maxWidth: "min(88%, 760px)", padding: "11px 14px", borderRadius: 14, fontSize: "var(--aida-text-size, 14.5px)", lineHeight: 1.55, whiteSpace: "pre-wrap", overflowWrap: "anywhere", background: mine ? COLORS.indigo : "#fff", color: mine ? "#fff" : COLORS.text, border: mine ? "none" : `1px solid ${COLORS.border}` }}>
+        <div style={{ maxWidth: "min(88%, 760px)", padding: "11px 14px", fontSize: "var(--aida-text-size, 14.5px)", lineHeight: 1.55, whiteSpace: "pre-wrap", overflowWrap: "anywhere", background: mine ? COLORS.ink : COLORS.white, color: mine ? COLORS.white : COLORS.ink, border: mine ? "none" : `1px solid ${COLORS.border}` }}>
           {shown}
-          {(!shown || searching) && waiting && <span style={{ color: COLORS.faint, display: "block", marginTop: shown ? 8 : 0 }}>{waiting}</span>}
+          {(!shown || searching) && waiting && <span style={{ color: COLORS.muted, display: "block", marginTop: shown ? 8 : 0 }}>{waiting}</span>}
         </div>
       </div>
     );
@@ -224,7 +224,7 @@ export default function AidaChat({ messages, setMessages, post, emptyHint, disab
       onClick={onClick}
       disabled={disabled}
       aria-label={label || "Send"}
-      style={{ height: 44, minWidth: 44, flexShrink: 0, borderRadius: 12, border: "none", padding: label ? "0 16px" : 0, background: COLORS.indigo, color: "#fff", fontSize: 14, fontWeight: 800, fontFamily: "inherit", cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.5 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+      style={{ height: 44, minWidth: 44, flexShrink: 0, border: "none", padding: label ? "0 16px" : 0, background: COLORS.ink, color: COLORS.white, fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.5 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
     >
       {label} <Send size={label ? 16 : 18} />
     </button>
@@ -235,16 +235,16 @@ export default function AidaChat({ messages, setMessages, post, emptyHint, disab
   return (
     <div style={{ display: "flex", minHeight: 0, flex: 1 }}>
       {hasList && wide && (
-        <nav aria-label="Deliverables" style={{ width: 250, flexShrink: 0, borderRight: `1px solid ${COLORS.border}`, background: "#fff", overflowY: "auto", padding: "14px 10px" }}>
-          <div style={{ fontSize: 12, fontWeight: 800, color: COLORS.sub, letterSpacing: 0.5, textTransform: "uppercase", padding: "0 6px 8px" }}>Deliverables</div>
+        <nav aria-label="Deliverables" style={{ width: 250, flexShrink: 0, borderRight: `1px solid ${COLORS.border}`, background: COLORS.surface, overflowY: "auto", padding: "14px 10px" }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: COLORS.text2, letterSpacing: "0.12em", textTransform: "uppercase", padding: "0 6px 8px" }}>Deliverables</div>
           {list}
         </nav>
       )}
       <div style={{ display: "flex", flexDirection: "column", minHeight: 0, minWidth: 0, flex: 1 }}>
         <div aria-live="polite" style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10, padding: "16px 16px 8px", background: COLORS.bg }}>
           {messages.length === 0 && (
-            <div style={{ margin: "auto", textAlign: "center", color: COLORS.faint, fontSize: 14, lineHeight: 1.55, maxWidth: 380 }}>
-              <Sparkles size={22} color={COLORS.indigo} style={{ marginBottom: 8 }} />
+            <div style={{ margin: "auto", textAlign: "center", color: COLORS.muted, fontSize: 14, lineHeight: 1.55, maxWidth: 380 }}>
+              <Sparkles size={22} color={COLORS.ink} style={{ marginBottom: 8 }} />
               <div>{emptyHint}</div>
             </div>
           )}
@@ -252,24 +252,24 @@ export default function AidaChat({ messages, setMessages, post, emptyHint, disab
           <div ref={endRef} />
         </div>
 
-        <div style={{ padding: "10px 16px max(14px, env(safe-area-inset-bottom))", borderTop: `1px solid ${COLORS.border}`, background: "#fff" }}>
+        <div style={{ padding: "10px 16px max(14px, env(safe-area-inset-bottom))", borderTop: `1px solid ${COLORS.border}`, background: COLORS.surface }}>
           {error && <div style={{ marginBottom: 8 }}><Notice onClose={() => setError(null)}>{error}</Notice></div>}
           {disabledReason && <div style={{ marginBottom: 8 }}><Notice tone="amber">{disabledReason}</Notice></div>}
 
           {hasList && !wide && listOpen && (
-            <nav aria-label="Deliverables" style={{ border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: 8, marginBottom: 10, maxHeight: "40vh", overflowY: "auto" }}>{list}</nav>
+            <nav aria-label="Deliverables" style={{ border: `1px solid ${COLORS.border}`, padding: 8, marginBottom: 10, maxHeight: "40vh", overflowY: "auto" }}>{list}</nav>
           )}
           {(buttons.length > 0 || (hasList && !wide)) && (
             <div aria-label="Deliverables in this chat" style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
               {hasList && !wide && (
-                <button type="button" aria-expanded={listOpen} onClick={() => setListOpen((v) => !v)} style={{ display: "flex", alignItems: "center", gap: 6, border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.text, borderRadius: 10, padding: "7px 11px", fontSize: 13, fontWeight: 800, fontFamily: "inherit", cursor: "pointer" }}>
+                <button type="button" aria-expanded={listOpen} onClick={() => setListOpen((v) => !v)} style={{ display: "flex", alignItems: "center", gap: 6, border: `1px solid ${COLORS.border}`, background: COLORS.surface, color: COLORS.ink, padding: "7px 11px", fontSize: 13, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
                   <ListChecks size={15} /> Deliverables {listOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                 </button>
               )}
               {buttons.map((d) => {
                 const on = open?.id === d.id;
                 return (
-                  <button key={d.id} type="button" data-deliverable={d.id} title={d.title} aria-pressed={on} disabled={!d.editor} onClick={() => openButton(d)} style={{ display: "flex", alignItems: "center", gap: 7, maxWidth: "100%", border: `1px solid ${on ? COLORS.indigo : COLORS.indigoBorder}`, background: on ? COLORS.indigo : COLORS.indigoSoft, color: on ? "#fff" : COLORS.indigo, borderRadius: 10, padding: "7px 11px", fontSize: 13, fontWeight: 800, fontFamily: "inherit", cursor: d.editor ? "pointer" : "default" }}>
+                  <button key={d.id} type="button" data-deliverable={d.id} title={d.title} aria-pressed={on} disabled={!d.editor} onClick={() => openButton(d)} style={{ display: "flex", alignItems: "center", gap: 7, maxWidth: "100%", border: `1px solid ${on ? COLORS.ink : COLORS.border2}`, background: on ? COLORS.ink : COLORS.bg, color: on ? COLORS.white : COLORS.ink, padding: "7px 11px", fontSize: 13, fontWeight: 600, fontFamily: "inherit", cursor: d.editor ? "pointer" : "default" }}>
                     {d.label}
                     <span style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 170 }}>{d.title}</span>
                   </button>
@@ -279,19 +279,19 @@ export default function AidaChat({ messages, setMessages, post, emptyHint, disab
           )}
 
           {open ? (
-            <div style={{ border: `1px solid ${COLORS.indigoBorder}`, borderRadius: 14, padding: 12 }}>
+            <div style={{ border: `1px solid ${COLORS.border2}`, padding: 12 }}>
               <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: COLORS.text }}>{open.label} · {open.title}</div>
-                  {open.task && <div style={{ fontSize: 12.5, color: COLORS.sub, lineHeight: 1.45, marginTop: 2 }}>{open.task}</div>}
+                  <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.ink }}>{open.label} · {open.title}</div>
+                  {open.task && <div style={{ fontSize: 12.5, color: COLORS.text2, lineHeight: 1.45, marginTop: 2 }}>{open.task}</div>}
                 </div>
-                <button type="button" onClick={() => setOpenId(null)} aria-label="Back to the message box" title="Back to the message box" style={{ border: "none", background: "transparent", cursor: "pointer", color: COLORS.sub, padding: 2, display: "flex" }}>
+                <button type="button" onClick={() => setOpenId(null)} aria-label="Back to the message box" title="Back to the message box" style={{ border: "none", background: "transparent", cursor: "pointer", color: COLORS.text2, padding: 2, display: "flex" }}>
                   <X size={18} />
                 </button>
               </div>
               <div style={{ maxHeight: "38vh", overflow: "auto" }}>{open.editor}</div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginTop: 10 }}>
-                <span style={{ fontSize: 12, color: COLORS.faint }}>{editorNote}</span>
+                <span style={{ fontSize: 12, color: COLORS.muted }}>{editorNote}</span>
                 {sendButton("Submit to AIDA", submit, busy || off)}
               </div>
             </div>

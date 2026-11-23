@@ -10,7 +10,7 @@
 
 import React, { useRef, useState } from "react";
 import { ArrowLeft, Plus, Search, Clock, MapPin, ExternalLink, UserCheck, X, BookOpen, CalendarDays, GripVertical, Trash2 } from "lucide-react";
-import { COLORS, Avatar, EmptyState, EditableInput, EditableTextarea, SegmentedTabs } from "./ui";
+import { COLORS, FONTS, Avatar, EmptyState, EditableInput, EditableTextarea, SegmentedTabs } from "./ui";
 import { MENTOR_DEFAULTS, mentorSeats, mentorWhere, mentorWhen } from "@/lib/sessionDefaults";
 
 // The mentors on a lesson this cohort year, in CRM order. The lesson's
@@ -133,14 +133,14 @@ export default function SessionsTab({ user, lessons, events, mentors, cohortYear
   return (
     <div style={{ maxWidth: 720, margin: "0 auto" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, margin: "0 0 12px", flexWrap: "wrap" }}>
-        <div style={{ fontSize: 12.5, color: COLORS.faint }}>
+        <div style={{ fontSize: 12.5, color: COLORS.muted }}>
           {canEdit ? "Lessons come from the Lesson Editor (\"Yes Mentor\"). Events are CRM-only: add one and drag it into place." : "Sessions and events that need a mentor this year."}
         </div>
         {canEdit && (
           <button
             type="button"
             onClick={onAddEvent}
-            style={{ display: "flex", alignItems: "center", gap: 6, border: `1px solid ${COLORS.indigoBorder}`, background: COLORS.indigoSoft, color: COLORS.indigo, fontWeight: 800, fontSize: 13, borderRadius: 999, padding: "7px 14px", cursor: "pointer", fontFamily: "inherit" }}
+            style={{ display: "flex", alignItems: "center", gap: 6, border: `1px solid ${COLORS.border2}`, background: COLORS.bg, color: COLORS.ink, fontWeight: 600, fontSize: 13, padding: "7px 14px", cursor: "pointer", fontFamily: "inherit" }}
           >
             <CalendarDays size={14} /> Add event
           </button>
@@ -149,7 +149,7 @@ export default function SessionsTab({ user, lessons, events, mentors, cohortYear
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {items.length === 0 && <EmptyState>No lessons are flagged "Yes Mentor" yet, and no events have been added.</EmptyState>}
         {items.map((it, index) => {
-          const indicator = over === index && dragId != null ? { boxShadow: `0 -3px 0 0 ${COLORS.indigo}` } : {};
+          const indicator = over === index && dragId != null ? { boxShadow: `0 -3px 0 0 ${COLORS.ink}` } : {};
           if (it.kind === "lesson") {
             const l = it.lesson;
             const owners = ownersOfLesson(mentors, l.number, cohortYear);
@@ -158,13 +158,13 @@ export default function SessionsTab({ user, lessons, events, mentors, cohortYear
                 key={it.id}
                 {...dragProps(index)}
                 onClick={() => setOpen({ kind: "lesson", id: l.id })}
-                style={{ display: "flex", alignItems: "center", gap: 14, background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: "12px 16px", cursor: "pointer", ...indicator }}
+                style={{ display: "flex", alignItems: "center", gap: 14, background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: "12px 16px", cursor: "pointer", ...indicator }}
               >
-                <div style={{ width: 44, height: 44, borderRadius: 12, background: COLORS.amberSoft, color: COLORS.amber, fontWeight: 900, fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <div style={{ width: 44, height: 44, background: COLORS.warnBg, color: COLORS.warnText, fontWeight: 600, fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   {l.number}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.text }}>{l.title || "Untitled lesson"}</div>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: COLORS.ink }}>{l.title || "Untitled lesson"}</div>
                   <Meta date={l.date} when={mentorWhen(l)} where={mentorWhere(l)} />
                 </div>
                 {owners.length === 1 ? <Person mentor={owners[0]} /> : owners.length ? <People people={owners} /> : <NoOne>{mentorSeats(l) === 2 ? "No mentors yet" : "No mentor yet"}</NoOne>}
@@ -183,16 +183,16 @@ export default function SessionsTab({ user, lessons, events, mentors, cohortYear
               {...dragProps(index)}
               onClick={() => setOpen({ kind: "event", id: ev.id })}
               data-event-id={ev.id}
-              style={{ display: "flex", alignItems: "center", gap: 14, background: COLORS.indigoSoft, border: `1px solid ${COLORS.indigoBorder}`, borderRadius: 14, padding: "12px 16px", cursor: canEdit ? "grab" : "pointer", opacity: dragId === ev.id ? 0.5 : 1, ...indicator }}
+              style={{ display: "flex", alignItems: "center", gap: 14, background: COLORS.bg, border: `1px solid ${COLORS.border2}`, padding: "12px 16px", cursor: canEdit ? "grab" : "pointer", opacity: dragId === ev.id ? 0.5 : 1, ...indicator }}
             >
-              {canEdit && <GripVertical size={16} color={COLORS.indigo} style={{ flexShrink: 0, marginLeft: -6, opacity: 0.7 }} />}
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: "#fff", color: COLORS.indigo, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              {canEdit && <GripVertical size={16} color={COLORS.ink} style={{ flexShrink: 0, marginLeft: -6, opacity: 0.7 }} />}
+              <div style={{ width: 44, height: 44, background: COLORS.surface, color: COLORS.ink, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                 <CalendarDays size={20} />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 15, fontWeight: 800, color: COLORS.text }}>{ev.title || "Untitled event"}</span>
-                  <span style={{ fontSize: 10.5, fontWeight: 800, color: COLORS.indigo, background: "#fff", border: `1px solid ${COLORS.indigoBorder}`, borderRadius: 999, padding: "1px 7px", letterSpacing: 0.5 }}>EVENT</span>
+                  <span style={{ fontSize: 15, fontWeight: 600, color: COLORS.ink }}>{ev.title || "Untitled event"}</span>
+                  <span style={{ fontSize: 10.5, fontWeight: 600, color: COLORS.ink, background: COLORS.surface, border: `1px solid ${COLORS.border2}`, padding: "1px 7px", letterSpacing: 0.5 }}>EVENT</span>
                 </div>
                 <Meta date={ev.date} when={whenText(ev)} where={whereText(ev, "Place to be set")} />
               </div>
@@ -201,7 +201,7 @@ export default function SessionsTab({ user, lessons, events, mentors, cohortYear
           );
         })}
         {canEdit && dragId != null && (
-          <div {...dragProps(items.length)} style={{ height: 36, borderRadius: 12, border: `1px dashed ${over === items.length ? COLORS.indigo : COLORS.indigoBorder}`, background: over === items.length ? COLORS.indigoSoft : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: COLORS.indigo, fontWeight: 700 }}>
+          <div {...dragProps(items.length)} style={{ height: 36, border: `1px dashed ${over === items.length ? COLORS.ink : COLORS.border2}`, background: over === items.length ? COLORS.bg : "transparent", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: COLORS.ink, fontWeight: 600 }}>
             Drop here to put it last
           </div>
         )}
@@ -212,8 +212,8 @@ export default function SessionsTab({ user, lessons, events, mentors, cohortYear
 
 function Meta({ date, when, where }) {
   return (
-    <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 3, fontSize: 12.5, color: COLORS.faint, fontWeight: 600 }}>
-      {date && <span style={{ display: "flex", alignItems: "center", gap: 4, color: COLORS.indigo }}><CalendarDays size={12} /> {date}</span>}
+    <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 3, fontSize: 12.5, color: COLORS.muted, fontWeight: 600 }}>
+      {date && <span style={{ display: "flex", alignItems: "center", gap: 4, color: COLORS.ink }}><CalendarDays size={12} /> {date}</span>}
       <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Clock size={12} /> {when}</span>
       <span style={{ display: "flex", alignItems: "center", gap: 4 }}><MapPin size={12} /> {where}</span>
     </div>
@@ -221,7 +221,7 @@ function Meta({ date, when, where }) {
 }
 function Person({ mentor }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 800, color: COLORS.text, whiteSpace: "nowrap" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: COLORS.ink, whiteSpace: "nowrap" }}>
       <Avatar name={mentor.name} size={28} /> {mentor.name}
     </div>
   );
@@ -229,10 +229,10 @@ function Person({ mentor }) {
 function People({ people }) {
   const shown = people.slice(0, 2);
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 800, color: COLORS.text, whiteSpace: "nowrap" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: COLORS.ink, whiteSpace: "nowrap" }}>
       <span style={{ display: "flex" }}>
         {people.slice(0, 3).map((m, i) => (
-          <span key={m.id} style={{ marginLeft: i ? -8 : 0, border: "2px solid #fff", borderRadius: 999, display: "flex" }}><Avatar name={m.name} size={28} /></span>
+          <span key={m.id} style={{ marginLeft: i ? -8 : 0, border: `2px solid ${COLORS.surface}`, display: "flex" }}><Avatar name={m.name} size={28} /></span>
         ))}
       </span>
       {shown.map((m) => m.name.split(" ")[0]).join(", ")}{people.length > 2 ? ` +${people.length - 2}` : ""}
@@ -240,7 +240,7 @@ function People({ people }) {
   );
 }
 function NoOne({ children }) {
-  return <span style={{ fontSize: 12, fontWeight: 800, color: COLORS.faint, border: `1px dashed ${COLORS.border}`, borderRadius: 999, padding: "4px 10px", whiteSpace: "nowrap", background: "#fff" }}>{children}</span>;
+  return <span style={{ fontSize: 12, fontWeight: 600, color: COLORS.muted, border: `1px dashed ${COLORS.border}`, padding: "4px 10px", whiteSpace: "nowrap", background: COLORS.surface }}>{children}</span>;
 }
 
 /* ---------- One session ---------- */
@@ -262,9 +262,9 @@ function SessionDetail({ lesson, mentors, cohortYear, statuses, canEdit, onBack,
   return (
     <div style={{ maxWidth: 720, margin: "0 auto" }}>
       <BackRow onBack={onBack} />
-      <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 20, marginBottom: 22 }}>
-        <div style={{ fontSize: 11.5, fontWeight: 800, color: COLORS.amber, letterSpacing: 0.5, textTransform: "uppercase" }}>{kicker(lesson)}</div>
-        <div style={{ fontSize: 21, fontWeight: 900, color: COLORS.text, marginTop: 4 }}>{lesson.title || "Untitled lesson"}</div>
+      <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: 20, marginBottom: 22 }}>
+        <div style={{ fontSize: 11.5, fontWeight: 600, color: COLORS.warnText, letterSpacing: "0.12em", textTransform: "uppercase" }}>{kicker(lesson)}</div>
+        <div style={{ fontFamily: FONTS.serif, fontSize: 25, fontWeight: 600, color: COLORS.ink, marginTop: 4 }}>{lesson.title || "Untitled lesson"}</div>
       </div>
 
       <Details
@@ -320,18 +320,18 @@ function EventDetail({ event, mentors, statuses, canEdit, onBack, onPatch, onSet
         onBack={onBack}
         right={
           canEdit && (
-            <button type="button" onClick={onDelete} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.faint, fontWeight: 700, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>
+            <button type="button" onClick={onDelete} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.muted, fontWeight: 600, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>
               <Trash2 size={14} /> Delete event
             </button>
           )
         }
       />
-      <div style={{ background: COLORS.indigoSoft, border: `1px solid ${COLORS.indigoBorder}`, borderRadius: 16, padding: 20, marginBottom: 22 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11.5, fontWeight: 800, color: COLORS.indigo, letterSpacing: 0.5, textTransform: "uppercase" }}>
+      <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.border2}`, padding: 20, marginBottom: 22 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11.5, fontWeight: 600, color: COLORS.ink, letterSpacing: "0.12em", textTransform: "uppercase" }}>
           <CalendarDays size={13} /> Event
         </div>
-        <div style={{ fontSize: 21, fontWeight: 900, color: COLORS.text, marginTop: 4 }}>
-          {canEdit ? <EditableInput value={event.title} onChange={(v) => onPatch({ title: v })} placeholder="Event name" style={{ fontSize: 21, fontWeight: 900, color: COLORS.text }} /> : event.title || "Untitled event"}
+        <div style={{ fontFamily: FONTS.serif, fontSize: 25, fontWeight: 600, color: COLORS.ink, marginTop: 4 }}>
+          {canEdit ? <EditableInput value={event.title} onChange={(v) => onPatch({ title: v })} placeholder="Event name" style={{ fontFamily: FONTS.serif, fontSize: 25, fontWeight: 600, color: COLORS.ink }} /> : event.title || "Untitled event"}
         </div>
       </div>
 
@@ -363,43 +363,43 @@ function Details({ item, canEdit, onPatch, whereKey, startKey = "startTime", end
         {dateField && (
           <Field icon={CalendarDays} label="Date">
             {canEdit ? (
-              <EditableInput value={item.date} onChange={(v) => onPatch({ date: v })} placeholder={placeholders.date || "Oct 16, 2026"} style={{ fontSize: 14, fontWeight: 700, color: COLORS.text }} />
+              <EditableInput value={item.date} onChange={(v) => onPatch({ date: v })} placeholder={placeholders.date || "Oct 16, 2026"} style={{ fontSize: 14, fontWeight: 600, color: COLORS.ink }} />
             ) : (
-              <div style={{ fontSize: 14, fontWeight: 700, color: item.date ? COLORS.text : COLORS.faint }}>{item.date || "Date to be set"}</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: item.date ? COLORS.ink : COLORS.muted }}>{item.date || "Date to be set"}</div>
             )}
           </Field>
         )}
         <Field icon={Clock} label="When">
           {canEdit ? (
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <EditableInput value={item[startKey]} onChange={(v) => onPatch({ [startKey]: v })} placeholder={placeholders.start || "4:00 PM"} style={{ fontSize: 14, fontWeight: 700, color: COLORS.text, width: 92 }} />
-              <span style={{ color: COLORS.faint, fontSize: 13 }}>to</span>
-              <EditableInput value={item[endKey]} onChange={(v) => onPatch({ [endKey]: v })} placeholder={placeholders.end || "5:30 PM"} style={{ fontSize: 14, fontWeight: 700, color: COLORS.text, width: 92 }} />
+              <EditableInput value={item[startKey]} onChange={(v) => onPatch({ [startKey]: v })} placeholder={placeholders.start || "4:00 PM"} style={{ fontSize: 14, fontWeight: 600, color: COLORS.ink, width: 92 }} />
+              <span style={{ color: COLORS.muted, fontSize: 13 }}>to</span>
+              <EditableInput value={item[endKey]} onChange={(v) => onPatch({ [endKey]: v })} placeholder={placeholders.end || "5:30 PM"} style={{ fontSize: 14, fontWeight: 600, color: COLORS.ink, width: 92 }} />
             </div>
           ) : (
-            <div style={{ fontSize: 14, fontWeight: 700, color: start ? COLORS.text : COLORS.faint }}>{whenShown}</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: start ? COLORS.ink : COLORS.muted }}>{whenShown}</div>
           )}
         </Field>
         <Field icon={MapPin} label="Where">
           {canEdit ? (
-            <EditableInput value={item[whereKey]} onChange={(v) => onPatch({ [whereKey]: v })} placeholder={placeholders.where || "Room 214"} style={{ fontSize: 14, fontWeight: 700, color: COLORS.text }} />
+            <EditableInput value={item[whereKey]} onChange={(v) => onPatch({ [whereKey]: v })} placeholder={placeholders.where || "Room 214"} style={{ fontSize: 14, fontWeight: 600, color: COLORS.ink }} />
           ) : (
-            <div style={{ fontSize: 14, fontWeight: 700, color: where ? COLORS.text : COLORS.faint }}>{where || (whereKey === "location" ? "Place to be set" : "Room to be set")}</div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: where ? COLORS.ink : COLORS.muted }}>{where || (whereKey === "location" ? "Place to be set" : "Room to be set")}</div>
           )}
         </Field>
       </div>
-      <div style={{ background: "#f7f8fb", border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "10px 12px" }}>
-        <div style={{ fontSize: 11, fontWeight: 800, color: COLORS.faint, letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 6 }}>Mentor we're looking for</div>
+      <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, padding: "10px 12px" }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: COLORS.muted, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 6 }}>Mentor we're looking for</div>
         {canEdit ? (
           <EditableTextarea
             value={note}
             onChange={(v) => onPatch({ [noteKey]: v })}
             placeholder="For the advancement team: the kind of person to find, their field, their experience, what they'd do with the room..."
             rows={3}
-            style={{ fontSize: 13.5, color: COLORS.text, lineHeight: 1.5, background: "transparent" }}
+            style={{ fontSize: 13.5, color: COLORS.ink, lineHeight: 1.5, background: "transparent" }}
           />
         ) : (
-          <div style={{ fontSize: 13.5, color: note ? COLORS.text : COLORS.faint, lineHeight: 1.5, whiteSpace: "pre-wrap", fontStyle: note ? "normal" : "italic" }}>
+          <div style={{ fontSize: 13.5, color: note ? COLORS.ink : COLORS.muted, lineHeight: 1.5, whiteSpace: "pre-wrap", fontStyle: note ? "normal" : "italic" }}>
             {note || "Nothing written yet about who to find."}
           </div>
         )}
@@ -423,7 +423,7 @@ function MentorChooser({ mentors, cohortYear, excludeIds, action, onPick, onNew,
   };
 
   return (
-    <div style={{ marginTop: 12, background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 14 }}>
+    <div style={{ marginTop: 12, background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: 14 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
         <SegmentedTabs
           value="existing"
@@ -434,22 +434,22 @@ function MentorChooser({ mentors, cohortYear, excludeIds, action, onPick, onNew,
             { id: "new", label: "Add a new mentor", icon: Plus },
           ]}
         />
-        <button type="button" onClick={onClose} title="Close" style={{ border: "none", background: "transparent", color: COLORS.faint, cursor: "pointer", display: "flex", padding: 4 }}>
+        <button type="button" onClick={onClose} title="Close" style={{ border: "none", background: "transparent", color: COLORS.muted, cursor: "pointer", display: "flex", padding: 4 }}>
           <X size={16} />
         </button>
       </div>
       <div style={{ position: "relative", marginBottom: 10 }}>
-        <Search size={14} color={COLORS.faint} style={{ position: "absolute", left: 11, top: 10 }} />
+        <Search size={14} color={COLORS.muted} style={{ position: "absolute", left: 11, top: 10 }} />
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search mentors"
           autoFocus
-          style={{ width: "100%", boxSizing: "border-box", border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "8px 12px 8px 32px", fontSize: 13.5, outline: "none", fontFamily: "inherit" }}
+          style={{ width: "100%", boxSizing: "border-box", border: `1px solid ${COLORS.border}`, padding: "8px 12px 8px 32px", fontSize: 13.5, fontFamily: "inherit" }}
         />
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 320, overflowY: "auto" }}>
-        {list.length === 0 && <div style={{ fontSize: 13, color: COLORS.faint, fontStyle: "italic", padding: "6px 2px" }}>No mentors match.</div>}
+        {list.length === 0 && <div style={{ fontSize: 13, color: COLORS.muted, fontStyle: "italic", padding: "6px 2px" }}>No mentors match.</div>}
         {list.map((m) => {
           const mine = cohortYear ? (m.assignedLessons || []).filter((a) => a.cohortYear === cohortYear).map((a) => a.lessonNumber) : [];
           return (
@@ -458,18 +458,18 @@ function MentorChooser({ mentors, cohortYear, excludeIds, action, onPick, onNew,
               type="button"
               disabled={busy}
               onClick={() => run(() => onPick(m.id))}
-              style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", border: `1px solid ${COLORS.border}`, background: "#fff", borderRadius: 12, padding: "8px 12px", cursor: busy ? "default" : "pointer", fontFamily: "inherit" }}
+              style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", textAlign: "left", border: `1px solid ${COLORS.border}`, background: COLORS.surface, padding: "8px 12px", cursor: busy ? "default" : "pointer", fontFamily: "inherit" }}
             >
               <Avatar name={m.name} size={30} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 800, color: COLORS.text }}>{m.name}{m.years ? <span style={{ fontWeight: 700, marginLeft: 8 }}>{m.years}</span> : null}</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.ink }}>{m.name}{m.years ? <span style={{ fontWeight: 600, marginLeft: 8 }}>{m.years}</span> : null}</div>
                 {mine.length > 0 && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 700, color: COLORS.amber, marginTop: 2 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 600, color: COLORS.warnText, marginTop: 2 }}>
                     <BookOpen size={12} /> {mine.map((n) => `L${n}`).join(", ")}
                   </div>
                 )}
               </div>
-              <span style={{ fontSize: 12, fontWeight: 800, color: COLORS.indigo }}>{action}</span>
+              <span style={{ fontSize: 12, fontWeight: 600, color: COLORS.ink }}>{action}</span>
             </button>
           );
         })}
@@ -482,7 +482,7 @@ function MentorChooser({ mentors, cohortYear, excludeIds, action, onPick, onNew,
 function BackRow({ onBack, right }) {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-      <button type="button" onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.sub, fontWeight: 700, fontSize: 13.5, cursor: "pointer", padding: "4px 0", fontFamily: "inherit" }}>
+      <button type="button" onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.text2, fontWeight: 600, fontSize: 13.5, cursor: "pointer", padding: "4px 0", fontFamily: "inherit" }}>
         <ArrowLeft size={15} /> Back to sessions
       </button>
       {right || null}
@@ -493,13 +493,13 @@ function BackRow({ onBack, right }) {
 function PersonCard({ mentor, statuses, onOpen, onRemove, removeLabel, extra }) {
   const status = statuses.find((s) => s.id === mentor.status) || statuses[0];
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12, background: COLORS.amberSoft, border: `1px solid ${COLORS.amberBorder}`, borderRadius: 14, padding: "12px 14px", flexWrap: "wrap" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 12, background: COLORS.warnBg, border: `1px solid ${COLORS.warnBorder}`, padding: "12px 14px", flexWrap: "wrap" }}>
       <Avatar name={mentor.name} size={40} />
       <div style={{ flex: 1, minWidth: 140 }}>
-        <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.text }}>{mentor.name}</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3, fontSize: 12.5, fontWeight: 700 }}>
-          <span style={{ color: status.color, background: status.soft, border: `1px solid ${status.border}`, borderRadius: 999, padding: "2px 9px" }}>{status.label}</span>
-          {mentor.years && <span style={{ color: COLORS.text }}>{mentor.years}</span>}
+        <div style={{ fontSize: 15, fontWeight: 600, color: COLORS.ink }}>{mentor.name}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 3, fontSize: 12.5, fontWeight: 600 }}>
+          <span style={{ color: status.color, background: status.soft, border: `1px solid ${status.border}`, padding: "2px 9px" }}>{status.label}</span>
+          {mentor.years && <span style={{ color: COLORS.ink }}>{mentor.years}</span>}
         </div>
       </div>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -515,8 +515,8 @@ function Section({ title, hint, children }) {
   return (
     <div style={{ marginBottom: 22 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 10 }}>
-        <div style={{ fontSize: 13, fontWeight: 800, color: COLORS.indigo, letterSpacing: 0.4 }}>{title}</div>
-        {hint && <div style={{ fontSize: 12, color: COLORS.faint }}>{hint}</div>}
+        <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.ink, letterSpacing: 0.4 }}>{title}</div>
+        {hint && <div style={{ fontSize: 12, color: COLORS.muted }}>{hint}</div>}
       </div>
       {children}
     </div>
@@ -525,8 +525,8 @@ function Section({ title, hint, children }) {
 
 function Field({ icon: Icon, label, children }) {
   return (
-    <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "10px 12px", minWidth: 0 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 800, color: COLORS.faint, letterSpacing: 0.4, textTransform: "uppercase", marginBottom: 6 }}>
+    <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: "10px 12px", minWidth: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, fontWeight: 600, color: COLORS.muted, letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 6 }}>
         <Icon size={12} /> {label}
       </div>
       {children}
@@ -536,7 +536,7 @@ function Field({ icon: Icon, label, children }) {
 
 function BigButton({ onClick, icon: Icon, children }) {
   return (
-    <button type="button" onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 8, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 800, fontSize: 13.5, borderRadius: 999, padding: "9px 16px", cursor: "pointer", alignSelf: "flex-start", fontFamily: "inherit" }}>
+    <button type="button" onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 8, border: "none", background: COLORS.ink, color: COLORS.white, fontWeight: 600, fontSize: 13.5, padding: "9px 16px", cursor: "pointer", alignSelf: "flex-start", fontFamily: "inherit" }}>
       {Icon && <Icon size={15} />} {children}
     </button>
   );
@@ -548,7 +548,7 @@ function SmallButton({ onClick, icon: Icon, tone = "indigo", children }) {
     <button
       type="button"
       onClick={onClick}
-      style={{ display: "flex", alignItems: "center", gap: 5, border: `1px solid ${quiet ? COLORS.border : COLORS.indigoBorder}`, background: quiet ? "#fff" : COLORS.indigoSoft, color: quiet ? COLORS.sub : COLORS.indigo, fontWeight: 800, fontSize: 12.5, borderRadius: 999, padding: "6px 12px", cursor: "pointer", fontFamily: "inherit" }}
+      style={{ display: "flex", alignItems: "center", gap: 5, border: `1px solid ${quiet ? COLORS.border : COLORS.border2}`, background: quiet ? COLORS.white : COLORS.bg, color: quiet ? COLORS.text2 : COLORS.ink, fontWeight: 600, fontSize: 12.5, padding: "6px 12px", cursor: "pointer", fontFamily: "inherit" }}
     >
       {Icon && <Icon size={13} />} {children}
     </button>

@@ -81,7 +81,7 @@ export default function OfficeReader({ src, kind, onError, loadingText = "Loadin
   return (
     <div ref={colRef} className={`eib-office eib-office-${kind}`}>
       <style>{CSS}</style>
-      {!ready && <div style={{ fontSize: 13.5, color: COLORS.faint }}>{loadingText}</div>}
+      {!ready && <div style={{ fontSize: 13.5, color: COLORS.muted }}>{loadingText}</div>}
       <div ref={hostRef} style={{ width: natural || SLIDE_WIDTH, zoom, visibility: ready ? "visible" : "hidden", height: ready ? "auto" : 0, overflow: ready ? "visible" : "hidden" }} />
     </div>
   );
@@ -92,7 +92,7 @@ export default function OfficeReader({ src, kind, onError, loadingText = "Loadin
 const CSS = `
 .eib-office { overflow: hidden; }
 .eib-office-pptx .pptx-preview-wrapper { background: transparent !important; height: auto !important; width: auto !important; overflow: visible !important; padding: 0 !important; margin: 0 !important; }
-.eib-office-pptx .pptx-preview-slide-wrapper { margin: 0 0 16px 0 !important; border: 1px solid ${COLORS.border}; border-radius: 10px; overflow: hidden; box-shadow: 0 8px 24px -18px rgba(15,23,42,0.3); box-sizing: border-box; }
+.eib-office-pptx .pptx-preview-slide-wrapper { margin: 0 0 16px 0 !important; border: 1px solid ${COLORS.border}; border-radius: 0; overflow: hidden; box-shadow: none; box-sizing: border-box; }
 .eib-office-docx .eib-docx-wrapper { background: transparent !important; padding: 0 !important; display: block !important; }
-.eib-office-docx .eib-docx-wrapper > section.eib-docx { margin: 0 0 16px 0 !important; border: 1px solid ${COLORS.border}; border-radius: 10px; box-shadow: 0 8px 24px -18px rgba(15,23,42,0.3) !important; box-sizing: border-box; }
+.eib-office-docx .eib-docx-wrapper > section.eib-docx { margin: 0 0 16px 0 !important; border: 1px solid ${COLORS.border}; border-radius: 0; box-shadow: none !important; box-sizing: border-box; }
 `;

@@ -83,26 +83,26 @@ export default function AidaPanel({ lesson, lessons = [], submissions = {}, onCh
   return (
     <aside
       aria-label="AIDA"
-      style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: "min(440px, 100vw)", zIndex: 60, background: "#fff", borderLeft: `1px solid ${COLORS.border}`, boxShadow: "-12px 0 32px rgba(15,23,42,0.10)", display: "flex", flexDirection: "column" }}
+      style={{ position: "fixed", top: 0, right: 0, bottom: 0, width: "min(440px, 100vw)", zIndex: 60, background: COLORS.surface, borderLeft: `1px solid ${COLORS.border}`, display: "flex", flexDirection: "column" }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", borderBottom: `1px solid ${COLORS.border}` }}>
-        <div style={{ width: 34, height: 34, borderRadius: 10, background: COLORS.indigoSoft, color: COLORS.indigo, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <div style={{ width: 34, height: 34, background: COLORS.bg, color: COLORS.ink, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
           <Sparkles size={17} />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 15.5, fontWeight: 800, color: COLORS.text }}>AIDA</div>
-          <div style={{ fontSize: 12.5, color: COLORS.faint, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Lesson {lesson.number}: {lesson.title}</div>
+          <div style={{ fontSize: 15.5, fontWeight: 600, color: COLORS.ink }}>AIDA</div>
+          <div style={{ fontSize: 12.5, color: COLORS.muted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Lesson {lesson.number}: {lesson.title}</div>
         </div>
         {messages?.length > 0 && (
-          <button type="button" onClick={newChat} title="Start a new chat" style={{ display: "flex", alignItems: "center", gap: 6, border: `1px solid ${COLORS.border}`, background: "#fff", borderRadius: 9, padding: "7px 10px", fontSize: 12.5, fontWeight: 700, color: COLORS.sub, cursor: "pointer", fontFamily: "inherit" }}>
+          <button type="button" onClick={newChat} title="Start a new chat" style={{ display: "flex", alignItems: "center", gap: 6, border: `1px solid ${COLORS.border}`, background: COLORS.surface, padding: "7px 10px", fontSize: 12.5, fontWeight: 600, color: COLORS.text2, cursor: "pointer", fontFamily: "inherit" }}>
             <RotateCcw size={13} /> New chat
           </button>
         )}
-        <button type="button" onClick={onClose} aria-label="Close AIDA" style={{ border: "none", background: "transparent", cursor: "pointer", color: COLORS.sub, padding: 6, display: "flex" }}>
+        <button type="button" onClick={onClose} aria-label="Close AIDA" style={{ border: "none", background: "transparent", cursor: "pointer", color: COLORS.text2, padding: 6, display: "flex" }}>
           <X size={20} />
         </button>
       </div>
-      <div style={{ fontSize: 12, color: COLORS.faint, padding: "8px 16px", borderBottom: `1px solid ${COLORS.border}`, lineHeight: 1.45 }}>
+      <div style={{ fontSize: 12, color: COLORS.muted, padding: "8px 16px", borderBottom: `1px solid ${COLORS.border}`, lineHeight: 1.45 }}>
         AIDA is an AI. It reads your EIB deliverables, asks you for what it needs, and writes drafts from your answers. Check every draft: the venture is yours. Chats are saved and EIB staff may review them. Don't share personal details.
       </div>
       {error ? (

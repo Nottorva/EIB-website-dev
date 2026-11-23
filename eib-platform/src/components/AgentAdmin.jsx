@@ -13,10 +13,12 @@ import { fmtShortDateTime } from "@/lib/format";
 function Dot({ ok, label, hint }) {
   const Icon = ok ? CircleCheck : Circle;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, color: ok ? COLORS.text : COLORS.faint }}>
-      <Icon size={16} color={ok ? COLORS.green : COLORS.faint} />
-      <span style={{ fontWeight: 700 }}>{label}</span>
-      {!ok && hint ? <span style={{ color: COLORS.faint }}>· {hint}</span> : null}
+    <div style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 14, lineHeight: 1.45, minWidth: 0, color: ok ? COLORS.ink : COLORS.muted }}>
+      <Icon size={16} color={ok ? COLORS.successIcon : COLORS.muted} style={{ flexShrink: 0, marginTop: 2 }} />
+      <span style={{ minWidth: 0, overflowWrap: "anywhere" }}>
+        <span style={{ fontWeight: 600 }}>{label}</span>
+        {!ok && hint ? <span style={{ color: COLORS.muted }}> · {hint}</span> : null}
+      </span>
     </div>
   );
 }
@@ -69,7 +71,7 @@ export default function AgentAdmin() {
 
   return (
     <div style={{ maxWidth: 860, margin: "0 auto", padding: "30px 20px 60px" }}>
-      <PageTitle title="EIB Assistant" style={{ maxWidth: "none" }} right={c.address ? <span style={{ fontSize: 14, color: COLORS.sub }}>Email it at <strong style={{ color: COLORS.text }}>{c.address}</strong></span> : null} />
+      <PageTitle title="EIB Assistant" style={{ maxWidth: "none" }} right={c.address ? <span style={{ fontSize: 14, color: COLORS.text2 }}>Email it at <strong style={{ color: COLORS.ink }}>{c.address}</strong></span> : null} />
       {error ? <Notice onClose={() => setError(null)}>{error}</Notice> : null}
       {note ? (
         <Notice tone="info" onClose={() => setNote(null)}>
@@ -88,15 +90,15 @@ export default function AgentAdmin() {
           <Dot ok={c.writeUser} label="Write database user" hint="MONGODB_AGENT_WRITE_URI (main database used)" />
           <Dot ok={c.cron} label="Daily reminder" hint="CRON_SECRET" />
         </div>
-        <div style={{ fontSize: 13, color: COLORS.sub, marginTop: 14 }}>
+        <div style={{ fontSize: 13, color: COLORS.text2, marginTop: 14 }}>
           Only mail that passes authentication from {c.josefAddresses.join(", ")} can change data. Everyone below can ask questions.
         </div>
         {c.josefAddresses.slice(1).map((addr) => {
           const on = (data.testColleagues || []).find((t) => t.email === addr);
           return (
-            <label key={addr} style={{ display: "flex", alignItems: "flex-start", gap: 10, marginTop: 12, padding: "10px 12px", borderRadius: 10, border: `1px solid ${on ? COLORS.amberBorder : COLORS.border}`, background: on ? COLORS.amberSoft : "transparent", cursor: "pointer" }}>
+            <label key={addr} style={{ display: "flex", alignItems: "flex-start", gap: 10, marginTop: 12, padding: "10px 12px", border: `1px solid ${on ? COLORS.warnBorder : COLORS.border}`, background: on ? COLORS.warnBg : "transparent", cursor: "pointer" }}>
               <input type="checkbox" checked={Boolean(on)} disabled={busy} onChange={(e) => act(() => api.put("/api/agent/admin", { testColleague: addr, on: e.target.checked }))} style={{ marginTop: 3 }} />
-              <span style={{ fontSize: 13.5, color: COLORS.text }}>
+              <span style={{ fontSize: 13.5, color: COLORS.ink }}>
                 <strong>Treat {addr} as a colleague for testing.</strong> While ticked, mail from it is handled like a colleague's: answers without student contact details, change requests become tickets for you, and its replies on a thread the assistant wrote are passed to you.
                 {on ? ` On until ${fmtShortDateTime(on.until)}, then it counts as you again by itself.` : ` It switches itself back after ${data.testColleagueHours} hours.`}
               </span>
@@ -132,15 +134,15 @@ export default function AgentAdmin() {
             Give access
           </PrimaryButton>
         </form>
-        <div style={{ fontSize: 13, color: COLORS.sub, marginTop: 10 }}>Access is per person, never a whole domain. By email: &ldquo;who has agent access?&rdquo;, &ldquo;give name@tfs.ca access&rdquo;, &ldquo;remove access from name@tfs.ca&rdquo;.</div>
+        <div style={{ fontSize: 13, color: COLORS.text2, marginTop: 10 }}>Access is per person, never a whole domain. By email: &ldquo;who has agent access?&rdquo;, &ldquo;give name@tfs.ca access&rdquo;, &ldquo;remove access from name@tfs.ca&rdquo;.</div>
       </Section>
 
       <Section icon={FolderOpen} title="Documents it reads and edits">
-        <div style={{ fontSize: 14, color: COLORS.text, lineHeight: 1.6 }}>
+        <div style={{ fontSize: 14, color: COLORS.ink, lineHeight: 1.6 }}>
           {data.docs.configured ? (
             <>
               The assistant reads the titles and contents of every file in the{" "}
-              <a href={data.docs.folderUrl} target="_blank" rel="noreferrer" style={{ color: COLORS.indigo, fontWeight: 800 }}>
+              <a href={data.docs.folderUrl} target="_blank" rel="noreferrer" style={{ color: COLORS.ink, fontWeight: 600 }}>
                 EIB Documents folder
               </a>{" "}
               ({data.docs.fileCount} file{data.docs.fileCount === 1 ? "" : "s"}{data.docs.listedAt ? `, listed ${fmtShortDateTime(data.docs.listedAt)}` : ""}). A document whose title says &ldquo;Read me&rdquo; or &ldquo;Additional information&rdquo; is treated as your standing notes and house rules
@@ -157,22 +159,22 @@ export default function AgentAdmin() {
           }}
           style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap", alignItems: "center" }}
         >
-          <span style={{ fontSize: 13.5, color: COLORS.sub }}>Program year:</span>
+          <span style={{ fontSize: 13.5, color: COLORS.text2 }}>Program year:</span>
           <input value={year ?? data.docs.programYear} onChange={(e) => setYear(e.target.value)} placeholder="2026-2027" aria-label="Program year" style={{ ...fieldStyle, width: 140, padding: "8px 12px" }} />
           <PrimaryButton type="submit" disabled={busy || year === null || year === data.docs.programYear}>
             Save
           </PrimaryButton>
         </form>
-        <div style={{ fontSize: 13, color: COLORS.sub, marginTop: 8 }}>
+        <div style={{ fontSize: 13, color: COLORS.text2, marginTop: 8 }}>
           Documents whose title carries an earlier year (for example &ldquo;2025-2026&rdquo;) are archive: left out of the notes and of searches unless a question is about that year, and never edited.
           {data.docs.configured ? ` Current: ${data.docs.currentCount}. Archive: ${data.docs.archivedCount}${data.docs.archived.length ? ` (${data.docs.archived.slice(0, 6).join("; ")}${data.docs.archived.length > 6 ? "; …" : ""})` : ""}.` : ""}
         </div>
       </Section>
 
       <Section icon={ClipboardCheck} title="Proposed changes">
-        <div style={{ fontSize: 14, color: COLORS.text }}>
+        <div style={{ fontSize: 14, color: COLORS.ink }}>
           {data.changes.proposed} ticket{data.changes.proposed === 1 ? "" : "s"} waiting for your approval, {data.changes.total} in all.{" "}
-          <a href="/changes" style={{ color: COLORS.indigo, fontWeight: 800 }}>
+          <a href="/changes" style={{ color: COLORS.ink, fontWeight: 600 }}>
             Open the changes page
           </a>
           . Anyone with access can ask for a change by email; it becomes a ticket you approve there or by replying YES.
@@ -184,12 +186,12 @@ export default function AgentAdmin() {
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {data.threads.map((t) => (
             <div key={t.id} style={{ display: "flex", gap: 12, alignItems: "baseline", fontSize: 13.5, padding: "8px 0", borderBottom: `1px solid ${COLORS.border}`, flexWrap: "wrap" }}>
-              <span style={{ color: COLORS.faint, minWidth: 110 }}>{fmtShortDateTime(t.updatedAt)}</span>
-              <span style={{ fontWeight: 800, color: COLORS.text, flex: 1, minWidth: 180 }}>{t.subject || "(no subject)"}</span>
-              <span style={{ color: COLORS.sub }}>{t.lastFrom}</span>
-              <span style={{ color: t.senderKind === "josef" ? COLORS.indigo : t.senderKind === "tfs" ? COLORS.green : COLORS.amber, fontWeight: 700 }}>{t.senderKind || t.mode}</span>
-              <span style={{ color: COLORS.faint }}>{t.lastOutcome}</span>
-              {t.draft ? <span style={{ color: COLORS.amber }}>pending: {t.draft}</span> : null}
+              <span style={{ color: COLORS.muted, minWidth: 110 }}>{fmtShortDateTime(t.updatedAt)}</span>
+              <span style={{ fontWeight: 600, color: COLORS.ink, flex: 1, minWidth: 180 }}>{t.subject || "(no subject)"}</span>
+              <span style={{ color: COLORS.text2 }}>{t.lastFrom}</span>
+              <span style={{ color: t.senderKind === "josef" ? COLORS.ink : t.senderKind === "tfs" ? COLORS.successText : COLORS.warnText, fontWeight: 600 }}>{t.senderKind || t.mode}</span>
+              <span style={{ color: COLORS.muted }}>{t.lastOutcome}</span>
+              {t.draft ? <span style={{ color: COLORS.warnText }}>pending: {t.draft}</span> : null}
             </div>
           ))}
         </div>
@@ -200,12 +202,12 @@ export default function AgentAdmin() {
 
 function Row({ label, sub, onRemove }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "9px 12px" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 10, border: `1px solid ${COLORS.border}`, padding: "9px 12px" }}>
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 14, fontWeight: 800, color: COLORS.text }}>{label}</div>
-        <div style={{ fontSize: 12, color: COLORS.faint }}>{sub}</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.ink }}>{label}</div>
+        <div style={{ fontSize: 12, color: COLORS.muted }}>{sub}</div>
       </div>
-      {onRemove ? <IconButton icon={Trash2} title="Remove access" color={COLORS.red} onClick={onRemove} /> : null}
+      {onRemove ? <IconButton icon={Trash2} title="Remove access" color={COLORS.errorText} onClick={onRemove} /> : null}
     </div>
   );
 }

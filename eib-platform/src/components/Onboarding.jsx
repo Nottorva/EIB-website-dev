@@ -8,7 +8,7 @@
 import { useEffect, useState } from "react";
 import { FileText, Download, CircleCheck, Lock, ArrowRight, ShieldCheck, Mail, Clock } from "lucide-react";
 import { SECTION_13, AGREEMENT_VERSION_LABEL } from "@/lib/agreementText";
-import { COLORS, fieldStyle, Notice, Loading } from "./ui";
+import { COLORS, FONTS, fieldStyle, Notice, Loading } from "./ui";
 import { api } from "@/lib/api";
 import { fmtLongDateYear } from "@/lib/format";
 import PdfReader from "./PdfReader";
@@ -82,12 +82,12 @@ export default function Onboarding({ user }) {
       <Shell>
         <Card>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: signed ? COLORS.greenSoft : COLORS.amberSoft, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              {signed ? <CircleCheck size={22} color={COLORS.green} strokeWidth={2.25} /> : <Clock size={22} color={COLORS.amber} strokeWidth={2.25} />}
+            <div style={{ width: 44, height: 44, background: signed ? COLORS.successBg : COLORS.warnBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {signed ? <CircleCheck size={22} color={COLORS.successText} strokeWidth={2} /> : <Clock size={22} color={COLORS.warnText} strokeWidth={2} />}
             </div>
             <div>
-              <div style={{ fontSize: 20, fontWeight: 900, color: COLORS.text }}>{signed ? "Agreement signed" : "Waiting for your guardian to confirm"}</div>
-              <div style={{ fontSize: 13.5, color: COLORS.sub }}>
+              <div style={{ fontFamily: FONTS.serif, fontSize: 24, fontWeight: 600, color: COLORS.ink }}>{signed ? "Agreement signed" : "Waiting for your guardian to confirm"}</div>
+              <div style={{ fontSize: 13.5, color: COLORS.text2 }}>
                 {signed && record.signedBy === "guardian"
                   ? `Signed for you by your ${record.parentRelationship.toLowerCase()}, ${record.parentName}, on ${fmt(record.confirmedAt)} · version ${record.versionLabel || AGREEMENT_VERSION_LABEL}. You do not need to sign anything.`
                   : signed
@@ -98,26 +98,26 @@ export default function Onboarding({ user }) {
           </div>
           {!signed && (
             <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 10 }}>
-              <div style={{ fontSize: 13.5, color: COLORS.sub, lineHeight: 1.55 }}>
+              <div style={{ fontSize: 13.5, color: COLORS.text2, lineHeight: 1.55 }}>
                 Ask your {record.parentRelationship.toLowerCase()} to check their inbox (and the spam folder) for an email from EIB. The link works for 7 days.
               </div>
               {resendMsg && <Notice tone={resendMsg.ok ? "info" : "error"} onClose={() => setResendMsg(null)}>{resendMsg.text}</Notice>}
               <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                <button type="button" onClick={resend} disabled={resending || waitMin > 0} style={{ display: "inline-flex", alignItems: "center", gap: 8, border: "none", background: resending || waitMin > 0 ? "#d7dbe4" : COLORS.indigo, color: resending || waitMin > 0 ? COLORS.faint : "#fff", fontWeight: 800, fontSize: 14, borderRadius: 999, padding: "11px 18px", cursor: resending || waitMin > 0 ? "default" : "pointer", fontFamily: "inherit" }}>
+                <button type="button" onClick={resend} disabled={resending || waitMin > 0} style={{ display: "inline-flex", alignItems: "center", gap: 8, border: "none", background: resending || waitMin > 0 ? COLORS.disabled : COLORS.ink, color: resending || waitMin > 0 ? COLORS.muted : COLORS.white, fontWeight: 600, fontSize: 14, padding: "11px 18px", cursor: resending || waitMin > 0 ? "default" : "pointer", fontFamily: "inherit" }}>
                   <Mail size={16} /> {resending ? "Sending…" : "Resend the confirmation email"}
                 </button>
-                {waitMin > 0 && <span style={{ fontSize: 12.5, color: COLORS.faint }}>Available again in {waitMin} min</span>}
+                {waitMin > 0 && <span style={{ fontSize: 12.5, color: COLORS.muted }}>Available again in {waitMin} min</span>}
               </div>
             </div>
           )}
           <div style={{ display: "flex", gap: 10, marginTop: 20, flexWrap: "wrap" }}>
             {signed && (
-              <a href="/lessons" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: COLORS.indigo, color: "#fff", fontWeight: 800, fontSize: 14, borderRadius: 999, padding: "11px 18px", textDecoration: "none" }}>
+              <a href="/lessons" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: COLORS.ink, color: COLORS.white, fontWeight: 600, fontSize: 14, padding: "11px 18px", textDecoration: "none" }}>
                 Open your lessons <ArrowRight size={16} />
               </a>
             )}
             {meta.pdf && (
-              <a href="/api/agreement/pdf?download=1" style={{ display: "inline-flex", alignItems: "center", gap: 8, border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.sub, fontWeight: 800, fontSize: 14, borderRadius: 999, padding: "11px 18px", textDecoration: "none" }}>
+              <a href="/api/agreement/pdf?download=1" style={{ display: "inline-flex", alignItems: "center", gap: 8, border: `1px solid ${COLORS.border}`, background: COLORS.surface, color: COLORS.text2, fontWeight: 600, fontSize: 14, padding: "11px 18px", textDecoration: "none" }}>
                 <Download size={16} /> Download the PDF
               </a>
             )}
@@ -132,16 +132,16 @@ export default function Onboarding({ user }) {
     return (
       <Shell>
         <Card>
-          <div style={{ fontSize: 18, fontWeight: 900, color: COLORS.text }}>{meta.title}</div>
-          <div style={{ fontSize: 14, color: COLORS.sub, marginTop: 6 }}>{preview ? "No PDF has been uploaded yet. Upload one in Student Manager → Student agreement." : "There is nothing to sign right now."}</div>
-          {!preview && <a href="/lessons" style={{ display: "inline-flex", alignItems: "center", gap: 8, marginTop: 16, color: COLORS.indigo, fontWeight: 800, fontSize: 14, textDecoration: "none" }}>Open your lessons <ArrowRight size={15} /></a>}
+          <div style={{ fontSize: 18, fontWeight: 600, color: COLORS.ink }}>{meta.title}</div>
+          <div style={{ fontSize: 14, color: COLORS.text2, marginTop: 6 }}>{preview ? "No PDF has been uploaded yet. Upload one in Student Manager → Student agreement." : "There is nothing to sign right now."}</div>
+          {!preview && <a href="/lessons" style={{ display: "inline-flex", alignItems: "center", gap: 8, marginTop: 16, color: COLORS.ink, fontWeight: 600, fontSize: 14, textDecoration: "none" }}>Open your lessons <ArrowRight size={15} /></a>}
         </Card>
       </Shell>
     );
   }
 
-  const box = { ...fieldStyle, padding: "10px 12px", fontSize: 14.5, borderRadius: 10 };
-  const label = { fontSize: 12, fontWeight: 800, color: COLORS.sub, letterSpacing: 0.3, marginBottom: 6, display: "block" };
+  const box = { ...fieldStyle, padding: "10px 12px", fontSize: 14.5 };
+  const label = { fontSize: 12, fontWeight: 600, color: COLORS.text2, letterSpacing: 0.3, marginBottom: 6, display: "block" };
   // the wording and the extra questions are set on the Student Manager's Student agreement tab
   const w = meta.wording || {};
   const extra = (who) => (meta.questions || []).filter((q) => (q.askedOf === "guardian" ? "guardian" : "student") === who).map((q) => <ExtraField key={q.id} q={q} value={form.answers[q.id] || ""} onChange={(v) => setAnswer(q.id, v)} box={box} label={label} />);
@@ -154,19 +154,19 @@ export default function Onboarding({ user }) {
       <Card>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 14, flexWrap: "wrap" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: COLORS.indigoSoft, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <FileText size={22} color={COLORS.indigo} strokeWidth={2.25} />
+            <div style={{ width: 44, height: 44, background: COLORS.bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <FileText size={22} color={COLORS.ink} strokeWidth={2} />
             </div>
             <div>
-              <h1 style={{ fontSize: 22, fontWeight: 900, color: COLORS.text, margin: 0 }}>{meta.title}</h1>
-              <div style={{ fontSize: 13, color: COLORS.faint, marginTop: 2 }}>Hi {user.name.split(" ")[0]}. Your lessons open once this is signed.</div>
+              <h1 style={{ fontFamily: FONTS.serif, fontSize: 26, fontWeight: 600, color: COLORS.ink, margin: 0 }}>{meta.title}</h1>
+              <div style={{ fontSize: 13, color: COLORS.muted, marginTop: 2 }}>Hi {user.name.split(" ")[0]}. Your lessons open once this is signed.</div>
             </div>
           </div>
-          <a href="/api/agreement/pdf?download=1" onClick={() => setOpenedPdf(true)} style={{ display: "inline-flex", alignItems: "center", gap: 8, border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.sub, fontWeight: 800, fontSize: 13.5, borderRadius: 999, padding: "9px 14px", textDecoration: "none" }}>
+          <a href="/api/agreement/pdf?download=1" onClick={() => setOpenedPdf(true)} style={{ display: "inline-flex", alignItems: "center", gap: 8, border: `1px solid ${COLORS.border}`, background: COLORS.surface, color: COLORS.text2, fontWeight: 600, fontSize: 13.5, padding: "9px 14px", textDecoration: "none" }}>
             <Download size={15} /> Download as PDF
           </a>
         </div>
-        {meta.intro && <p style={{ fontSize: 14.5, color: COLORS.sub, lineHeight: 1.6, margin: "16px 0 0" }}>{meta.intro}</p>}
+        {meta.intro && <p style={{ fontSize: 14.5, color: COLORS.text2, lineHeight: 1.6, margin: "16px 0 0" }}>{meta.intro}</p>}
       </Card>
 
       <section aria-label="The agreement" style={{ margin: "16px 0" }}>
@@ -175,17 +175,17 @@ export default function Onboarding({ user }) {
 
       <section aria-labelledby="s13" style={{ margin: "0 0 16px" }}>
         <Card>
-          <h2 id="s13" style={{ fontSize: 17, fontWeight: 900, color: COLORS.text, margin: "0 0 10px" }}>{SECTION_13.heading}</h2>
-          <p style={{ fontSize: 14.5, color: COLORS.text, lineHeight: 1.6, margin: "0 0 14px" }}>{SECTION_13.intro}</p>
+          <h2 id="s13" style={{ fontSize: 17, fontWeight: 600, color: COLORS.ink, margin: "0 0 10px" }}>{SECTION_13.heading}</h2>
+          <p style={{ fontSize: 14.5, color: COLORS.ink, lineHeight: 1.6, margin: "0 0 14px" }}>{SECTION_13.intro}</p>
           {SECTION_13.parts.map((part) => (
             <div key={part.title} style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 14.5, fontWeight: 800, color: COLORS.text, marginBottom: 4 }}>{part.title}</div>
+              <div style={{ fontSize: 14.5, fontWeight: 600, color: COLORS.ink, marginBottom: 4 }}>{part.title}</div>
               {part.items ? (
-                <ul style={{ margin: 0, paddingLeft: 20, fontSize: 14.5, color: COLORS.text, lineHeight: 1.6 }}>
+                <ul style={{ margin: 0, paddingLeft: 20, fontSize: 14.5, color: COLORS.ink, lineHeight: 1.6 }}>
                   {part.items.map((t) => <li key={t}>{t}</li>)}
                 </ul>
               ) : (
-                <p style={{ fontSize: 14.5, color: COLORS.text, lineHeight: 1.6, margin: 0 }}>{part.text}</p>
+                <p style={{ fontSize: 14.5, color: COLORS.ink, lineHeight: 1.6, margin: 0 }}>{part.text}</p>
               )}
             </div>
           ))}
@@ -194,7 +194,7 @@ export default function Onboarding({ user }) {
 
       <Card>
         <form onSubmit={submit} aria-describedby="sign-hint" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-          <div id="sign-hint" style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, fontWeight: 700, color: canSign ? COLORS.green : COLORS.amber, background: canSign ? COLORS.greenSoft : COLORS.amberSoft, border: `1px solid ${canSign ? COLORS.greenBorder : COLORS.amberBorder}`, borderRadius: 12, padding: "10px 14px" }}>
+          <div id="sign-hint" style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, fontWeight: 600, color: canSign ? COLORS.successText : COLORS.warnText, background: canSign ? COLORS.successBg : COLORS.warnBg, border: `1px solid ${canSign ? COLORS.successBorder : COLORS.warnBorder}`, padding: "10px 14px" }}>
             {canSign ? <CircleCheck size={16} /> : <Lock size={16} />}
             {canSign ? "You've reached the end. You can sign below." : viewerFailed ? "The viewer could not load. Open the PDF with the download button, read it, then sign below." : "Scroll through the whole agreement to unlock the signature section."}
           </div>
@@ -203,27 +203,27 @@ export default function Onboarding({ user }) {
             <legend className="sr-only">Signatures</legend>
             <div>
               <label htmlFor="student-name" style={label}>Student name</label>
-              <input id="student-name" value={user.name} readOnly aria-readonly="true" style={{ ...box, background: "#f7f8fb", color: COLORS.sub }} />
+              <input id="student-name" value={user.name} readOnly aria-readonly="true" style={{ ...box, background: COLORS.bg, color: COLORS.text2 }} />
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(160px, 1fr)", gap: 14 }}>
               <div>
                 <label htmlFor="student-signature" style={label}>{w.studentSignatureLabel}</label>
                 <input id="student-signature" value={form.studentSignature} onChange={(e) => set("studentSignature", e.target.value)} placeholder="Type your full name" maxLength={60} autoComplete="off" required style={{ ...box, fontStyle: form.studentSignature ? "italic" : "normal" }} />
-                {w.studentSignatureHelp && <div style={{ fontSize: 12, color: COLORS.faint, marginTop: 6 }}>{w.studentSignatureHelp}</div>}
+                {w.studentSignatureHelp && <div style={{ fontSize: 12, color: COLORS.muted, marginTop: 6 }}>{w.studentSignatureHelp}</div>}
               </div>
               <div>
                 <label htmlFor="student-date" style={label}>Date</label>
-                <input id="student-date" value={today} readOnly aria-readonly="true" style={{ ...box, background: "#f7f8fb", color: COLORS.sub }} />
+                <input id="student-date" value={today} readOnly aria-readonly="true" style={{ ...box, background: COLORS.bg, color: COLORS.text2 }} />
               </div>
             </div>
-            <label style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14.5, color: COLORS.text, cursor: "pointer" }}>
+            <label style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14.5, color: COLORS.ink, cursor: "pointer" }}>
               <input type="checkbox" checked={form.readConfirmed} onChange={(e) => set("readConfirmed", e.target.checked)} required style={{ width: 18, height: 18, marginTop: 2 }} />
               <span>{w.readStatement}</span>
             </label>
             {extra("student")}
 
             <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: w.guardianNote ? 18 : 0 }}>
-              {w.guardianNote && <div style={{ fontSize: 13.5, color: COLORS.sub, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{w.guardianNote}</div>}
+              {w.guardianNote && <div style={{ fontSize: 13.5, color: COLORS.text2, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>{w.guardianNote}</div>}
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(160px, 1fr)", gap: 14 }}>
               <div>
@@ -232,25 +232,25 @@ export default function Onboarding({ user }) {
               </div>
               <div>
                 <label htmlFor="parent-date" style={label}>Date</label>
-                <input id="parent-date" value={today} readOnly aria-readonly="true" style={{ ...box, background: "#f7f8fb", color: COLORS.sub }} />
+                <input id="parent-date" value={today} readOnly aria-readonly="true" style={{ ...box, background: COLORS.bg, color: COLORS.text2 }} />
               </div>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
               <div>
                 <label htmlFor="parent-email" style={label}>{w.parentEmailLabel}</label>
                 <input id="parent-email" type="email" value={form.parentEmail} onChange={(e) => set("parentEmail", e.target.value)} autoComplete="off" required style={box} />
-                {w.parentEmailHelp && <div style={{ fontSize: 12, color: COLORS.faint, marginTop: 6 }}>{w.parentEmailHelp}</div>}
+                {w.parentEmailHelp && <div style={{ fontSize: 12, color: COLORS.muted, marginTop: 6 }}>{w.parentEmailHelp}</div>}
               </div>
               <div>
                 <label htmlFor="parent-rel" style={label}>{w.relationshipLabel}</label>
-                <select id="parent-rel" value={form.parentRelationship} onChange={(e) => set("parentRelationship", e.target.value)} required style={{ ...box, background: "#fff" }}>
+                <select id="parent-rel" value={form.parentRelationship} onChange={(e) => set("parentRelationship", e.target.value)} required style={{ ...box, background: COLORS.surface }}>
                   <option value="">Choose…</option>
                   {(meta.relationships || []).map((r) => <option key={r} value={r}>{r}</option>)}
                 </select>
               </div>
             </div>
             {extra("guardian")}
-            <label style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14.5, color: COLORS.text, cursor: "pointer" }}>
+            <label style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14.5, color: COLORS.ink, cursor: "pointer" }}>
               <input type="checkbox" checked={form.parentConfirmed} onChange={(e) => set("parentConfirmed", e.target.checked)} required style={{ width: 18, height: 18, marginTop: 2 }} />
               <span>{String(w.parentStatement || "").split("{student}").join(user.name)}</span>
             </label>
@@ -261,12 +261,12 @@ export default function Onboarding({ user }) {
           <button
             type="submit"
             disabled={!canSign || submitting || preview}
-            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, border: "none", background: canSign && !preview ? COLORS.indigo : "#d7dbe4", color: canSign && !preview ? "#fff" : COLORS.faint, fontWeight: 900, fontSize: 15, borderRadius: 999, padding: "13px 22px", cursor: canSign && !preview ? "pointer" : "default", alignSelf: "flex-start" }}
+            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, border: "none", background: canSign && !preview ? COLORS.ink : COLORS.disabled, color: canSign && !preview ? COLORS.white : COLORS.muted, fontWeight: 600, fontSize: 15, padding: "13px 22px", cursor: canSign && !preview ? "pointer" : "default", alignSelf: "flex-start" }}
           >
             <ShieldCheck size={17} /> {submitting ? "Saving…" : "I agree"}
           </button>
-          <p style={{ fontSize: 12.5, color: COLORS.faint, lineHeight: 1.6, margin: 0 }}>
-            After you press "I agree" we email your guardian a confirmation link; your lessons open once they click it. Their name and email are kept only as the record of this consent (version {AGREEMENT_VERSION_LABEL}). See the <a href="/privacy" style={{ color: COLORS.indigo, fontWeight: 700 }}>Privacy Policy</a>.
+          <p style={{ fontSize: 12.5, color: COLORS.muted, lineHeight: 1.6, margin: 0 }}>
+            After you press "I agree" we email your guardian a confirmation link; your lessons open once they click it. Their name and email are kept only as the record of this consent (version {AGREEMENT_VERSION_LABEL}). See the <a href="/privacy" style={{ color: COLORS.ink, fontWeight: 600 }}>Privacy Policy</a>.
           </p>
         </form>
       </Card>
@@ -280,10 +280,10 @@ function ExtraField({ q, value, onChange, box, label }) {
   if (q.type === "notice") {
     const ack = q.ack || "I understand";
     return (
-      <div style={{ background: COLORS.amberSoft, border: `1px solid ${COLORS.amberBorder}`, borderRadius: 12, padding: "14px 16px" }}>
-        <div style={{ fontSize: 15.5, fontWeight: 800, color: COLORS.text, lineHeight: 1.45, whiteSpace: "pre-wrap" }}>{q.label}</div>
-        {q.detail && <div style={{ fontSize: 14, color: COLORS.text, lineHeight: 1.55, marginTop: 6, whiteSpace: "pre-wrap" }}>{q.detail}</div>}
-        <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12, fontSize: 14.5, fontWeight: 800, color: COLORS.text, cursor: "pointer" }}>
+      <div style={{ background: COLORS.warnBg, border: `1px solid ${COLORS.warnBorder}`, padding: "14px 16px" }}>
+        <div style={{ fontSize: 15.5, fontWeight: 600, color: COLORS.ink, lineHeight: 1.45, whiteSpace: "pre-wrap" }}>{q.label}</div>
+        {q.detail && <div style={{ fontSize: 14, color: COLORS.ink, lineHeight: 1.55, marginTop: 6, whiteSpace: "pre-wrap" }}>{q.detail}</div>}
+        <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 12, fontSize: 14.5, fontWeight: 600, color: COLORS.ink, cursor: "pointer" }}>
           <input type="checkbox" checked={value === ack} onChange={(e) => onChange(e.target.checked ? ack : "")} required={q.required} style={{ width: 18, height: 18 }} />
           {ack}
         </label>
@@ -294,12 +294,12 @@ function ExtraField({ q, value, onChange, box, label }) {
     <div>
       <label htmlFor={id} style={label}>
         {q.label}
-        {!q.required && <span style={{ fontWeight: 600, color: COLORS.faint }}> (optional)</span>}
+        {!q.required && <span style={{ fontWeight: 600, color: COLORS.muted }}> (optional)</span>}
       </label>
       {q.type === "long" ? (
         <textarea id={id} value={value} onChange={(e) => onChange(e.target.value)} required={q.required} rows={4} style={{ ...box, resize: "vertical" }} />
       ) : q.type === "choice" ? (
-        <select id={id} value={value} onChange={(e) => onChange(e.target.value)} required={q.required} style={{ ...box, background: "#fff" }}>
+        <select id={id} value={value} onChange={(e) => onChange(e.target.value)} required={q.required} style={{ ...box, background: COLORS.surface }}>
           <option value="">Choose…</option>
           {(q.options || []).map((o) => <option key={o} value={o}>{o}</option>)}
         </select>
@@ -307,7 +307,7 @@ function ExtraField({ q, value, onChange, box, label }) {
         <input id={id} type={q.type === "link" ? "url" : "text"} placeholder={q.type === "link" ? "https://" : undefined} value={value} onChange={(e) => onChange(e.target.value)} required={q.required} autoComplete="off" style={box} />
       )}
       {(q.help || (q.type === "long" && q.maxWords > 0)) && (
-        <div style={{ fontSize: 12, color: COLORS.faint, marginTop: 6 }}>{[q.help, q.type === "long" && q.maxWords > 0 ? `Up to ${q.maxWords} words.` : ""].filter(Boolean).join(" ")}</div>
+        <div style={{ fontSize: 12, color: COLORS.muted, marginTop: 6 }}>{[q.help, q.type === "long" && q.maxWords > 0 ? `Up to ${q.maxWords} words.` : ""].filter(Boolean).join(" ")}</div>
       )}
     </div>
   );
@@ -317,5 +317,5 @@ function Shell({ children }) {
   return <div style={{ background: COLORS.bg, minHeight: "100%", padding: "28px 20px 60px" }}><div style={{ maxWidth: 760, margin: "0 auto" }}>{children}</div></div>;
 }
 function Card({ children }) {
-  return <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 18, padding: 22 }}>{children}</div>;
+  return <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: 22 }}>{children}</div>;
 }

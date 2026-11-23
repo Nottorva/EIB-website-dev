@@ -26,23 +26,22 @@ export function GradeCard({ deliverable, submission, canGrade, onChange, onRelea
   const canRelease = canGrade && hasMark(submission);
   const releasedDate = submission?.releasedAt ? fmtDate(submission.releasedAt) : null;
 
-  const smallLabel = { fontSize: 11.5, fontWeight: 800, color: COLORS.faint, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 };
+  const smallLabel = { fontSize: 11.5, fontWeight: 600, color: COLORS.muted, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 6 };
 
   return (
-    <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 16, display: "flex", flexDirection: "column", gap: 12, background: "#fff" }}>
+    <div style={{ border: `1px solid ${COLORS.border}`, padding: 16, display: "flex", flexDirection: "column", gap: 12, background: COLORS.surface }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
         <div>
           <TypeChip type={deliverable.type} points={deliverable.points} />
-          <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.text }}>{deliverable.title}</div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: COLORS.ink }}>{deliverable.title}</div>
         </div>
         <span
           style={{
             fontSize: 12,
-            fontWeight: 800,
-            color: released ? COLORS.green : COLORS.faint,
-            background: released ? COLORS.greenSoft : "#f1f3f7",
-            border: `1px solid ${released ? COLORS.greenBorder : COLORS.border}`,
-            borderRadius: 999,
+            fontWeight: 600,
+            color: released ? COLORS.successText : COLORS.muted,
+            background: released ? COLORS.successBg : COLORS.bg,
+            border: `1px solid ${released ? COLORS.successBorder : COLORS.border}`,
             padding: "4px 10px",
             whiteSpace: "nowrap",
             flexShrink: 0,
@@ -57,7 +56,7 @@ export function GradeCard({ deliverable, submission, canGrade, onChange, onRelea
         <PayloadView type={deliverable.type} payload={submission?.payload} />
       </div>
 
-      <div style={{ background: "#f7f8fb", border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, padding: 14, display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ display: "flex", gap: 14, alignItems: "flex-start", flexWrap: "wrap" }}>
           <div style={{ flexShrink: 0 }}>
             <div style={smallLabel}>Grade</div>
@@ -76,9 +75,9 @@ export function GradeCard({ deliverable, submission, canGrade, onChange, onRelea
                   onChange({ grade: String(n) });
                 }}
                 placeholder="—"
-                style={{ width: 72, border: `1px solid ${hasGrade ? COLORS.indigoBorder : COLORS.border}`, background: canGrade ? "#fff" : "#f1f3f7", borderRadius: 10, padding: "9px 12px", fontSize: 16, fontWeight: 800, color: COLORS.indigo, textAlign: "right", outline: "none" }}
+                style={{ width: 72, border: `1px solid ${hasGrade ? COLORS.border2 : COLORS.border}`, background: canGrade ? COLORS.white : COLORS.bg, padding: "9px 12px", fontSize: 16, fontWeight: 600, color: COLORS.ink, textAlign: "right" }}
               />
-              <span style={{ fontSize: 14, fontWeight: 800, color: COLORS.faint }}>/ {max}</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: COLORS.muted }}>/ {max}</span>
             </div>
           </div>
           <div style={{ flex: "1 1 240px" }}>
@@ -89,13 +88,13 @@ export function GradeCard({ deliverable, submission, canGrade, onChange, onRelea
               onChange={(e) => onChange({ feedback: e.target.value })}
               placeholder={canGrade ? "Write feedback on this submission..." : "Grading opens once this applicant's account exists."}
               rows={3}
-              style={{ width: "100%", boxSizing: "border-box", border: `1px solid ${COLORS.border}`, background: canGrade ? "#fff" : "#f1f3f7", borderRadius: 10, padding: "9px 12px", fontSize: 13.5, color: COLORS.text, lineHeight: 1.5, resize: "vertical", outline: "none" }}
+              style={{ width: "100%", boxSizing: "border-box", border: `1px solid ${COLORS.border}`, background: canGrade ? COLORS.white : COLORS.bg, padding: "9px 12px", fontSize: 13.5, color: COLORS.ink, lineHeight: 1.5, resize: "vertical" }}
             />
           </div>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-          <div style={{ fontSize: 12.5, color: COLORS.sub, lineHeight: 1.5 }}>
+          <div style={{ fontSize: 12.5, color: COLORS.text2, lineHeight: 1.5 }}>
             {released ? (
               <>Visible to the student{releasedDate ? ` since ${releasedDate}` : ""}. Edits save and show immediately.</>
             ) : canRelease ? (
@@ -107,7 +106,7 @@ export function GradeCard({ deliverable, submission, canGrade, onChange, onRelea
             )}
           </div>
           {released ? (
-            <button type="button" onClick={() => onRelease(false)} style={{ border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.sub, fontWeight: 800, fontSize: 13, borderRadius: 10, padding: "8px 14px", cursor: "pointer" }}>
+            <button type="button" onClick={() => onRelease(false)} style={{ border: `1px solid ${COLORS.border}`, background: COLORS.surface, color: COLORS.text2, fontWeight: 600, fontSize: 13, padding: "8px 14px", cursor: "pointer" }}>
               Withdraw from student
             </button>
           ) : (
@@ -151,16 +150,16 @@ export function useGrades(saver) {
 
 /* ================= The Grading tool ================= */
 const STATES = {
-  todo: { label: "To grade", color: COLORS.indigo, soft: COLORS.indigoSoft, border: COLORS.indigoBorder },
-  draft: { label: "Draft", color: COLORS.amber, soft: COLORS.amberSoft, border: COLORS.amberBorder },
-  released: { label: "Released", color: COLORS.green, soft: COLORS.greenSoft, border: COLORS.greenBorder },
-  missing: { label: "Not submitted", color: COLORS.faint, soft: "#f1f3f7", border: COLORS.border },
+  todo: { label: "To grade", color: COLORS.ink, soft: COLORS.bg, border: COLORS.border2 },
+  draft: { label: "Draft", color: COLORS.warnText, soft: COLORS.warnBg, border: COLORS.warnBorder },
+  released: { label: "Released", color: COLORS.successText, soft: COLORS.successBg, border: COLORS.successBorder },
+  missing: { label: "Not submitted", color: COLORS.muted, soft: COLORS.bg, border: COLORS.border },
 };
 const stateOf = (deliverable, sub) => (sub?.released ? "released" : hasMark(sub) ? "draft" : isPayloadEmpty(deliverable.type, sub?.payload) ? "missing" : "todo");
 // Work that still needs something from the grader.
 const isWaiting = (row) => row.state === "todo" || row.state === "draft";
 
-const navButton = (enabled) => ({ display: "flex", alignItems: "center", border: `1px solid ${COLORS.border}`, background: "#fff", color: enabled ? COLORS.sub : "#d7dbe4", borderRadius: 9, padding: 6, cursor: enabled ? "pointer" : "default" });
+const navButton = (enabled) => ({ display: "flex", alignItems: "center", border: `1px solid ${COLORS.border}`, background: COLORS.surface, color: enabled ? COLORS.text2 : COLORS.disabled, padding: 6, cursor: enabled ? "pointer" : "default" });
 
 /* One student's whole record: click a student, then a chapter, and every
    deliverable in that chapter is there to grade in one place. */
@@ -198,12 +197,12 @@ function ByStudent({ data, sub, change }) {
         const all = chapters.flatMap((c) => c.cells);
         const submitted = all.filter((c) => c.state !== "missing").length;
         return (
-          <div key={student.id} data-student={student.id} style={{ background: "#fff", border: `1px solid ${isOpen ? COLORS.indigoBorder : COLORS.border}`, borderRadius: 14 }}>
+          <div key={student.id} data-student={student.id} style={{ background: COLORS.surface, border: `1px solid ${isOpen ? COLORS.border2 : COLORS.border}` }}>
             <button type="button" aria-expanded={isOpen} onClick={() => pickStudent(student)} style={{ ...rowButton, padding: "10px 14px" }}>
-              {isOpen ? <ChevronDown size={16} color={COLORS.sub} /> : <ChevronRight size={16} color={COLORS.sub} />}
+              {isOpen ? <ChevronDown size={16} color={COLORS.text2} /> : <ChevronRight size={16} color={COLORS.text2} />}
               <Avatar name={student.name} size={30} />
-              <span style={{ flex: 1, minWidth: 0, fontSize: 14.5, fontWeight: 800, color: COLORS.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{student.name}</span>
-              <span style={{ fontSize: 12.5, fontWeight: 700, color: COLORS.faint, whiteSpace: "nowrap" }}>{submitted} of {all.length} submitted</span>
+              <span style={{ flex: 1, minWidth: 0, fontSize: 14.5, fontWeight: 600, color: COLORS.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{student.name}</span>
+              <span style={{ fontSize: 12.5, fontWeight: 600, color: COLORS.muted, whiteSpace: "nowrap" }}>{submitted} of {all.length} submitted</span>
               {waitingBadge(all.filter(isWaiting).length)}
             </button>
 
@@ -213,13 +212,13 @@ function ByStudent({ data, sub, change }) {
                   const chapterOpen = openChapters.has(lesson.id);
                   return (
                     <div key={lesson.id} data-chapter={lesson.id}>
-                      <button type="button" aria-expanded={chapterOpen} onClick={() => toggleChapter(lesson.id)} style={{ ...rowButton, padding: "8px 6px", borderRadius: 10 }}>
-                        {chapterOpen ? <ChevronDown size={15} color={COLORS.sub} /> : <ChevronRight size={15} color={COLORS.sub} />}
+                      <button type="button" aria-expanded={chapterOpen} onClick={() => toggleChapter(lesson.id)} style={{ ...rowButton, padding: "8px 6px" }}>
+                        {chapterOpen ? <ChevronDown size={15} color={COLORS.text2} /> : <ChevronRight size={15} color={COLORS.text2} />}
                         <span style={{ flex: 1, minWidth: 0 }}>
-                          <span style={{ display: "block", fontSize: 14, fontWeight: 800, color: COLORS.text }}>{lesson.chapterLabel || `Lesson ${lesson.number}`}</span>
-                          <span style={{ display: "block", fontSize: 12.5, color: COLORS.faint }}>{lesson.title}</span>
+                          <span style={{ display: "block", fontSize: 14, fontWeight: 600, color: COLORS.ink }}>{lesson.chapterLabel || `Lesson ${lesson.number}`}</span>
+                          <span style={{ display: "block", fontSize: 12.5, color: COLORS.muted }}>{lesson.title}</span>
                         </span>
-                        <span style={{ fontSize: 12.5, fontWeight: 700, color: COLORS.faint, whiteSpace: "nowrap" }}>{list.filter((c) => c.state === "released").length} of {list.length} released</span>
+                        <span style={{ fontSize: 12.5, fontWeight: 600, color: COLORS.muted, whiteSpace: "nowrap" }}>{list.filter((c) => c.state === "released").length} of {list.length} released</span>
                         {waitingBadge(list.filter(isWaiting).length)}
                       </button>
                       {chapterOpen && (
@@ -316,7 +315,7 @@ export default function Grading() {
       }}
     >
       {confirmUI}
-      <PageTitle title="Grading" style={{ maxWidth: 1080 }} right={<><SaveIndicator status={saver.status} /><span style={{ fontSize: 13, fontWeight: 800, color: totalWaiting ? COLORS.indigo : COLORS.green }}>{totalWaiting ? `${totalWaiting} waiting in total` : "All caught up"}</span></>} />
+      <PageTitle title="Grading" style={{ maxWidth: 1080 }} right={<><SaveIndicator status={saver.status} /><span style={{ fontSize: 13, fontWeight: 600, color: totalWaiting ? COLORS.ink : COLORS.successText }}>{totalWaiting ? `${totalWaiting} waiting in total` : "All caught up"}</span></>} />
 
       <div style={{ maxWidth: 1080, margin: "0 auto" }}>
         {saver.error && <Notice onClose={saver.clearError}>{saver.error}</Notice>}
@@ -326,10 +325,10 @@ export default function Grading() {
           <EmptyState>No student accounts yet. They are created when decisions are released in the Student Manager.</EmptyState>
         ) : (
           <>
-            <SegmentedTabs value={mode} onChange={setMode} style={{ background: "#fff", marginBottom: 14, width: "fit-content" }} options={[{ id: "student", label: "By student" }, { id: "deliverable", label: "By deliverable" }]} />
+            <SegmentedTabs value={mode} onChange={setMode} style={{ background: COLORS.surface, marginBottom: 14, width: "fit-content" }} options={[{ id: "student", label: "By student" }, { id: "deliverable", label: "By deliverable" }]} />
             {mode === "student" ? <ByStudent data={data} sub={sub} change={change} /> : <>
             <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 14 }}>
-              <select aria-label="Deliverable" value={item.key} onChange={(e) => open(items.find((it) => it.key === e.target.value))} style={{ ...fieldStyle, flex: "1 1 280px", width: "auto", fontWeight: 800, background: "#fff", cursor: "pointer" }}>
+              <select aria-label="Deliverable" value={item.key} onChange={(e) => open(items.find((it) => it.key === e.target.value))} style={{ ...fieldStyle, flex: "1 1 280px", width: "auto", fontWeight: 600, background: COLORS.surface, cursor: "pointer" }}>
                 {data.lessons.map((lesson) => (
                   <optgroup key={lesson.id} label={[lesson.chapterLabel, lesson.title].filter(Boolean).join(": ")}>
                     {items.filter((it) => it.lesson === lesson).map((it) => {
@@ -339,17 +338,17 @@ export default function Grading() {
                   </optgroup>
                 ))}
               </select>
-              <SegmentedTabs value={filter} onChange={setFilter} style={{ background: "#fff" }} options={[{ id: "waiting", label: `Waiting · ${rows.filter(isWaiting).length}` }, { id: "all", label: `Everyone · ${rows.length}` }]} />
+              <SegmentedTabs value={filter} onChange={setFilter} style={{ background: COLORS.surface }} options={[{ id: "waiting", label: `Waiting · ${rows.filter(isWaiting).length}` }, { id: "all", label: `Everyone · ${rows.length}` }]} />
               {drafts.length > 0 && (
-                <button type="button" onClick={releaseDrafts} style={{ display: "flex", alignItems: "center", gap: 6, border: `1px solid ${COLORS.amberBorder}`, background: COLORS.amberSoft, color: COLORS.amber, fontWeight: 800, fontSize: 13, borderRadius: 10, padding: "9px 14px", cursor: "pointer", fontFamily: "inherit" }}>
+                <button type="button" onClick={releaseDrafts} style={{ display: "flex", alignItems: "center", gap: 6, border: `1px solid ${COLORS.warnBorder}`, background: COLORS.warnBg, color: COLORS.warnText, fontWeight: 600, fontSize: 13, padding: "9px 14px", cursor: "pointer", fontFamily: "inherit" }}>
                   <Send size={14} /> Release {drafts.length} draft{drafts.length === 1 ? "" : "s"}
                 </button>
               )}
             </div>
 
             {item.deliverable.instructions && (
-              <details style={{ background: "#fff", border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "10px 14px", marginBottom: 14, fontSize: 13.5, color: COLORS.sub, lineHeight: 1.55 }}>
-                <summary style={{ fontWeight: 800, cursor: "pointer" }}>What students were asked</summary>
+              <details style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: "10px 14px", marginBottom: 14, fontSize: 13.5, color: COLORS.text2, lineHeight: 1.55 }}>
+                <summary style={{ fontWeight: 600, cursor: "pointer" }}>What students were asked</summary>
                 <div style={{ marginTop: 8, whiteSpace: "pre-wrap" }}>{item.deliverable.instructions}</div>
               </details>
             )}
@@ -359,7 +358,7 @@ export default function Grading() {
                 Nothing is waiting on this deliverable.
                 <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 14, flexWrap: "wrap" }}>
                   {nextItem && <PrimaryButton onClick={() => open(nextItem)} icon={ChevronRight}>Next: {nextItem.deliverable.title} ({waitingIn(nextItem)} waiting)</PrimaryButton>}
-                  <button type="button" onClick={() => setFilter("all")} style={{ border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.sub, fontWeight: 800, fontSize: 13.5, borderRadius: 10, padding: "9px 14px", cursor: "pointer", fontFamily: "inherit" }}>
+                  <button type="button" onClick={() => setFilter("all")} style={{ border: `1px solid ${COLORS.border}`, background: COLORS.surface, color: COLORS.text2, fontWeight: 600, fontSize: 13.5, padding: "9px 14px", cursor: "pointer", fontFamily: "inherit" }}>
                     Show everyone
                   </button>
                 </div>
@@ -370,10 +369,10 @@ export default function Grading() {
                   {list.map((r) => {
                     const active = r === current;
                     return (
-                      <button key={r.student.id} type="button" onClick={() => setStudentId(r.student.id)} style={{ display: "flex", alignItems: "center", gap: 10, textAlign: "left", background: active ? COLORS.indigoSoft : "#fff", border: `1px solid ${active ? COLORS.indigoBorder : COLORS.border}`, borderRadius: 12, padding: "8px 10px", cursor: "pointer", fontFamily: "inherit" }}>
+                      <button key={r.student.id} type="button" onClick={() => setStudentId(r.student.id)} style={{ display: "flex", alignItems: "center", gap: 10, textAlign: "left", background: active ? COLORS.bg : COLORS.white, border: `1px solid ${active ? COLORS.border2 : COLORS.border}`, padding: "8px 10px", cursor: "pointer", fontFamily: "inherit" }}>
                         <Avatar name={r.student.name} size={28} />
-                        <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 800, color: COLORS.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.student.name}</span>
-                        {(r.sub?.grade ?? "") !== "" && <span style={{ fontSize: 12.5, fontWeight: 800, color: COLORS.sub }}>{r.sub.grade}/{item.deliverable.points ?? 10}</span>}
+                        <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 600, color: COLORS.ink, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.student.name}</span>
+                        {(r.sub?.grade ?? "") !== "" && <span style={{ fontSize: 12.5, fontWeight: 600, color: COLORS.text2 }}>{r.sub.grade}/{item.deliverable.points ?? 10}</span>}
                         <StatusBadge status={STATES[r.state]} size="sm" />
                       </button>
                     );
@@ -384,10 +383,10 @@ export default function Grading() {
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
                     <Avatar name={current.student.name} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 17, fontWeight: 900, color: COLORS.text }}>{current.student.name}</div>
-                      <div style={{ fontSize: 12.5, color: COLORS.faint }}>{current.sub?.submittedAt ? `Submitted ${fmtSmart(current.sub.submittedAt)}` : "Nothing submitted"}</div>
+                      <div style={{ fontSize: 17, fontWeight: 600, color: COLORS.ink }}>{current.student.name}</div>
+                      <div style={{ fontSize: 12.5, color: COLORS.muted }}>{current.sub?.submittedAt ? `Submitted ${fmtSmart(current.sub.submittedAt)}` : "Nothing submitted"}</div>
                     </div>
-                    <span style={{ fontSize: 12.5, fontWeight: 800, color: COLORS.faint }}>{index + 1} of {list.length}</span>
+                    <span style={{ fontSize: 12.5, fontWeight: 600, color: COLORS.muted }}>{index + 1} of {list.length}</span>
                     <button type="button" aria-label="Previous student" disabled={index === 0} onClick={() => setStudentId(list[index - 1].student.id)} style={navButton(index > 0)}><ChevronLeft size={16} /></button>
                     <button type="button" aria-label="Next student" disabled={index === list.length - 1} onClick={() => setStudentId(list[index + 1].student.id)} style={navButton(index < list.length - 1)}><ChevronRight size={16} /></button>
                   </div>
@@ -401,7 +400,7 @@ export default function Grading() {
                     onChange={(fields) => change(current.id, fields)}
                     onRelease={(released) => (released ? releaseAndNext(current) : change(current.id, { released }))}
                   />
-                  <div style={{ fontSize: 12.5, color: COLORS.faint, marginTop: 8 }}>Tip: type the grade, press Tab for feedback, then Ctrl+Enter to release and move to the next student.</div>
+                  <div style={{ fontSize: 12.5, color: COLORS.muted, marginTop: 8 }}>Tip: type the grade, press Tab for feedback, then Ctrl+Enter to release and move to the next student.</div>
                 </div>
               </div>
             )}

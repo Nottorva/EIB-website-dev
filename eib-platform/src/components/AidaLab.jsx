@@ -6,17 +6,17 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Sparkles, RotateCcw, Eye, EyeOff, ArrowLeft, Maximize2 } from "lucide-react";
-import { COLORS, Notice, Loading, FieldLabel, fieldStyle } from "./ui";
+import { COLORS, FONTS, Notice, Loading, FieldLabel, fieldStyle } from "./ui";
 import { api } from "@/lib/api";
 import AidaChat from "./AidaChat";
 import ChatFrame from "./ChatFrame";
 import { DeliverableInput } from "./DeliverableInputs";
 
 const ADMIN = "/api/aida/admin";
-const card = { background: COLORS.card, borderRadius: 18, padding: "20px 24px", boxShadow: "0 1px 3px rgba(15,23,42,0.05)" };
+const card = { background: COLORS.surface, padding: "20px 24px", border: `1px solid ${COLORS.border}` };
 const selectStyle = { ...fieldStyle, width: "auto", maxWidth: "100%", padding: "9px 12px", fontSize: 13.5, cursor: "pointer" };
-const button = { display: "flex", alignItems: "center", gap: 7, border: `1px solid ${COLORS.border}`, background: "#fff", borderRadius: 10, padding: "9px 14px", fontSize: 13.5, fontWeight: 700, color: COLORS.text, cursor: "pointer", fontFamily: "inherit" };
-const pre = { fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", fontSize: 12.5, lineHeight: 1.55, whiteSpace: "pre-wrap", overflowWrap: "anywhere", background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: 14, overflowY: "auto" };
+const button = { display: "flex", alignItems: "center", gap: 7, border: `1px solid ${COLORS.border}`, background: COLORS.surface, padding: "9px 14px", fontSize: 13.5, fontWeight: 600, color: COLORS.ink, cursor: "pointer", fontFamily: "inherit" };
+const pre = { fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", fontSize: 12.5, lineHeight: 1.55, whiteSpace: "pre-wrap", overflowWrap: "anywhere", background: COLORS.bg, border: `1px solid ${COLORS.border}`, padding: 14, overflowY: "auto" };
 
 export default function AidaLab() {
   const [data, setData] = useState(null);
@@ -112,29 +112,29 @@ export default function AidaLab() {
   return (
     <div style={{ background: COLORS.bg, minHeight: "100%" }}>
       <div style={{ maxWidth: 1180, margin: "0 auto", padding: "28px 24px 60px" }}>
-        <Link href="/aida" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13.5, fontWeight: 800, color: COLORS.indigo, textDecoration: "none", marginBottom: 12 }}>
+        <Link href="/aida" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13.5, fontWeight: 600, color: COLORS.ink, textDecoration: "none", marginBottom: 12 }}>
           <ArrowLeft size={15} /> AIDA's context
         </Link>
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
-          <Sparkles size={26} color={COLORS.indigo} />
-          <span style={{ fontSize: 30, fontWeight: 800, color: COLORS.text }}>Chat with AIDA</span>
+          <Sparkles size={26} color={COLORS.ink} />
+          <span style={{ fontFamily: FONTS.serif, fontSize: 36, fontWeight: 600, color: COLORS.ink }}>Chat with AIDA</span>
         </div>
 
         {error && <Notice onClose={() => setError(null)}>{error}</Notice>}
         {!data ? (
           !error && <Loading />
         ) : data.lessons.length === 0 ? (
-          <div style={{ ...card, color: COLORS.faint }}>Create a lesson first, then chat with AIDA about it.</div>
+          <div style={{ ...card, color: COLORS.muted }}>Create a lesson first, then chat with AIDA about it.</div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div style={{ ...card, display: "flex", gap: 18, flexWrap: "wrap", alignItems: "flex-end" }}>
-              <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12.5, fontWeight: 800, color: COLORS.sub }}>
+              <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12.5, fontWeight: 600, color: COLORS.text2 }}>
                 Opened from lesson
                 <select value={lessonId} onChange={(e) => setLessonId(e.target.value)} style={selectStyle}>
                   {data.lessons.map((l) => <option key={l.id} value={l.id}>Lesson {l.number}: {l.title}{l.studentVisible ? "" : " (draft)"}</option>)}
                 </select>
               </label>
-              <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12.5, fontWeight: 800, color: COLORS.sub }}>
+              <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 12.5, fontWeight: 600, color: COLORS.text2 }}>
                 Reading the deliverables of
                 <select value={studentId} onChange={(e) => setStudentId(e.target.value)} style={selectStyle}>
                   <option value="">Nobody (blank deliverables)</option>
@@ -158,7 +158,7 @@ export default function AidaLab() {
 
             {preview && (
               <div style={card}>
-                <div style={{ fontSize: 13, color: COLORS.faint, lineHeight: 1.5, marginBottom: 12 }}>Exactly this, then the conversation. No student name or email is included.</div>
+                <div style={{ fontSize: 13, color: COLORS.muted, lineHeight: 1.5, marginBottom: 12 }}>Exactly this, then the conversation. No student name or email is included.</div>
                 <FieldLabel>1. Same for every student: how AIDA behaves, your context, every lesson</FieldLabel>
                 <pre style={{ ...pre, maxHeight: 300, margin: "0 0 14px" }}>{preview.shared}</pre>
                 <FieldLabel>2. This student: the lesson they are on and all of their work</FieldLabel>

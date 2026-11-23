@@ -5,7 +5,7 @@ import { BookOpen, Eye, Presentation, UserCheck, Users, FileText, Trash2, Plus, 
 import { MENTOR_DEFAULTS, STUDENT_DEFAULTS } from "@/lib/sessionDefaults";
 import { fmtDate } from "@/lib/format";
 import {
-  COLORS,
+  COLORS, FONTS,
   DELIVERABLE_TYPES,
   EditableInput,
   Pill,
@@ -64,39 +64,39 @@ function FileField({ label, lesson, kind, onPatch, hint }) {
       setBusy(false);
     }
   };
-  const chip = { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 800, borderRadius: 999, padding: "8px 14px", cursor: busy ? "default" : "pointer", border: "none", fontFamily: "inherit", opacity: busy ? 0.6 : 1, textDecoration: "none" };
+  const chip = { display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 600, padding: "8px 14px", cursor: busy ? "default" : "pointer", border: "none", fontFamily: "inherit", opacity: busy ? 0.6 : 1, textDecoration: "none" };
   return (
     <div>
       <FieldLabel>{label}</FieldLabel>
       {error && <Notice onClose={() => setError(null)}>{error}</Notice>}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, background: file ? COLORS.greenSoft : "#f7f8fb", border: `1px solid ${file ? COLORS.greenBorder : COLORS.border}`, borderRadius: 12, padding: "12px 14px", flexWrap: "wrap" }}>
-        <div style={{ flex: 1, minWidth: 200, fontSize: 14, color: COLORS.text }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, background: file ? COLORS.successBg : COLORS.bg, border: `1px solid ${file ? COLORS.successBorder : COLORS.border}`, padding: "12px 14px", flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minWidth: 200, fontSize: 14, color: COLORS.ink }}>
           {file ? (
             <>
               <strong>{file.name}</strong> · {kb(file.size)} · uploaded {fmtDate(file.uploadedAt)}
             </>
           ) : (
-            <span style={{ color: COLORS.sub }}>No file yet. PDF works best; up to 4 MB.</span>
+            <span style={{ color: COLORS.text2 }}>No file yet. PDF works best; up to 4 MB.</span>
           )}
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {file && (
-            <a href={url} target="_blank" rel="noreferrer" style={{ ...chip, border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.sub }}>
+            <a href={url} target="_blank" rel="noreferrer" style={{ ...chip, border: `1px solid ${COLORS.border}`, background: COLORS.surface, color: COLORS.text2 }}>
               Open <ExternalLink size={13} />
             </a>
           )}
-          <label style={{ ...chip, background: COLORS.indigo, color: "#fff" }}>
+          <label style={{ ...chip, background: COLORS.ink, color: COLORS.white }}>
             <Upload size={13} /> {busy ? "Uploading…" : file ? "Replace" : "Upload"}
             <input ref={inputRef} type="file" accept={ACCEPT[kind]} onChange={(e) => upload(e.target.files?.[0])} disabled={busy} style={{ display: "none" }} />
           </label>
           {file && (
-            <button type="button" onClick={remove} disabled={busy} style={{ ...chip, background: "transparent", color: COLORS.faint, padding: "8px 6px" }}>
+            <button type="button" onClick={remove} disabled={busy} style={{ ...chip, background: "transparent", color: COLORS.muted, padding: "8px 6px" }}>
               <Trash2 size={13} /> Remove
             </button>
           )}
         </div>
       </div>
-      {hint && <div style={{ fontSize: 13, color: COLORS.faint, marginTop: 8, lineHeight: 1.5 }}>{hint}</div>}
+      {hint && <div style={{ fontSize: 13, color: COLORS.muted, marginTop: 8, lineHeight: 1.5 }}>{hint}</div>}
     </div>
   );
 }
@@ -147,7 +147,7 @@ function StudentOverviewModal({ eyebrow, lesson, onPatch, onClose }) {
           style={{ ...fieldStyle, resize: "vertical", fontSize: 14.5 }}
         />
       </div>
-      <div style={{ fontSize: 13, color: COLORS.faint, marginTop: 14, lineHeight: 1.5 }}>Student leaders can also change room and time from their Lessons view.</div>
+      <div style={{ fontSize: 13, color: COLORS.muted, marginTop: 14, lineHeight: 1.5 }}>Student leaders can also change room and time from their Lessons view.</div>
     </ModalShell>
   );
 }
@@ -202,16 +202,15 @@ function DeliverableEditorModal({ eyebrow, initial, onSave, onDelete, onClose })
                   alignItems: "center",
                   gap: 8,
                   padding: "10px 16px",
-                  borderRadius: 11,
                   fontSize: 14.5,
-                  fontWeight: 700,
+                  fontWeight: 600,
                   cursor: "pointer",
-                  border: `1px solid ${active ? COLORS.indigo : COLORS.border}`,
-                  background: active ? COLORS.indigoSoft : "#fff",
-                  color: active ? COLORS.indigo : COLORS.text,
+                  border: `1px solid ${active ? COLORS.ink : COLORS.border}`,
+                  background: active ? COLORS.bg : COLORS.white,
+                  color: active ? COLORS.ink : COLORS.ink,
                 }}
               >
-                <Icon size={16} strokeWidth={2.25} />
+                <Icon size={16} strokeWidth={2} />
                 {t.label}
               </button>
             );
@@ -246,12 +245,12 @@ function DeliverableEditorModal({ eyebrow, initial, onSave, onDelete, onClose })
           <div>
             <FieldLabel>Table columns (comma separated)</FieldLabel>
             <input value={columnsText} onChange={(e) => setColumnsText(e.target.value)} placeholder="Who is affected, How often, Evidence" style={fieldStyle} />
-            <div style={{ fontSize: 12.5, color: COLORS.faint, marginTop: 6 }}>Headers across the top.</div>
+            <div style={{ fontSize: 12.5, color: COLORS.muted, marginTop: 6 }}>Headers across the top.</div>
           </div>
           <div>
             <FieldLabel>Table rows (one per line, optional)</FieldLabel>
             <textarea value={rowsText} onChange={(e) => setRowsText(e.target.value)} rows={3} placeholder={"Fellow students\nTeachers\nParents"} style={{ ...fieldStyle, resize: "vertical", fontSize: 14.5 }} />
-            <div style={{ fontSize: 12.5, color: COLORS.faint, marginTop: 6 }}>Leave empty to let students add their own rows.</div>
+            <div style={{ fontSize: 12.5, color: COLORS.muted, marginTop: 6 }}>Leave empty to let students add their own rows.</div>
           </div>
         </div>
       )}
@@ -273,13 +272,13 @@ function DeliverableEditorModal({ eyebrow, initial, onSave, onDelete, onClose })
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
           <FieldLabel style={{ marginBottom: 0 }}>Example</FieldLabel>
           {example && (
-            <button type="button" onClick={() => setExample(null)} style={{ border: "none", background: "transparent", color: COLORS.faint, fontWeight: 700, fontSize: 12.5, cursor: "pointer", padding: 0 }}>
+            <button type="button" onClick={() => setExample(null)} style={{ border: "none", background: "transparent", color: COLORS.muted, fontWeight: 600, fontSize: 12.5, cursor: "pointer", padding: 0 }}>
               Clear example
             </button>
           )}
         </div>
-        <div style={{ border: `1px dashed ${COLORS.indigoBorder}`, background: "#fbfbfd", borderRadius: 14, padding: 16 }}>
-          <div style={{ fontSize: 13, color: COLORS.sub, lineHeight: 1.5, marginBottom: 12 }}>
+        <div style={{ border: `1px dashed ${COLORS.border2}`, background: COLORS.bg, padding: 16 }}>
+          <div style={{ fontSize: 13, color: COLORS.text2, lineHeight: 1.5, marginBottom: 12 }}>
             Fill this in exactly the way a strong student would. Once you save, this filled-in version is the example shown to students and leaders.
           </div>
           <DeliverableInput key={`${type}:${columnsText}:${rowsText}:${checklistText}`} item={draft} payload={example} onChange={setExample} />
@@ -291,13 +290,12 @@ function DeliverableEditorModal({ eyebrow, initial, onSave, onDelete, onClose })
         onClick={save}
         style={{
           width: "100%",
-          background: COLORS.indigo,
-          color: "#fff",
+          background: COLORS.ink,
+          color: COLORS.white,
           border: "none",
-          borderRadius: 13,
           padding: "15px",
           fontSize: 16,
-          fontWeight: 800,
+          fontWeight: 600,
           cursor: "pointer",
         }}
       >
@@ -311,20 +309,20 @@ function DeliverableEditorModal({ eyebrow, initial, onSave, onDelete, onClose })
 function DeliverableCard({ item, onEdit }) {
   const [preview, setPreview] = useState(false);
   return (
-    <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: "22px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
+    <div style={{ border: `1px solid ${COLORS.border}`, padding: "22px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
         <div style={{ flex: 1 }}>
           <TypeChip type={item.type} points={item.points} uppercase />
-          <div style={{ fontSize: 17, fontWeight: 800, color: COLORS.text, marginBottom: 4 }}>{item.title}</div>
-          <div style={{ fontSize: 14.5, color: COLORS.sub, lineHeight: 1.55 }}>{item.instructions}</div>
+          <div style={{ fontSize: 17, fontWeight: 600, color: COLORS.ink, marginBottom: 4 }}>{item.title}</div>
+          <div style={{ fontSize: 14.5, color: COLORS.text2, lineHeight: 1.55 }}>{item.instructions}</div>
           {item.type === "table" && item.columns?.length > 0 && (
-            <div style={{ fontSize: 12.5, color: COLORS.faint, marginTop: 8 }}>
+            <div style={{ fontSize: 12.5, color: COLORS.muted, marginTop: 8 }}>
               Columns: {item.columns.join(" · ")}
               {item.rowLabels?.length > 0 ? ` · Rows: ${item.rowLabels.join(" · ")}` : " · rows added by students"}
             </div>
           )}
           {item.type === "checklist" && item.checklistItems?.length > 0 && (
-            <div style={{ fontSize: 12.5, color: COLORS.faint, marginTop: 8 }}>{item.checklistItems.length} checklist items</div>
+            <div style={{ fontSize: 12.5, color: COLORS.muted, marginTop: 8 }}>{item.checklistItems.length} checklist items</div>
           )}
         </div>
         <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
@@ -338,13 +336,12 @@ function DeliverableCard({ item, onEdit }) {
               gap: 6,
               height: 34,
               padding: "0 12px",
-              borderRadius: 9,
-              border: `1px solid ${preview ? COLORS.indigo : COLORS.border}`,
-              background: preview ? COLORS.indigoSoft : "#fff",
+              border: `1px solid ${preview ? COLORS.ink : COLORS.border}`,
+              background: preview ? COLORS.bg : COLORS.white,
               cursor: "pointer",
-              color: preview ? COLORS.indigo : COLORS.sub,
+              color: preview ? COLORS.ink : COLORS.text2,
               fontSize: 13,
-              fontWeight: 800,
+              fontWeight: 600,
             }}
           >
             <Eye size={14} /> {preview ? "Hide preview" : "Preview"}
@@ -356,14 +353,13 @@ function DeliverableCard({ item, onEdit }) {
               width: 34,
               height: 34,
               flexShrink: 0,
-              borderRadius: 9,
               border: `1px solid ${COLORS.border}`,
-              background: "#fff",
+              background: COLORS.surface,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               cursor: "pointer",
-              color: COLORS.sub,
+              color: COLORS.text2,
             }}
           >
             <Pencil size={15} />
@@ -395,9 +391,8 @@ function MentorToggle({ value, onChange }) {
         display: "flex",
         alignItems: "center",
         gap: 8,
-        border: `1px solid ${on ? COLORS.amberBorder : COLORS.border}`,
-        background: on ? COLORS.amberSoft : "#fff",
-        borderRadius: 12,
+        border: `1px solid ${on ? COLORS.warnBorder : COLORS.border}`,
+        background: on ? COLORS.warnBg : COLORS.white,
         padding: 4,
       }}
     >
@@ -415,17 +410,16 @@ function MentorToggle({ value, onChange }) {
               alignItems: "center",
               gap: 7,
               padding: "9px 14px",
-              borderRadius: 9,
               fontSize: 14.5,
-              fontWeight: 700,
+              fontWeight: 600,
               cursor: "pointer",
               border: "none",
               fontFamily: "inherit",
-              background: active ? (v ? COLORS.amber : COLORS.indigo) : "transparent",
-              color: active ? "#fff" : v ? COLORS.faint : COLORS.sub,
+              background: active ? (v ? COLORS.warnText : COLORS.ink) : "transparent",
+              color: active ? COLORS.white : v ? COLORS.muted : COLORS.text2,
             }}
           >
-            {Icon && <Icon size={16} strokeWidth={2.25} />}
+            {Icon && <Icon size={16} strokeWidth={2} />}
             {label}
           </button>
         );
@@ -458,7 +452,7 @@ function LessonCard({ lesson, onPatch, onDelete }) {
   const eyebrow = lesson.chapterLabel || "Chapter";
 
   return (
-    <div style={{ background: COLORS.card, borderRadius: 22, padding: "34px 36px 36px", boxShadow: "0 1px 3px rgba(15,23,42,0.05)", position: "relative" }}>
+    <div style={{ background: COLORS.surface, padding: "34px 36px 36px", border: `1px solid ${COLORS.border}`, position: "relative" }}>
       <button
         type="button"
         onClick={onDelete}
@@ -469,10 +463,9 @@ function LessonCard({ lesson, onPatch, onDelete }) {
           right: 30,
           width: 38,
           height: 38,
-          borderRadius: 10,
-          border: `1px solid ${COLORS.redBorder}`,
-          background: COLORS.redSoft,
-          color: COLORS.red,
+          border: `1px solid ${COLORS.errorBorder}`,
+          background: COLORS.errorBg,
+          color: COLORS.errorText,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -490,10 +483,9 @@ function LessonCard({ lesson, onPatch, onDelete }) {
             height: 54,
             padding: "0 6px",
             boxSizing: "border-box",
-            borderRadius: 14,
-            background: COLORS.indigoSoft,
-            color: COLORS.indigo,
-            fontWeight: 800,
+            background: COLORS.bg,
+            color: COLORS.ink,
+            fontWeight: 600,
             fontSize: 24,
             display: "flex",
             alignItems: "center",
@@ -501,14 +493,14 @@ function LessonCard({ lesson, onPatch, onDelete }) {
             flexShrink: 0,
           }}
         >
-          <EditableInput value={lesson.number} onChange={(v) => onPatch({ number: v })} style={{ textAlign: "center", fontSize: 24, fontWeight: 800, color: COLORS.indigo, width: Math.max(2, String(lesson.number || "").length) * 16 + 10, padding: "4px 0" }} />
+          <EditableInput value={lesson.number} onChange={(v) => onPatch({ number: v })} style={{ textAlign: "center", fontSize: 24, fontWeight: 600, color: COLORS.ink, width: Math.max(2, String(lesson.number || "").length) * 16 + 10, padding: "4px 0" }} />
         </div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: COLORS.indigo, marginBottom: 4 }}>
-            <EditableInput value={lesson.chapterLabel} onChange={(v) => onPatch({ chapterLabel: v })} style={{ fontSize: 14, fontWeight: 800, color: COLORS.indigo }} />
+          <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.ink, marginBottom: 4 }}>
+            <EditableInput value={lesson.chapterLabel} onChange={(v) => onPatch({ chapterLabel: v })} style={{ fontSize: 14, fontWeight: 600, color: COLORS.ink }} />
           </div>
-          <div style={{ fontSize: 27, fontWeight: 800, color: COLORS.text }}>
-            <EditableInput value={lesson.title} onChange={(v) => onPatch({ title: v })} placeholder="Lesson title" style={{ fontSize: 27, fontWeight: 800, color: COLORS.text }} />
+          <div style={{ fontFamily: FONTS.serif, fontSize: 32, fontWeight: 600, color: COLORS.ink }}>
+            <EditableInput value={lesson.title} onChange={(v) => onPatch({ title: v })} placeholder="Lesson title" style={{ fontFamily: FONTS.serif, fontSize: 32, fontWeight: 600, color: COLORS.ink }} />
           </div>
         </div>
       </div>
@@ -554,16 +546,15 @@ function LessonCard({ lesson, onPatch, onDelete }) {
               justifyContent: "center",
               gap: 8,
               border: `1.5px dashed ${COLORS.border}`,
-              borderRadius: 14,
               padding: "16px",
               background: "transparent",
-              color: COLORS.indigo,
+              color: COLORS.ink,
               fontSize: 15,
-              fontWeight: 700,
+              fontWeight: 600,
               cursor: "pointer",
             }}
           >
-            <Plus size={18} strokeWidth={2.5} />
+            <Plus size={18} strokeWidth={2} />
             Add Deliverable
           </button>
         </div>
@@ -603,17 +594,16 @@ function PublishButton({ published, onToggle }) {
         gap: 8,
         marginLeft: "auto",
         padding: "9px 16px",
-        borderRadius: 11,
         fontSize: 14.5,
-        fontWeight: 800,
+        fontWeight: 600,
         cursor: "pointer",
         fontFamily: "inherit",
-        border: published ? `1px solid ${COLORS.greenBorder}` : "none",
-        background: published ? COLORS.greenSoft : COLORS.indigo,
-        color: published ? COLORS.green : "#fff",
+        border: published ? `1px solid ${COLORS.successBorder}` : "none",
+        background: published ? COLORS.successBg : COLORS.ink,
+        color: published ? COLORS.successText : COLORS.white,
       }}
     >
-      {published ? <CircleCheck size={16} strokeWidth={2.5} /> : <Send size={16} strokeWidth={2.25} />}
+      {published ? <CircleCheck size={16} strokeWidth={2} /> : <Send size={16} strokeWidth={2} />}
       {published ? "Published to students" : "Publish to students"}
     </button>
   );
@@ -625,8 +615,8 @@ function SessionDefaultsModal({ onClose, onApply }) {
   const [mentor, setMentor] = useState({ ...MENTOR_DEFAULTS });
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(null);
-  const label = { fontSize: 11.5, fontWeight: 800, color: COLORS.faint, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 };
-  const box = { ...fieldStyle, padding: "9px 12px", fontSize: 14, borderRadius: 10 };
+  const label = { fontSize: 11.5, fontWeight: 600, color: COLORS.muted, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 6 };
+  const box = { ...fieldStyle, padding: "9px 12px", fontSize: 14 };
   const apply = async () => {
     setBusy(true);
     try {
@@ -638,7 +628,7 @@ function SessionDefaultsModal({ onClose, onApply }) {
   };
   return (
     <ModalShell eyebrow="Lesson Editor" title="Session defaults" onClose={onClose} maxWidth={640}>
-      <div style={{ fontSize: 14, color: COLORS.sub, lineHeight: 1.55, marginBottom: 18 }}>
+      <div style={{ fontSize: 14, color: COLORS.text2, lineHeight: 1.55, marginBottom: 18 }}>
         Writes these onto every lesson in one go. Student room and times go on all lessons; the mentor location and times go only on lessons flagged "Yes Mentor". Dates are left as they are. Leave a box blank to skip that field.
       </div>
       <div style={label}>Students · every lesson</div>
@@ -659,7 +649,7 @@ function SessionDefaultsModal({ onClose, onApply }) {
         </Notice>
       )}
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-        <button type="button" onClick={onClose} style={{ border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.sub, fontWeight: 800, fontSize: 13.5, borderRadius: 999, padding: "9px 16px", cursor: "pointer", fontFamily: "inherit" }}>Close</button>
+        <button type="button" onClick={onClose} style={{ border: `1px solid ${COLORS.border}`, background: COLORS.surface, color: COLORS.text2, fontWeight: 600, fontSize: 13.5, padding: "9px 16px", cursor: "pointer", fontFamily: "inherit" }}>Close</button>
         <PrimaryButton onClick={apply} disabled={busy} icon={CalendarCog}>Apply to all lessons</PrimaryButton>
       </div>
     </ModalShell>
@@ -712,37 +702,37 @@ export default function LessonEditor({ user }) {
     <div style={{ background: COLORS.bg, minHeight: "100%" }}>
       {confirmUI}
       {defaultsOpen && <SessionDefaultsModal onClose={() => setDefaultsOpen(false)} onApply={applyDefaults} />}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 40px", borderBottom: `1px solid ${COLORS.border}`, background: "#fff" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 40px", borderBottom: `1px solid ${COLORS.border}`, background: COLORS.surface }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <div style={{ width: 40, height: 40, borderRadius: 11, background: COLORS.indigo, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <BookOpen size={20} color="#fff" strokeWidth={2.25} />
+          <div style={{ width: 40, height: 40, background: COLORS.ink, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <BookOpen size={20} color={COLORS.white} strokeWidth={2} />
           </div>
-          <span style={{ fontSize: 20, fontWeight: 800, color: COLORS.text }}>EIB Textbook</span>
+          <span style={{ fontFamily: FONTS.serif, fontSize: 24, fontWeight: 600, color: COLORS.ink }}>EIB Textbook</span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
           <button
             type="button"
             onClick={() => setDefaultsOpen(true)}
             title="Set the room and times on every lesson at once"
-            style={{ display: "flex", alignItems: "center", gap: 6, border: `1px solid ${COLORS.indigoBorder}`, background: COLORS.indigoSoft, color: COLORS.indigo, fontWeight: 800, fontSize: 13, borderRadius: 999, padding: "7px 14px", cursor: "pointer", fontFamily: "inherit" }}
+            style={{ display: "flex", alignItems: "center", gap: 6, border: `1px solid ${COLORS.border2}`, background: COLORS.bg, color: COLORS.ink, fontWeight: 600, fontSize: 13, padding: "7px 14px", cursor: "pointer", fontFamily: "inherit" }}
           >
             <CalendarCog size={14} /> Session defaults
           </button>
           <SaveIndicator status={saver.status} />
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 34, height: 34, borderRadius: "50%", background: COLORS.indigoSoft, color: COLORS.indigo, fontWeight: 800, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 34, height: 34, background: COLORS.bg, color: COLORS.ink, fontWeight: 600, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center" }}>
               {user.name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase()}
             </div>
-            <span style={{ fontSize: 15.5, fontWeight: 600, color: COLORS.text }}>{user.name}</span>
+            <span style={{ fontSize: 15.5, fontWeight: 600, color: COLORS.ink }}>{user.name}</span>
           </div>
         </div>
       </div>
 
       <div style={{ maxWidth: 900, margin: "0 auto", padding: "44px 24px 80px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 28 }}>
-          <BookOpen size={30} color={COLORS.indigo} strokeWidth={2.25} />
-          <div style={{ width: 3, height: 30, background: COLORS.text, borderRadius: 2 }} />
-          <span style={{ fontSize: 34, fontWeight: 800, color: COLORS.text }}>Teaching</span>
+          <BookOpen size={30} color={COLORS.ink} strokeWidth={2} />
+          <div style={{ width: 3, height: 30, background: COLORS.ink }} />
+          <span style={{ fontFamily: FONTS.serif, fontSize: 40, fontWeight: 600, color: COLORS.ink }}>Teaching</span>
         </div>
 
         {error && <Notice onClose={() => setError(null)}>{error}</Notice>}
@@ -767,17 +757,16 @@ export default function LessonEditor({ user }) {
                 alignItems: "center",
                 justifyContent: "center",
                 gap: 10,
-                border: `1.5px dashed ${COLORS.indigo}`,
-                borderRadius: 22,
+                border: `1.5px dashed ${COLORS.ink}`,
                 padding: "26px",
-                background: COLORS.indigoSoft,
-                color: COLORS.indigo,
+                background: COLORS.bg,
+                color: COLORS.ink,
                 fontSize: 17,
-                fontWeight: 800,
+                fontWeight: 600,
                 cursor: "pointer",
               }}
             >
-              <Plus size={22} strokeWidth={2.5} />
+              <Plus size={22} strokeWidth={2} />
               Add Lesson
             </button>
           </>

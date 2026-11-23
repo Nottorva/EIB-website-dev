@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Link2, CheckCircle2, Send, LogIn, LogOut, CalendarClock, Lock, ShieldCheck, Clock, ArrowRight, AlertTriangle } from "lucide-react";
 import { signOut as nextAuthSignOut } from "next-auth/react";
-import { COLORS, fieldStyle, Notice, Loading } from "./ui";
+import { COLORS, FONTS, fieldStyle, Notice, Loading } from "./ui";
 
 const countWords = (text) => String(text || "").trim().split(/\s+/).filter(Boolean).length;
 import { api } from "@/lib/api";
@@ -18,18 +18,18 @@ const fmt = (iso) => fmtLongDateTime(iso, null);
 function NoticeCard({ q, ticked, onTick }) {
   const ack = q.ack || "I understand";
   return (
-    <div style={{ background: COLORS.amberSoft, border: `2px solid ${COLORS.amber}`, borderRadius: 14, padding: "20px 22px" }}>
+    <div style={{ background: COLORS.warnBg, border: `2px solid ${COLORS.warnText}`, padding: "20px 22px" }}>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-        <AlertTriangle size={26} color={COLORS.amber} style={{ flexShrink: 0, marginTop: 4 }} />
+        <AlertTriangle size={26} color={COLORS.warnText} style={{ flexShrink: 0, marginTop: 4 }} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: q.label.length > 70 ? 17.5 : 24, lineHeight: q.label.length > 70 ? 1.45 : 1.2, fontWeight: q.label.length > 70 ? 800 : 900, color: COLORS.text, letterSpacing: q.label.length > 70 ? 0 : -0.2, whiteSpace: "pre-wrap" }}>{q.label}</div>
-          {q.detail && <div style={{ fontSize: 15.5, lineHeight: 1.55, color: COLORS.text, marginTop: 10, whiteSpace: "pre-wrap" }}>{q.detail}</div>}
+          <div style={{ fontSize: q.label.length > 70 ? 17.5 : 24, lineHeight: q.label.length > 70 ? 1.45 : 1.2, fontWeight: q.label.length > 70 ? 600 : 600, color: COLORS.ink, letterSpacing: q.label.length > 70 ? 0 : -0.2, whiteSpace: "pre-wrap" }}>{q.label}</div>
+          {q.detail && <div style={{ fontSize: 15.5, lineHeight: 1.55, color: COLORS.ink, marginTop: 10, whiteSpace: "pre-wrap" }}>{q.detail}</div>}
         </div>
       </div>
-      <label style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 16, background: "#fff", border: `1px solid ${ticked ? COLORS.green : COLORS.amberBorder}`, borderRadius: 12, padding: "13px 16px", cursor: "pointer", fontSize: 16, fontWeight: 800, color: COLORS.text }}>
-        <input type="checkbox" checked={ticked} onChange={(e) => onTick(e.target.checked)} required={q.required} style={{ width: 20, height: 20, accentColor: COLORS.green, cursor: "pointer" }} />
+      <label style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 16, background: COLORS.surface, border: `1px solid ${ticked ? COLORS.successText : COLORS.warnBorder}`, padding: "13px 16px", cursor: "pointer", fontSize: 16, fontWeight: 600, color: COLORS.ink }}>
+        <input type="checkbox" checked={ticked} onChange={(e) => onTick(e.target.checked)} required={q.required} style={{ width: 20, height: 20, accentColor: COLORS.successText, cursor: "pointer" }} />
         {ack}
-        {q.required && !ticked && <span style={{ marginLeft: "auto", fontSize: 12.5, fontWeight: 700, color: COLORS.amber }}>Required to submit</span>}
+        {q.required && !ticked && <span style={{ marginLeft: "auto", fontSize: 12.5, fontWeight: 600, color: COLORS.warnText }}>Required to submit</span>}
       </label>
     </div>
   );
@@ -38,20 +38,20 @@ function NoticeCard({ q, ticked, onTick }) {
 // The strip the super admin sees above the form in preview: the window
 // state, in the same colours the Forms tab uses for it.
 const PREVIEW_STATE = {
-  upcoming: { label: "Not open yet", color: COLORS.amber, soft: COLORS.amberSoft, border: COLORS.amberBorder },
-  open: { label: "Live", color: COLORS.green, soft: COLORS.greenSoft, border: COLORS.greenBorder },
-  closed: { label: "Closed", color: COLORS.red, soft: COLORS.redSoft, border: COLORS.redBorder },
+  upcoming: { label: "Not open yet", color: COLORS.warnText, soft: COLORS.warnBg, border: COLORS.warnBorder },
+  open: { label: "Live", color: COLORS.successText, soft: COLORS.successBg, border: COLORS.successBorder },
+  closed: { label: "Closed", color: COLORS.errorText, soft: COLORS.errorBg, border: COLORS.errorBorder },
 };
 function PreviewStrip({ state, opensAt, closesAt }) {
   const st = PREVIEW_STATE[state] || PREVIEW_STATE.open;
   const when = state === "upcoming" ? `opens ${fmt(opensAt)}` : state === "closed" ? `closed ${fmt(closesAt)}` : closesAt ? `closes ${fmt(closesAt)}` : "no closing time set";
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", background: st.soft, border: `1px solid ${st.border}`, borderRadius: 14, padding: "12px 16px", marginBottom: 14 }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", background: st.soft, border: `1px solid ${st.border}`, padding: "12px 16px", marginBottom: 14 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ fontSize: 11.5, fontWeight: 900, letterSpacing: 0.6, textTransform: "uppercase", color: "#fff", background: st.color, borderRadius: 999, padding: "4px 10px" }}>{st.label}</span>
-        <span style={{ fontSize: 13.5, fontWeight: 700, color: st.color }}>Preview · {when}</span>
+        <span style={{ fontSize: 11.5, fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: COLORS.white, background: st.color, padding: "4px 10px" }}>{st.label}</span>
+        <span style={{ fontSize: 13.5, fontWeight: 600, color: st.color }}>Preview · {when}</span>
       </div>
-      <span style={{ fontSize: 12.5, color: COLORS.sub, fontWeight: 600 }}>This is what a signed-in student sees. Signing up is disabled here.</span>
+      <span style={{ fontSize: 12.5, color: COLORS.text2, fontWeight: 600 }}>This is what a signed-in student sees. Signing up is disabled here.</span>
     </div>
   );
 }
@@ -66,20 +66,20 @@ function Shell({ children, title = "Sign up for EIB", sub = "Seats are first com
     <div style={{ background: COLORS.bg, minHeight: "100%", padding: "44px 20px 80px" }}>
       <div style={{ maxWidth: 640, margin: "0 auto" }}>
         <div style={{ marginBottom: 24 }}>
-          <div style={{ fontSize: 13, fontWeight: 800, color: COLORS.indigo, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>EIB · Sign-up</div>
-          <div style={{ fontSize: 30, fontWeight: 800, color: COLORS.text }}>{title}</div>
-          {sub && <div style={{ fontSize: 15, color: COLORS.sub, marginTop: 8, lineHeight: 1.6 }}>{sub}</div>}
+          <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.ink, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 6 }}>EIB · Sign-up</div>
+          <div style={{ fontFamily: FONTS.serif, fontSize: 36, fontWeight: 600, color: COLORS.ink }}>{title}</div>
+          {sub && <div style={{ fontSize: 15, color: COLORS.text2, marginTop: 8, lineHeight: 1.6 }}>{sub}</div>}
         </div>
         {children}
-        <p style={{ fontSize: 12.5, color: COLORS.faint, lineHeight: 1.6, marginTop: 28 }}>
-          EIB handles your information as described in the <a href="/privacy" style={{ color: COLORS.indigo, fontWeight: 700 }}>Privacy Policy</a>. Using this site means you accept the <a href="/terms" style={{ color: COLORS.indigo, fontWeight: 700 }}>Terms</a>.
+        <p style={{ fontSize: 12.5, color: COLORS.muted, lineHeight: 1.6, marginTop: 28 }}>
+          EIB handles your information as described in the <a href="/privacy" style={{ color: COLORS.ink, fontWeight: 600 }}>Privacy Policy</a>. Using this site means you accept the <a href="/terms" style={{ color: COLORS.ink, fontWeight: 600 }}>Terms</a>.
         </p>
       </div>
     </div>
   );
 }
 
-const quietButton = { border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.sub, fontWeight: 800, fontSize: 13, borderRadius: 10, padding: "8px 14px", cursor: "pointer" };
+const quietButton = { border: `1px solid ${COLORS.border}`, background: COLORS.surface, color: COLORS.text2, fontWeight: 600, fontSize: 13, padding: "8px 14px", cursor: "pointer" };
 
 // First come, first served: how many seats are left, or, once the class is
 // full, how many of the waitlist's few spots are.
@@ -87,9 +87,9 @@ function SeatsNote({ seats }) {
   if (!seats) return null;
   const { cap, seatsLeft, waitlistSpots, waitlistLeft } = seats;
   const classFull = seatsLeft === 0;
-  const tone = classFull ? { color: COLORS.amber, soft: COLORS.amberSoft, border: COLORS.amberBorder } : { color: COLORS.green, soft: COLORS.greenSoft, border: COLORS.greenBorder };
+  const tone = classFull ? { color: COLORS.warnText, soft: COLORS.warnBg, border: COLORS.warnBorder } : { color: COLORS.successText, soft: COLORS.successBg, border: COLORS.successBorder };
   return (
-    <div style={{ fontSize: 13.5, fontWeight: 700, color: tone.color, background: tone.soft, border: `1px solid ${tone.border}`, borderRadius: 12, padding: "10px 14px", marginBottom: 14, lineHeight: 1.5 }}>
+    <div style={{ fontSize: 13.5, fontWeight: 600, color: tone.color, background: tone.soft, border: `1px solid ${tone.border}`, padding: "10px 14px", marginBottom: 14, lineHeight: 1.5 }}>
       {classFull
         ? `The class is full. You can still join the waitlist: ${waitlistLeft} of its ${waitlistSpots} spots ${waitlistLeft === 1 ? "is" : "are"} left. If a seat opens up, it goes to the first person in line.`
         : `First come, first served: ${seatsLeft} of ${cap} seats left.${waitlistSpots > 0 ? ` Once the class is full there is a waitlist, and it has only ${waitlistSpots} spots.` : ""}`}
@@ -130,11 +130,11 @@ function StatusScreen({ status, onSignOut }) {
             ? "You have a seat in EIB and your student account is ready. Class has not started yet; in the meantime you can read and sign the Student Agreement."
             : "You have a seat in EIB and your student account is ready."}
           <div style={{ marginTop: 20 }}>
-            <Link href="/lessons" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: COLORS.indigo, color: "#fff", fontWeight: 800, fontSize: 15, borderRadius: 12, padding: "12px 20px", textDecoration: "none" }}>
+            <Link href="/lessons" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: COLORS.ink, color: COLORS.white, fontWeight: 600, fontSize: 15, padding: "12px 20px", textDecoration: "none" }}>
               {status.classStarted === false ? "Continue" : "Open your lessons"} <ArrowRight size={16} />
             </Link>
           </div>
-          <div style={{ fontSize: 13, color: COLORS.faint, marginTop: 16 }}>Signed up {submitted}.</div>
+          <div style={{ fontSize: 13, color: COLORS.muted, marginTop: 16 }}>Signed up {submitted}.</div>
         </BigCard>
       </Shell>
     );
@@ -145,7 +145,7 @@ function StatusScreen({ status, onSignOut }) {
       <Shell title="Your application" sub={null}>
         <BigCard icon={ShieldCheck} tone="gray" title="Thank you for applying">
           We read every application carefully, and we are not able to offer you a place in this cohort. We hope you apply again next year.
-          <div style={{ fontSize: 13, color: COLORS.faint, marginTop: 16 }}>Application submitted {submitted}.</div>
+          <div style={{ fontSize: 13, color: COLORS.muted, marginTop: 16 }}>Application submitted {submitted}.</div>
           {signOut}
         </BigCard>
       </Shell>
@@ -161,7 +161,7 @@ function StatusScreen({ status, onSignOut }) {
           {place
             ? <>The class is full, so you are on the waitlist. The waitlist has only {spots} spots and you hold number {place}. If a seat opens up it goes to the first person in line, and we will email <strong>{status.applicant.email}</strong> the moment one is yours.</>
             : "Thank you for applying. We could not offer you a place right away, but you are on the waitlist and we will be in touch as soon as a spot opens up."}
-          <div style={{ fontSize: 13, color: COLORS.faint, marginTop: 16 }}>Application submitted {submitted}.</div>
+          <div style={{ fontSize: 13, color: COLORS.muted, marginTop: 16 }}>Application submitted {submitted}.</div>
           {signOut}
         </BigCard>
       </Shell>
@@ -172,7 +172,7 @@ function StatusScreen({ status, onSignOut }) {
     <Shell title="Your application" sub={null}>
       <BigCard icon={Clock} tone="indigo" title="Thank you for applying">
         Your application is under review. You will hear back at <strong>{status.applicant.email}</strong> once decisions are released.
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginTop: 18, background: COLORS.indigoSoft, color: COLORS.indigo, fontWeight: 800, fontSize: 13.5, borderRadius: 999, padding: "8px 14px" }}>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, marginTop: 18, background: COLORS.bg, color: COLORS.ink, fontWeight: 600, fontSize: 13.5, padding: "8px 14px" }}>
           <CheckCircle2 size={15} /> Submitted {submitted}
         </div>
         {signOut}
@@ -183,19 +183,19 @@ function StatusScreen({ status, onSignOut }) {
 
 function BigCard({ icon: Icon, tone = "indigo", title, children }) {
   const tones = {
-    indigo: { bg: COLORS.indigoSoft, color: COLORS.indigo },
-    amber: { bg: COLORS.amberSoft, color: COLORS.amber },
-    green: { bg: COLORS.greenSoft, color: COLORS.green },
-    gray: { bg: "#f1f3f7", color: COLORS.sub },
+    indigo: { bg: COLORS.bg, color: COLORS.ink },
+    amber: { bg: COLORS.warnBg, color: COLORS.warnText },
+    green: { bg: COLORS.successBg, color: COLORS.successText },
+    gray: { bg: COLORS.bg, color: COLORS.text2 },
   };
   const t = tones[tone];
   return (
-    <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 18, padding: 28, textAlign: "center" }}>
-      <div style={{ width: 56, height: 56, borderRadius: 16, background: t.bg, color: t.color, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
-        <Icon size={26} strokeWidth={2.25} />
+    <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: 28, textAlign: "center" }}>
+      <div style={{ width: 56, height: 56, background: t.bg, color: t.color, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}>
+        <Icon size={26} strokeWidth={2} />
       </div>
-      <div style={{ fontSize: 22, fontWeight: 800, color: COLORS.text, marginBottom: 8 }}>{title}</div>
-      <div style={{ fontSize: 15, color: COLORS.sub, lineHeight: 1.6 }}>{children}</div>
+      <div style={{ fontFamily: FONTS.serif, fontSize: 26, fontWeight: 600, color: COLORS.ink, marginBottom: 8 }}>{title}</div>
+      <div style={{ fontSize: 15, color: COLORS.text2, lineHeight: 1.6 }}>{children}</div>
     </div>
   );
 }
@@ -222,14 +222,14 @@ function SignInCard({ domain, onSignedIn, authMode, signInAvailable }) {
 // The card both sign-in variants share: lock, heading and the one-line explanation.
 function SignInShell({ domain, children }) {
   return (
-    <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 18, padding: 28 }}>
+    <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: 28 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
-        <div style={{ width: 44, height: 44, borderRadius: 12, background: COLORS.indigoSoft, color: COLORS.indigo, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <Lock size={20} strokeWidth={2.25} />
+        <div style={{ width: 44, height: 44, background: COLORS.bg, color: COLORS.ink, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <Lock size={20} strokeWidth={2} />
         </div>
-        <div style={{ fontSize: 20, fontWeight: 800, color: COLORS.text }}>Students: sign in to sign up</div>
+        <div style={{ fontFamily: FONTS.serif, fontSize: 24, fontWeight: 600, color: COLORS.ink }}>Students: sign in to sign up</div>
       </div>
-      <div style={{ fontSize: 14.5, color: COLORS.sub, lineHeight: 1.6, marginBottom: 18 }}>
+      <div style={{ fontSize: 14.5, color: COLORS.text2, lineHeight: 1.6, marginBottom: 18 }}>
         Use your <strong>@{domain}</strong> Google account. Your name and school email come from that account, so there is nothing to fill in.
       </div>
       {children}
@@ -266,12 +266,12 @@ function DevSignInCard({ domain, onSignedIn }) {
         <button
           type="submit"
           disabled={busy}
-          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: busy ? "#d7dbe4" : COLORS.indigo, color: "#fff", border: "none", borderRadius: 12, padding: "13px", fontSize: 15, fontWeight: 800, cursor: busy ? "default" : "pointer" }}
+          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: busy ? COLORS.disabled : COLORS.ink, color: COLORS.white, border: "none", padding: "13px", fontSize: 15, fontWeight: 600, cursor: busy ? "default" : "pointer" }}
         >
           <LogIn size={16} /> Sign in with your TFS Google account
         </button>
       </form>
-      <div style={{ fontSize: 12, color: COLORS.faint, marginTop: 12, lineHeight: 1.5 }}>Sandbox: this stand-in asks for the name and email that Google would provide. In production this button opens the real Google sign-in, restricted to @{domain}.</div>
+      <div style={{ fontSize: 12, color: COLORS.muted, marginTop: 12, lineHeight: 1.5 }}>Sandbox: this stand-in asks for the name and email that Google would provide. In production this button opens the real Google sign-in, restricted to @{domain}.</div>
     </SignInShell>
   );
 }
@@ -308,9 +308,9 @@ function ParentCard({ domain }) {
     );
   }
   return (
-    <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 18, padding: 28, marginTop: 16 }}>
-      <div style={{ fontSize: 20, fontWeight: 800, color: COLORS.text, marginBottom: 6 }}>Parent or guardian? Sign your child up</div>
-      <div style={{ fontSize: 14.5, color: COLORS.sub, lineHeight: 1.6, marginBottom: 18 }}>
+    <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: 28, marginTop: 16 }}>
+      <div style={{ fontFamily: FONTS.serif, fontSize: 24, fontWeight: 600, color: COLORS.ink, marginBottom: 6 }}>Parent or guardian? Sign your child up</div>
+      <div style={{ fontSize: 14.5, color: COLORS.text2, lineHeight: 1.6, marginBottom: 18 }}>
         You can do this without your child. We email you a link to confirm your address; the seat is taken the moment you open it, and you then sign the Student Agreement and see how to pay the program fee yourself.
       </div>
       {error && <Notice onClose={() => setError(null)}>{error}</Notice>}
@@ -319,7 +319,7 @@ function ParentCard({ domain }) {
         <input type="email" value={form.parentEmail} onChange={set("parentEmail")} placeholder="Your email address" aria-label="Your email address" autoComplete="email" required style={fieldStyle} />
         <input value={form.studentName} onChange={set("studentName")} placeholder="Student's full name" aria-label="Student's full name" autoComplete="off" required style={fieldStyle} />
         <input type="email" value={form.studentEmail} onChange={set("studentEmail")} placeholder={`Student's school email (@${domain})`} aria-label={`Student's school email, ending in @${domain}`} autoComplete="off" required style={fieldStyle} />
-        <button type="submit" disabled={busy} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: busy ? "#d7dbe4" : COLORS.indigo, color: "#fff", border: "none", borderRadius: 12, padding: "13px", fontSize: 15, fontWeight: 800, cursor: busy ? "default" : "pointer" }}>
+        <button type="submit" disabled={busy} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: busy ? COLORS.disabled : COLORS.ink, color: COLORS.white, border: "none", padding: "13px", fontSize: 15, fontWeight: 600, cursor: busy ? "default" : "pointer" }}>
           <Send size={16} /> {busy ? "Sending…" : "Email me the link"}
         </button>
       </form>
@@ -497,7 +497,7 @@ export default function ApplyForm() {
       <Shell title={title}>
         <SeatsNote seats={status.seats} />
         {status.closesAt && (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, fontWeight: 700, color: COLORS.amber, background: COLORS.amberSoft, border: `1px solid ${COLORS.amberBorder}`, borderRadius: 12, padding: "10px 14px", marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, fontWeight: 600, color: COLORS.warnText, background: COLORS.warnBg, border: `1px solid ${COLORS.warnBorder}`, padding: "10px 14px", marginBottom: 14 }}>
             <CalendarClock size={15} /> Applications close {fmt(status.closesAt)}
           </div>
         )}
@@ -513,7 +513,7 @@ export default function ApplyForm() {
         <BigCard icon={Lock} tone="amber" title={`Please use your @${status.applicantDomain} account`}>
           You're signed in as <strong>{status.applicant.email}</strong>, which isn't a school account. Students: sign out and choose your @{status.applicantDomain} Google account instead. Parents and guardians: use the form below.
           <div style={{ marginTop: 16 }}>
-            <button type="button" onClick={signOut} style={{ border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.sub, fontWeight: 800, fontSize: 13, borderRadius: 10, padding: "8px 14px", cursor: "pointer" }}>
+            <button type="button" onClick={signOut} style={{ border: `1px solid ${COLORS.border}`, background: COLORS.surface, color: COLORS.text2, fontWeight: 600, fontSize: 13, padding: "8px 14px", cursor: "pointer" }}>
               Sign out
             </button>
           </div>
@@ -528,31 +528,31 @@ export default function ApplyForm() {
       {preview ? (
         <PreviewStrip state={status.state} opensAt={status.opensAt} closesAt={status.closesAt} />
       ) : (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: "12px 16px", marginBottom: 14, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: "12px 16px", marginBottom: 14, flexWrap: "wrap" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <ShieldCheck size={18} color={COLORS.green} />
+            <ShieldCheck size={18} color={COLORS.successText} />
             <div>
-              <div style={{ fontSize: 14, fontWeight: 800, color: COLORS.text }}>{status.applicant.name}</div>
-              <div style={{ fontSize: 12.5, color: COLORS.faint }}>{status.applicant.email}</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.ink }}>{status.applicant.name}</div>
+              <div style={{ fontSize: 12.5, color: COLORS.muted }}>{status.applicant.email}</div>
             </div>
           </div>
-          <button type="button" onClick={signOut} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.sub, fontWeight: 700, fontSize: 12.5, cursor: "pointer" }}>
+          <button type="button" onClick={signOut} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.text2, fontWeight: 600, fontSize: 12.5, cursor: "pointer" }}>
             <LogOut size={13} /> Not you? Sign out
           </button>
         </div>
       )}
       {!preview && status.form.length > 0 && (
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", fontSize: 12.5, color: COLORS.faint, margin: "-6px 2px 14px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", fontSize: 12.5, color: COLORS.muted, margin: "-6px 2px 14px" }}>
           <span>{restored ? "Welcome back. Your answers from last time are here; carry on and submit when you're ready." : "Your answers save as you type, so you can come back and finish later."}</span>
-          <span style={{ fontWeight: 700, color: saveState === "error" ? COLORS.red : saveState === "saved" ? COLORS.green : COLORS.faint, whiteSpace: "nowrap" }}>
+          <span style={{ fontWeight: 600, color: saveState === "error" ? COLORS.errorText : saveState === "saved" ? COLORS.successText : COLORS.muted, whiteSpace: "nowrap" }}>
             {saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved" : saveState === "error" ? (
-              <>Not saved yet · <button type="button" onClick={() => saveDraft(0)} style={{ border: "none", background: "transparent", color: COLORS.red, fontWeight: 800, cursor: "pointer", padding: 0, fontFamily: "inherit", fontSize: 12.5, textDecoration: "underline" }}>retry</button></>
+              <>Not saved yet · <button type="button" onClick={() => saveDraft(0)} style={{ border: "none", background: "transparent", color: COLORS.errorText, fontWeight: 600, cursor: "pointer", padding: 0, fontFamily: "inherit", fontSize: 12.5, textDecoration: "underline" }}>retry</button></>
             ) : ""}
           </span>
         </div>
       )}
       {status.closesAt && (!preview || status.state === "open") && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, fontWeight: 700, color: COLORS.amber, background: COLORS.amberSoft, border: `1px solid ${COLORS.amberBorder}`, borderRadius: 12, padding: "10px 14px", marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13.5, fontWeight: 600, color: COLORS.warnText, background: COLORS.warnBg, border: `1px solid ${COLORS.warnBorder}`, padding: "10px 14px", marginBottom: 14 }}>
           <CalendarClock size={15} /> Applications close {fmt(status.closesAt)}
         </div>
       )}
@@ -565,12 +565,12 @@ export default function ApplyForm() {
         {status.form.map((q) => q.type === "notice" ? (
           <NoticeCard key={q.id} q={q} ticked={answers[q.id] === (q.ack || "I understand")} onTick={(on) => set(q.id, on ? q.ack || "I understand" : "")} />
         ) : (
-          <div key={q.id} id={`q-${q.id}`} style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 18 }}>
-            <div id={`l-${q.id}`} style={{ fontSize: 15, fontWeight: 800, color: COLORS.text, marginBottom: q.help ? 4 : 10, lineHeight: 1.45 }}>
+          <div key={q.id} id={`q-${q.id}`} style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: 18 }}>
+            <div id={`l-${q.id}`} style={{ fontSize: 15, fontWeight: 600, color: COLORS.ink, marginBottom: q.help ? 4 : 10, lineHeight: 1.45 }}>
               {q.label}
-              {q.required ? <span style={{ color: COLORS.red, marginLeft: 4 }}><span aria-hidden="true">*</span><span className="sr-only"> (required)</span></span> : <span style={{ color: COLORS.faint, fontWeight: 600, marginLeft: 6, fontSize: 12.5 }}>optional</span>}
+              {q.required ? <span style={{ color: COLORS.errorText, marginLeft: 4 }}><span aria-hidden="true">*</span><span className="sr-only"> (required)</span></span> : <span style={{ color: COLORS.muted, fontWeight: 600, marginLeft: 6, fontSize: 12.5 }}>optional</span>}
             </div>
-            {q.help && <div id={`h-${q.id}`} style={{ fontSize: 13.5, color: COLORS.sub, marginBottom: 10, lineHeight: 1.5 }}>{q.help}</div>}
+            {q.help && <div id={`h-${q.id}`} style={{ fontSize: 13.5, color: COLORS.text2, marginBottom: 10, lineHeight: 1.5 }}>{q.help}</div>}
 
             {q.type === "short" && <input id={`f-${q.id}`} aria-labelledby={`l-${q.id}`} aria-describedby={q.help ? `h-${q.id}` : undefined} value={answers[q.id] || ""} onChange={(e) => set(q.id, e.target.value)} required={q.required} style={fieldStyle} />}
 
@@ -581,7 +581,7 @@ export default function ApplyForm() {
                   const n = countWords(answers[q.id]);
                   const over = n > q.maxWords;
                   return (
-                    <div id={`w-${q.id}`} aria-live="polite" style={{ textAlign: "right", fontSize: 12.5, fontWeight: 700, color: over ? COLORS.red : COLORS.faint, marginTop: 6 }}>
+                    <div id={`w-${q.id}`} aria-live="polite" style={{ textAlign: "right", fontSize: 12.5, fontWeight: 600, color: over ? COLORS.errorText : COLORS.muted, marginTop: 6 }}>
                       {n} / {q.maxWords} words{over ? " · over the limit" : ""}
                     </div>
                   );
@@ -596,7 +596,7 @@ export default function ApplyForm() {
                   return (
                     <label
                       key={opt}
-                      style={{ display: "flex", alignItems: "center", gap: 10, border: `1px solid ${active ? COLORS.indigo : COLORS.border}`, background: active ? COLORS.indigoSoft : "#fff", borderRadius: 10, padding: "10px 12px", cursor: "pointer", fontSize: 14.5, fontWeight: 600, color: active ? COLORS.indigo : COLORS.text }}
+                      style={{ display: "flex", alignItems: "center", gap: 10, border: `1px solid ${active ? COLORS.ink : COLORS.border}`, background: active ? COLORS.bg : COLORS.white, padding: "10px 12px", cursor: "pointer", fontSize: 14.5, fontWeight: 600, color: active ? COLORS.ink : COLORS.ink }}
                     >
                       <input type="radio" name={q.id} value={opt} checked={active} onChange={() => set(q.id, opt)} required={q.required} />
                       {opt}
@@ -609,10 +609,10 @@ export default function ApplyForm() {
             {q.type === "link" && (
               <div>
                 <div style={{ position: "relative" }}>
-                  <Link2 size={15} color={COLORS.faint} style={{ position: "absolute", left: 14, top: 15 }} />
+                  <Link2 size={15} color={COLORS.muted} style={{ position: "absolute", left: 14, top: 15 }} />
                   <input id={`f-${q.id}`} aria-labelledby={`l-${q.id}`} aria-describedby={q.help ? `h-${q.id}` : undefined} type="url" value={answers[q.id] || ""} onChange={(e) => set(q.id, e.target.value)} required={q.required} placeholder="https://" style={{ ...fieldStyle, paddingLeft: 38 }} />
                 </div>
-                <div style={{ fontSize: 12, color: COLORS.faint, marginTop: 8 }}>Paste a link (Google Drive, Docs, a website). Make sure it is shared so anyone with the link can view.</div>
+                <div style={{ fontSize: 12, color: COLORS.muted, marginTop: 8 }}>Paste a link (Google Drive, Docs, a website). Make sure it is shared so anyone with the link can view.</div>
               </div>
             )}
           </div>
@@ -622,7 +622,7 @@ export default function ApplyForm() {
           type="submit"
           disabled={submitting || preview}
           title={preview ? "Submitting is disabled in preview" : undefined}
-          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", background: submitting || preview ? "#d7dbe4" : COLORS.indigo, color: "#fff", border: "none", borderRadius: 13, padding: "15px", fontSize: 16, fontWeight: 800, cursor: submitting ? "default" : "pointer", marginTop: 6 }}
+          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", background: submitting || preview ? COLORS.disabled : COLORS.ink, color: COLORS.white, border: "none", padding: "15px", fontSize: 16, fontWeight: 600, cursor: submitting ? "default" : "pointer", marginTop: 6 }}
         >
           <Send size={16} /> {preview ? "Sign up (disabled in preview)" : submitting ? "Signing you up…" : status.seats?.seatsLeft === 0 ? "Join the waitlist" : "Sign up"}
         </button>

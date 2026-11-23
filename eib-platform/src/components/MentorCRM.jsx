@@ -26,11 +26,11 @@ import {
 import { api, useDebouncedSaver } from "@/lib/api";
 
 const STATUSES = [
-  { id: "contacted", label: "Contacted", color: COLORS.indigo, soft: COLORS.indigoSoft, border: COLORS.indigoBorder },
-  { id: "responsive", label: "Responsive", color: COLORS.green, soft: COLORS.greenSoft, border: COLORS.greenBorder },
-  { id: "unresponsive", label: "Unresponsive", color: COLORS.red, soft: COLORS.redSoft, border: COLORS.redBorder },
-  { id: "unsure", label: "Unsure", color: COLORS.sub, soft: "#f3f4f8", border: "#e2e6ee" },
-  { id: "confirmed", label: "Confirmed", color: COLORS.amber, soft: COLORS.amberSoft, border: COLORS.amberBorder },
+  { id: "contacted", label: "Contacted", color: COLORS.ink, soft: COLORS.bg, border: COLORS.border2 },
+  { id: "responsive", label: "Responsive", color: COLORS.successText, soft: COLORS.successBg, border: COLORS.successBorder },
+  { id: "unresponsive", label: "Unresponsive", color: COLORS.errorText, soft: COLORS.errorBg, border: COLORS.errorBorder },
+  { id: "unsure", label: "Unsure", color: COLORS.text2, soft: COLORS.bg, border: COLORS.border },
+  { id: "confirmed", label: "Confirmed", color: COLORS.warnText, soft: COLORS.warnBg, border: COLORS.warnBorder },
 ];
 
 const CONTACT_METHODS = ["Email", "Phone", "Discord", "Other"];
@@ -46,10 +46,10 @@ const tagLabel = (id) => MENTOR_TAGS.find((t) => t.id === id)?.label || id;
 
 function TagChip({ id, onRemove }) {
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11.5, fontWeight: 800, color: COLORS.sub, background: "#f3f4f8", border: `1px solid ${COLORS.border}`, borderRadius: 999, padding: "3px 9px", lineHeight: 1.2, whiteSpace: "nowrap" }}>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11.5, fontWeight: 600, color: COLORS.text2, background: COLORS.bg, border: `1px solid ${COLORS.border}`, padding: "3px 9px", lineHeight: 1.2, whiteSpace: "nowrap" }}>
       {tagLabel(id)}
       {onRemove && (
-        <button type="button" title="Remove tag" onClick={(e) => { e.stopPropagation(); onRemove(); }} style={{ border: "none", background: "transparent", padding: 0, margin: "0 -3px 0 1px", display: "flex", cursor: "pointer", color: COLORS.faint }}>
+        <button type="button" title="Remove tag" onClick={(e) => { e.stopPropagation(); onRemove(); }} style={{ border: "none", background: "transparent", padding: 0, margin: "0 -3px 0 1px", display: "flex", cursor: "pointer", color: COLORS.muted }}>
           <X size={11} strokeWidth={3} />
         </button>
       )}
@@ -83,13 +83,13 @@ function TagsEditor({ tags, onChange }) {
       {tags.map((t) => <TagChip key={t} id={t} onRemove={() => onChange(tags.filter((x) => x !== t))} />)}
       {remaining.length > 0 && (
         <div ref={ref} style={{ position: "relative" }}>
-          <button type="button" onClick={() => setOpen((o) => !o)} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11.5, fontWeight: 800, color: COLORS.indigo, background: "#fff", border: `1px dashed ${COLORS.indigoBorder}`, borderRadius: 999, padding: "3px 9px", cursor: "pointer", lineHeight: 1.2, fontFamily: "inherit" }}>
+          <button type="button" onClick={() => setOpen((o) => !o)} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11.5, fontWeight: 600, color: COLORS.ink, background: COLORS.surface, border: `1px dashed ${COLORS.border2}`, padding: "3px 9px", cursor: "pointer", lineHeight: 1.2, fontFamily: "inherit" }}>
             <Plus size={11} strokeWidth={3} /> Add tag
           </button>
           {open && (
-            <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 20, background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: 6, boxShadow: "0 8px 24px rgba(20,20,40,0.12)", display: "flex", flexDirection: "column", minWidth: 130 }}>
+            <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 20, background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: 6, display: "flex", flexDirection: "column", minWidth: 130 }}>
               {remaining.map((t) => (
-                <button key={t.id} type="button" onClick={() => { onChange([...tags, t.id]); setOpen(false); }} style={{ textAlign: "left", border: "none", background: "transparent", padding: "7px 10px", borderRadius: 8, fontSize: 13, fontWeight: 700, color: COLORS.text, cursor: "pointer", fontFamily: "inherit" }}>
+                <button key={t.id} type="button" onClick={() => { onChange([...tags, t.id]); setOpen(false); }} style={{ textAlign: "left", border: "none", background: "transparent", padding: "7px 10px", fontSize: 13, fontWeight: 600, color: COLORS.ink, cursor: "pointer", fontFamily: "inherit" }}>
                   {t.label}
                 </button>
               ))}
@@ -129,9 +129,9 @@ function publicContactPreview(mentor) {
 }
 
 function TogglePill({ active, onClick, icon: Icon, label, tone = "indigo" }) {
-  const toneColor = tone === "amber" ? COLORS.amber : COLORS.indigo;
-  const toneSoft = tone === "amber" ? COLORS.amberSoft : COLORS.indigoSoft;
-  const toneBorder = tone === "amber" ? COLORS.amberBorder : COLORS.indigoBorder;
+  const toneColor = tone === "amber" ? COLORS.warnText : COLORS.ink;
+  const toneSoft = tone === "amber" ? COLORS.warnBg : COLORS.bg;
+  const toneBorder = tone === "amber" ? COLORS.warnBorder : COLORS.border2;
   return (
     <button
       type="button"
@@ -141,16 +141,15 @@ function TogglePill({ active, onClick, icon: Icon, label, tone = "indigo" }) {
         alignItems: "center",
         gap: 5,
         fontSize: 12,
-        fontWeight: 800,
-        color: active ? toneColor : COLORS.faint,
-        background: active ? toneSoft : "#fff",
+        fontWeight: 600,
+        color: active ? toneColor : COLORS.muted,
+        background: active ? toneSoft : COLORS.white,
         border: `1px solid ${active ? toneBorder : COLORS.border}`,
-        borderRadius: 999,
         padding: "4px 10px",
         cursor: "pointer",
       }}
     >
-      <Icon size={12} strokeWidth={2.5} />
+      <Icon size={12} strokeWidth={2} />
       {label}
     </button>
   );
@@ -160,12 +159,12 @@ function TogglePill({ active, onClick, icon: Icon, label, tone = "indigo" }) {
 function ContactRow({ contact, onChange, onDelete, onMakePreferred }) {
   const Icon = methodIcon(contact.method);
   return (
-    <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "10px 12px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-      <Icon size={15} color={COLORS.faint} style={{ flexShrink: 0 }} />
+    <div style={{ border: `1px solid ${COLORS.border}`, padding: "10px 12px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      <Icon size={15} color={COLORS.muted} style={{ flexShrink: 0 }} />
       <select
         value={contact.method}
         onChange={(e) => onChange({ ...contact, method: e.target.value })}
-        style={{ fontSize: 12.5, fontWeight: 700, color: COLORS.sub, border: `1px solid ${COLORS.border}`, borderRadius: 8, padding: "4px 6px", background: "#fff" }}
+        style={{ fontSize: 12.5, fontWeight: 600, color: COLORS.text2, border: `1px solid ${COLORS.border}`, padding: "4px 6px", background: COLORS.surface }}
       >
         {CONTACT_METHODS.map((m) => (
           <option key={m} value={m}>
@@ -178,12 +177,12 @@ function ContactRow({ contact, onChange, onDelete, onMakePreferred }) {
           value={contact.value}
           onChange={(v) => onChange({ ...contact, value: v })}
           placeholder={contact.method === "Email" ? "name@example.com" : "Contact detail"}
-          style={{ fontSize: 14, color: COLORS.text }}
+          style={{ fontSize: 14, color: COLORS.ink }}
         />
       </div>
       <TogglePill active={contact.preferred} onClick={onMakePreferred} icon={Star} label="Preferred" tone="indigo" />
       <TogglePill active={contact.public} onClick={() => onChange({ ...contact, public: !contact.public })} icon={contact.public ? Eye : Lock} label={contact.public ? "Public" : "Private"} tone="amber" />
-      <button type="button" onClick={onDelete} style={{ border: "none", background: "transparent", color: COLORS.faint, cursor: "pointer", padding: 4 }}>
+      <button type="button" onClick={onDelete} style={{ border: "none", background: "transparent", color: COLORS.muted, cursor: "pointer", padding: 4 }}>
         <Trash2 size={15} />
       </button>
     </div>
@@ -198,7 +197,7 @@ function ContactsEditor({ contacts, onChange }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      {contacts.length === 0 && <div style={{ fontSize: 13, color: COLORS.faint, fontStyle: "italic", padding: "4px 2px" }}>No contact info yet.</div>}
+      {contacts.length === 0 && <div style={{ fontSize: 13, color: COLORS.muted, fontStyle: "italic", padding: "4px 2px" }}>No contact info yet.</div>}
       {contacts.map((c) => (
         <ContactRow key={c.id} contact={c} onChange={(next) => update(c.id, next)} onDelete={() => remove(c.id)} onMakePreferred={() => makePreferred(c.id)} />
       ))}
@@ -210,11 +209,10 @@ function ContactsEditor({ contacts, onChange }) {
           alignItems: "center",
           gap: 6,
           border: `1px dashed ${COLORS.border}`,
-          background: "#fff",
-          color: COLORS.indigo,
-          fontWeight: 700,
+          background: COLORS.surface,
+          color: COLORS.ink,
+          fontWeight: 600,
           fontSize: 13,
-          borderRadius: 10,
           padding: "8px 12px",
           cursor: "pointer",
           alignSelf: "flex-start",
@@ -230,21 +228,21 @@ function ContactsEditor({ contacts, onChange }) {
 function StudentFacingPreview({ mentor }) {
   const contactPreview = publicContactPreview(mentor);
   return (
-    <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 18, background: "#fbfbfd" }}>
-      <div style={{ fontSize: 11.5, fontWeight: 800, color: COLORS.faint, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 10 }}>What students see</div>
-      <div style={{ fontSize: 17, fontWeight: 900, color: COLORS.text }}>{mentor.name}</div>
-      {mentor.publicRole && <div style={{ fontSize: 13.5, color: COLORS.sub, fontWeight: 600, marginTop: 2, marginBottom: 14 }}>{mentor.publicRole}</div>}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, background: COLORS.amberSoft, border: `1px solid ${COLORS.amberBorder}`, borderRadius: 12, padding: "12px 14px", marginBottom: 14, marginTop: mentor.publicRole ? 0 : 12 }}>
-        <MessageCircle size={16} color={COLORS.amber} strokeWidth={2.25} />
+    <div style={{ border: `1px solid ${COLORS.border}`, padding: 18, background: COLORS.bg }}>
+      <div style={{ fontSize: 11.5, fontWeight: 600, color: COLORS.muted, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 10 }}>What students see</div>
+      <div style={{ fontSize: 17, fontWeight: 600, color: COLORS.ink }}>{mentor.name}</div>
+      {mentor.publicRole && <div style={{ fontSize: 13.5, color: COLORS.text2, fontWeight: 600, marginTop: 2, marginBottom: 14 }}>{mentor.publicRole}</div>}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, background: COLORS.warnBg, border: `1px solid ${COLORS.warnBorder}`, padding: "12px 14px", marginBottom: 14, marginTop: mentor.publicRole ? 0 : 12 }}>
+        <MessageCircle size={16} color={COLORS.warnText} strokeWidth={2} />
         <div>
-          <div style={{ fontSize: 11, fontWeight: 800, color: COLORS.amber, letterSpacing: 0.4 }}>Preferred contact</div>
-          <div style={{ fontSize: 14, color: COLORS.text, fontWeight: 700 }}>{contactPreview || "Not specified"}</div>
+          <div style={{ fontSize: 11, fontWeight: 600, color: COLORS.warnText, letterSpacing: 0.4 }}>Preferred contact</div>
+          <div style={{ fontSize: 14, color: COLORS.ink, fontWeight: 600 }}>{contactPreview || "Not specified"}</div>
         </div>
       </div>
-      <div style={{ background: "#fff", border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "14px 16px", fontSize: 14, color: COLORS.text, lineHeight: 1.55 }}>
+      <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: "14px 16px", fontSize: 14, color: COLORS.ink, lineHeight: 1.55 }}>
         {mentor.publicBio || "No bio added yet."}
       </div>
-      {!contactPreview && <div style={{ fontSize: 12, color: COLORS.faint, marginTop: 10 }}>Mark a contact method "Public" on the Internal tab for it to show up here.</div>}
+      {!contactPreview && <div style={{ fontSize: 12, color: COLORS.muted, marginTop: 10 }}>Mark a contact method "Public" on the Internal tab for it to show up here.</div>}
     </div>
   );
 }
@@ -256,25 +254,25 @@ function MentorRow({ mentor, cohortYear, events, onOpen, onStatusChange }) {
   return (
     <div
       onClick={onOpen}
-      style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: "12px 16px", cursor: "pointer" }}
+      style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: "12px 16px", cursor: "pointer" }}
     >
       <Avatar name={mentor.name} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 15, fontWeight: 800, color: COLORS.text }}>{mentor.name}</span>
-          {mentor.years && <span style={{ fontSize: 13.5, fontWeight: 700, color: COLORS.text, whiteSpace: "pre" }}>{mentor.years}</span>}
+          <span style={{ fontSize: 15, fontWeight: 600, color: COLORS.ink }}>{mentor.name}</span>
+          {mentor.years && <span style={{ fontSize: 13.5, fontWeight: 600, color: COLORS.ink, whiteSpace: "pre" }}>{mentor.years}</span>}
           <TagChips tags={mentor.tags} />
         </div>
         {(thisYear.length > 0 || onEvents.length > 0) && (
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 3, flexWrap: "wrap" }}>
             {thisYear.length > 0 && (
-              <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 700, color: COLORS.amber }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, fontWeight: 600, color: COLORS.warnText }}>
                 <BookOpen size={12} />
                 {thisYear.map((a) => `L${a.lessonNumber}`).join(", ")}
               </span>
             )}
             {onEvents.map((e) => (
-              <span key={e.id} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11.5, fontWeight: 800, color: COLORS.indigo, background: COLORS.indigoSoft, border: `1px solid ${COLORS.indigoBorder}`, borderRadius: 999, padding: "2px 8px" }}>
+              <span key={e.id} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11.5, fontWeight: 600, color: COLORS.ink, background: COLORS.bg, border: `1px solid ${COLORS.border2}`, padding: "2px 8px" }}>
                 <EventIcon size={11} /> {e.title || "Event"}
               </span>
             ))}
@@ -294,26 +292,26 @@ function MentorDetail({ mentor, onBack, onUpdate, onDelete }) {
   return (
     <div style={{ maxWidth: 720, margin: "0 auto" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-        <button type="button" onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.sub, fontWeight: 700, fontSize: 13.5, cursor: "pointer", padding: "4px 0" }}>
+        <button type="button" onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.text2, fontWeight: 600, fontSize: 13.5, cursor: "pointer", padding: "4px 0" }}>
           <ArrowLeft size={15} /> Back to list
         </button>
-        <button type="button" onClick={onDelete} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.faint, fontWeight: 700, fontSize: 12.5, cursor: "pointer" }}>
+        <button type="button" onClick={onDelete} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.muted, fontWeight: 600, fontSize: 12.5, cursor: "pointer" }}>
           <Trash2 size={14} /> Remove mentor
         </button>
       </div>
 
-      <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 16, padding: 20, marginBottom: 16 }}>
+      <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: 20, marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <Avatar name={mentor.name} size={48} />
           <div style={{ flex: 1, minWidth: 0 }}>
             {/* Name, years and tags wrap as a group; the status pill stays top-right outside the wrap. */}
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", minHeight: 30 }}>
-              <AutoInput value={mentor.name} onChange={(v) => onUpdate({ ...mentor, name: v })} placeholder="Name" style={{ fontSize: 19, fontWeight: 900, color: COLORS.text }} />
-              <AutoInput value={mentor.years} onChange={(v) => onUpdate({ ...mentor, years: v })} placeholder="Add years" style={{ fontSize: 15, fontWeight: 700, color: COLORS.text }} />
+              <AutoInput value={mentor.name} onChange={(v) => onUpdate({ ...mentor, name: v })} placeholder="Name" style={{ fontSize: 19, fontWeight: 600, color: COLORS.ink }} />
+              <AutoInput value={mentor.years} onChange={(v) => onUpdate({ ...mentor, years: v })} placeholder="Add years" style={{ fontSize: 15, fontWeight: 600, color: COLORS.ink }} />
               <TagsEditor tags={mentor.tags || []} onChange={(tags) => onUpdate({ ...mentor, tags })} />
             </div>
             <div style={{ display: "flex", gap: 14, marginTop: 4, flexWrap: "wrap" }}>
-              <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: COLORS.faint, fontWeight: 600 }}>
+              <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: COLORS.muted, fontWeight: 600 }}>
                 <MessageCircle size={12} /> {contactPreview || "No public contact set"}
               </span>
             </div>
@@ -337,20 +335,20 @@ function MentorDetail({ mentor, onBack, onUpdate, onDelete }) {
       {tab === "internal" ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 800, color: COLORS.indigo, letterSpacing: 0.4, marginBottom: 10 }}>Contact methods</div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.ink, letterSpacing: 0.4, marginBottom: 10 }}>Contact methods</div>
             <ContactsEditor contacts={mentor.contacts} onChange={(contacts) => onUpdate({ ...mentor, contacts })} />
-            <div style={{ fontSize: 12, color: COLORS.faint, marginTop: 8 }}>Private contacts never leave the server on student-facing routes.</div>
+            <div style={{ fontSize: 12, color: COLORS.muted, marginTop: 8 }}>Private contacts never leave the server on student-facing routes.</div>
           </div>
 
           <div>
-            <div style={{ fontSize: 13, fontWeight: 800, color: COLORS.indigo, letterSpacing: 0.4, marginBottom: 10 }}>Notes</div>
-            <div style={{ background: "#f7f8fb", border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "10px 12px" }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.ink, letterSpacing: 0.4, marginBottom: 10 }}>Notes</div>
+            <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, padding: "10px 12px" }}>
               <EditableTextarea
                 value={mentor.notes}
                 onChange={(v) => onUpdate({ ...mentor, notes: v })}
                 placeholder="Anything worth remembering about this mentor..."
                 rows={3}
-                style={{ fontSize: 13.5, color: COLORS.text, lineHeight: 1.5, background: "transparent" }}
+                style={{ fontSize: 13.5, color: COLORS.ink, lineHeight: 1.5, background: "transparent" }}
               />
             </div>
           </div>
@@ -358,15 +356,15 @@ function MentorDetail({ mentor, onBack, onUpdate, onDelete }) {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 800, color: COLORS.indigo, letterSpacing: 0.4, marginBottom: 10 }}>Public role or title</div>
-            <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "10px 12px" }}>
-              <EditableInput value={mentor.publicRole} onChange={(v) => onUpdate({ ...mentor, publicRole: v })} placeholder="e.g. CEO, Terra CO2 · EIB Panelist" style={{ fontSize: 14, color: COLORS.text }} />
+            <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.ink, letterSpacing: 0.4, marginBottom: 10 }}>Public role or title</div>
+            <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: "10px 12px" }}>
+              <EditableInput value={mentor.publicRole} onChange={(v) => onUpdate({ ...mentor, publicRole: v })} placeholder="e.g. CEO, Terra CO2 · EIB Panelist" style={{ fontSize: 14, color: COLORS.ink }} />
             </div>
           </div>
           <div>
-            <div style={{ fontSize: 13, fontWeight: 800, color: COLORS.indigo, letterSpacing: 0.4, marginBottom: 10 }}>Bio shown to students</div>
-            <div style={{ background: COLORS.card, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "10px 12px" }}>
-              <EditableTextarea value={mentor.publicBio} onChange={(v) => onUpdate({ ...mentor, publicBio: v })} placeholder="A couple sentences students will read about this mentor..." rows={4} style={{ fontSize: 14, color: COLORS.text, lineHeight: 1.5 }} />
+            <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.ink, letterSpacing: 0.4, marginBottom: 10 }}>Bio shown to students</div>
+            <div style={{ background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: "10px 12px" }}>
+              <EditableTextarea value={mentor.publicBio} onChange={(v) => onUpdate({ ...mentor, publicBio: v })} placeholder="A couple sentences students will read about this mentor..." rows={4} style={{ fontSize: 14, color: COLORS.ink, lineHeight: 1.5 }} />
             </div>
           </div>
           <StudentFacingPreview mentor={mentor} />
@@ -589,7 +587,7 @@ export default function MentorCRM({ user }) {
         right={
           <>
             <SaveIndicator status={saver.status} />
-            <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13.5, fontWeight: 800, color: COLORS.sub, background: "#fff", border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "8px 14px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13.5, fontWeight: 600, color: COLORS.text2, background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: "8px 14px" }}>
               <UserCheck size={15} /> {(mentors || []).filter((m) => m.status === "confirmed").length} confirmed · {(mentors || []).length} total · Cohort {cohortYear}
             </div>
           </>
@@ -655,7 +653,7 @@ export default function MentorCRM({ user }) {
                 <button
                   type="button"
                   onClick={addMentor}
-                  style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 800, fontSize: 13, borderRadius: 999, padding: "7px 14px", cursor: "pointer" }}
+                  style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: COLORS.ink, color: COLORS.white, fontWeight: 600, fontSize: 13, padding: "7px 14px", cursor: "pointer" }}
                 >
                   <Plus size={14} /> Add mentor
                 </button>
@@ -664,7 +662,7 @@ export default function MentorCRM({ user }) {
                     type="button"
                     onClick={() => setTeamOpen(true)}
                     title="Create and remove advancement team accounts (they get this CRM and nothing else)"
-                    style={{ display: "flex", alignItems: "center", gap: 6, border: `1px solid ${COLORS.indigoBorder}`, background: COLORS.indigoSoft, color: COLORS.indigo, fontWeight: 800, fontSize: 13, borderRadius: 999, padding: "7px 14px", cursor: "pointer" }}
+                    style={{ display: "flex", alignItems: "center", gap: 6, border: `1px solid ${COLORS.border2}`, background: COLORS.bg, color: COLORS.ink, fontWeight: 600, fontSize: 13, padding: "7px 14px", cursor: "pointer" }}
                   >
                     <UserPlus size={14} /> New advancement team member
                   </button>
@@ -695,7 +693,7 @@ function NewMentorModal({ forLesson, forEvent, onClose, onCreate }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const can = name.trim().length > 0 && !busy;
-  const label = { fontSize: 13, fontWeight: 800, color: COLORS.indigo, letterSpacing: 0.4, marginBottom: 10 };
+  const label = { fontSize: 13, fontWeight: 600, color: COLORS.ink, letterSpacing: 0.4, marginBottom: 10 };
   const submit = async () => {
     if (!can) return;
     setBusy(true);
@@ -720,7 +718,7 @@ function NewMentorModal({ forLesson, forEvent, onClose, onCreate }) {
               placeholder="Mentor's name"
               autoFocus
               onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
-              style={{ width: "100%", boxSizing: "border-box", border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "9px 12px", fontSize: 15, fontWeight: 700, outline: "none", fontFamily: "inherit", color: COLORS.text }}
+              style={{ width: "100%", boxSizing: "border-box", border: `1px solid ${COLORS.border}`, padding: "9px 12px", fontSize: 15, fontWeight: 600, fontFamily: "inherit", color: COLORS.ink }}
             />
           </div>
           <div>
@@ -731,16 +729,16 @@ function NewMentorModal({ forLesson, forEvent, onClose, onCreate }) {
         <div>
           <div style={label}>Contact methods</div>
           <ContactsEditor contacts={contacts} onChange={setContacts} />
-          <div style={{ fontSize: 12, color: COLORS.faint, marginTop: 8 }}>Private contacts never leave the server on student-facing routes.</div>
+          <div style={{ fontSize: 12, color: COLORS.muted, marginTop: 8 }}>Private contacts never leave the server on student-facing routes.</div>
         </div>
         <div>
           <div style={label}>Notes</div>
-          <div style={{ background: "#f7f8fb", border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "10px 12px" }}>
-            <EditableTextarea value={notes} onChange={setNotes} placeholder="Where they came from, what they said, anything worth remembering..." rows={3} style={{ fontSize: 13.5, color: COLORS.text, lineHeight: 1.5, background: "transparent" }} />
+          <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, padding: "10px 12px" }}>
+            <EditableTextarea value={notes} onChange={setNotes} placeholder="Where they came from, what they said, anything worth remembering..." rows={3} style={{ fontSize: 13.5, color: COLORS.ink, lineHeight: 1.5, background: "transparent" }} />
           </div>
         </div>
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-          <button type="button" onClick={onClose} style={{ border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.sub, fontWeight: 800, fontSize: 13.5, borderRadius: 999, padding: "9px 16px", cursor: "pointer", fontFamily: "inherit" }}>
+          <button type="button" onClick={onClose} style={{ border: `1px solid ${COLORS.border}`, background: COLORS.surface, color: COLORS.text2, fontWeight: 600, fontSize: 13.5, padding: "9px 16px", cursor: "pointer", fontFamily: "inherit" }}>
             Cancel
           </button>
           <PrimaryButton onClick={submit} disabled={!can} icon={Plus}>
@@ -795,17 +793,17 @@ function AdvancementModal({ onClose }) {
     }
   };
 
-  const inputStyle = { width: "100%", boxSizing: "border-box", border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "9px 12px", fontSize: 14, outline: "none" };
-  const label = { fontSize: 11.5, fontWeight: 800, color: COLORS.faint, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 };
+  const inputStyle = { width: "100%", boxSizing: "border-box", border: `1px solid ${COLORS.border}`, padding: "9px 12px", fontSize: 14 };
+  const label = { fontSize: 11.5, fontWeight: 600, color: COLORS.muted, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 6 };
 
   return (
     <ModalShell eyebrow="Super admin" title="Advancement team" onClose={onClose} maxWidth={640}>
       {confirmUI}
-      <div style={{ fontSize: 14, color: COLORS.sub, marginBottom: 16, lineHeight: 1.55 }}>
+      <div style={{ fontSize: 14, color: COLORS.text2, marginBottom: 16, lineHeight: 1.55 }}>
         Advancement team accounts open the Mentor CRM and nothing else. Add an email; they sign in with that Google account straight away.
       </div>
       {error && <Notice onClose={() => setError(null)}>{error}</Notice>}
-      <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: 14, marginBottom: 16, display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
+      <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, padding: 14, marginBottom: 16, display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap" }}>
         <div style={{ flex: "1 1 220px" }}>
           <div style={label}>Email</div>
           <input value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={(e) => e.key === "Enter" && create()} placeholder="name@example.com" autoFocus style={inputStyle} />
@@ -824,15 +822,15 @@ function AdvancementModal({ onClose }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {rows.length === 0 && <EmptyState>No advancement team accounts yet.</EmptyState>}
           {rows.map((u) => (
-            <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 12, background: "#fff", border: `1px solid ${COLORS.border}`, borderRadius: 14, padding: "12px 16px" }}>
+            <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 12, background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: "12px 16px" }}>
               <Avatar name={u.name} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 15, fontWeight: 800, color: COLORS.text }}>{u.name}</div>
-                <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: COLORS.faint, marginTop: 2 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, color: COLORS.ink }}>{u.name}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12.5, color: COLORS.muted, marginTop: 2 }}>
                   <Mail size={12} /> {u.email}
                 </div>
               </div>
-              <button type="button" onClick={() => remove(u)} title="Remove this account" style={{ border: "none", background: "transparent", color: COLORS.faint, cursor: "pointer", padding: 4 }}>
+              <button type="button" onClick={() => remove(u)} title="Remove this account" style={{ border: "none", background: "transparent", color: COLORS.muted, cursor: "pointer", padding: 4 }}>
                 <Trash2 size={15} />
               </button>
             </div>

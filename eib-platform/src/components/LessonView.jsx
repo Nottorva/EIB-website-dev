@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { Eye, Presentation, UserCheck, MapPin, Clock, ChevronDown, ChevronUp, MessageCircle, FileText, User, Lightbulb, ExternalLink, Pencil, CalendarDays, EyeOff, Download, Sparkles } from "lucide-react";
-import { COLORS, Pill, ModalShell, HeaderButton, Notice, SaveIndicator, Loading, TypeChip, fieldStyle } from "./ui";
+import { COLORS, FONTS, Pill, ModalShell, HeaderButton, Notice, SaveIndicator, Loading, TypeChip, fieldStyle } from "./ui";
 import { api, useDebouncedSaver } from "@/lib/api";
 import { MENTOR_DEFAULTS, mentorWhere, mentorWhen } from "@/lib/sessionDefaults";
 import { DeliverableInput, DeliverablePreview, ExampleBlock } from "./DeliverableInputs";
@@ -16,7 +16,7 @@ import { CredentialCard } from "./Credential";
 function MissingLinkModal({ eyebrow, lesson, what, onClose }) {
   return (
     <ModalShell eyebrow={`${eyebrow} · ${what}`} title={lesson.title} onClose={onClose} maxWidth={520}>
-      <div style={{ fontSize: 15, color: COLORS.sub, lineHeight: 1.6 }}>No {what.toLowerCase()} link has been added for this lesson yet. It is set in the Lesson Editor.</div>
+      <div style={{ fontSize: 15, color: COLORS.text2, lineHeight: 1.6 }}>No {what.toLowerCase()} link has been added for this lesson yet. It is set in the Lesson Editor.</div>
     </ModalShell>
   );
 }
@@ -44,7 +44,7 @@ function resourceView(link, file) {
 function ResourceModal({ eyebrow, lesson, what, link, file, onClose }) {
   const v = resourceView(link, file);
   const [failed, setFailed] = useState(false);
-  const frame = { width: "100%", height: "72vh", border: `1px solid ${COLORS.border}`, borderRadius: 12, background: "#f7f8fb", display: "block" };
+  const frame = { width: "100%", height: "72vh", border: `1px solid ${COLORS.border}`, background: COLORS.bg, display: "block" };
   return (
     <ModalShell
       eyebrow={`${eyebrow} · ${what}`}
@@ -60,16 +60,16 @@ function ResourceModal({ eyebrow, lesson, what, link, file, onClose }) {
     >
       {v.kind === "pdf" && !failed && <PdfReader src={v.src} onError={() => setFailed(true)} loadingText={`Loading the ${what.toLowerCase()}…`} />}
       {v.kind === "office" && !failed && <OfficeReader src={v.src} kind={v.office} onError={() => setFailed(true)} loadingText={`Loading the ${what.toLowerCase()}…`} />}
-      {["pdf", "office"].includes(v.kind) && failed && <div style={{ fontSize: 15, color: COLORS.sub, lineHeight: 1.6 }}>The preview could not load. Use the Download button to open the file instead.</div>}
+      {["pdf", "office"].includes(v.kind) && failed && <div style={{ fontSize: 15, color: COLORS.text2, lineHeight: 1.6 }}>The preview could not load. Use the Download button to open the file instead.</div>}
       {v.kind === "file" && (
-        <div style={{ fontSize: 15, color: COLORS.sub, lineHeight: 1.6 }}>
-          <strong style={{ color: COLORS.text }}>{v.name || "This file"}</strong> is in a format that cannot be previewed here. Use the Download button to open it. (PDF, PowerPoint .pptx and Word .docx files show a preview.)
+        <div style={{ fontSize: 15, color: COLORS.text2, lineHeight: 1.6 }}>
+          <strong style={{ color: COLORS.ink }}>{v.name || "This file"}</strong> is in a format that cannot be previewed here. Use the Download button to open it. (PDF, PowerPoint .pptx and Word .docx files show a preview.)
         </div>
       )}
       {v.kind === "frame" && (
         <>
           <iframe src={v.src} title={`${what}: ${lesson.title}`} style={frame} allow="fullscreen" allowFullScreen />
-          <div style={{ fontSize: 12.5, color: COLORS.faint, marginTop: 8 }}>If the preview stays blank, the site it comes from does not allow previews. Use "Open in new tab".</div>
+          <div style={{ fontSize: 12.5, color: COLORS.muted, marginTop: 8 }}>If the preview stays blank, the site it comes from does not allow previews. Use "Open in new tab".</div>
         </>
       )}
     </ModalShell>
@@ -85,24 +85,24 @@ function StudentOverviewModal({ eyebrow, lesson, onClose }) {
       maxWidth={620}
       headerRight={lesson.overviewLink ? <HeaderButton icon={ExternalLink} label="Open overview" href={lesson.overviewLink} /> : null}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 8, color: COLORS.sub, fontSize: 15, fontWeight: 600, marginBottom: 22, flexWrap: "wrap" }}>
-        <MapPin size={17} color={COLORS.indigo} strokeWidth={2.25} />
+      <div style={{ display: "flex", alignItems: "center", gap: 8, color: COLORS.text2, fontSize: 15, fontWeight: 600, marginBottom: 22, flexWrap: "wrap" }}>
+        <MapPin size={17} color={COLORS.ink} strokeWidth={2} />
         {lesson.room || "Room TBD"}
         {lesson.date && (
           <>
-            <span style={{ color: COLORS.faint, margin: "0 4px" }}>·</span>
-            <CalendarDays size={17} color={COLORS.indigo} strokeWidth={2.25} />
+            <span style={{ color: COLORS.muted, margin: "0 4px" }}>·</span>
+            <CalendarDays size={17} color={COLORS.ink} strokeWidth={2} />
             {lesson.date}
           </>
         )}
-        <span style={{ color: COLORS.faint, margin: "0 4px" }}>·</span>
-        <Clock size={17} color={COLORS.indigo} strokeWidth={2.25} />
+        <span style={{ color: COLORS.muted, margin: "0 4px" }}>·</span>
+        <Clock size={17} color={COLORS.ink} strokeWidth={2} />
         {lesson.startTime || "TBD"}
         {lesson.endTime ? ` – ${lesson.endTime}` : ""}
       </div>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 12, background: COLORS.indigoSoft, borderRadius: 14, padding: "18px 20px" }}>
-        <Lightbulb size={20} color={COLORS.indigo} strokeWidth={2.25} style={{ marginTop: 2, flexShrink: 0 }} />
-        <div style={{ fontSize: 15, color: COLORS.text, lineHeight: 1.6 }}>{lesson.overview || "No overview has been added for this lesson yet."}</div>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 12, background: COLORS.bg, padding: "18px 20px" }}>
+        <Lightbulb size={20} color={COLORS.ink} strokeWidth={2} style={{ marginTop: 2, flexShrink: 0 }} />
+        <div style={{ fontSize: 15, color: COLORS.ink, lineHeight: 1.6 }}>{lesson.overview || "No overview has been added for this lesson yet."}</div>
       </div>
     </ModalShell>
   );
@@ -118,24 +118,24 @@ function MentorInfoModal({ eyebrow, mentors, onClose }) {
   return (
     <ModalShell eyebrow={`${eyebrow} · ${list.length > 1 ? "Mentors" : "Mentor"}`} title={title} onClose={onClose} maxWidth={560}>
       {list.length === 0 ? (
-        <div style={{ fontSize: 15, color: COLORS.sub }}>This lesson doesn't have a mentor assigned yet.</div>
+        <div style={{ fontSize: 15, color: COLORS.text2 }}>This lesson doesn't have a mentor assigned yet.</div>
       ) : (
         list.map((mentor, i) => (
           <div key={mentor.id || i} style={i ? { borderTop: `1px solid ${COLORS.border}`, marginTop: 24, paddingTop: 24 } : undefined}>
-            {list.length > 1 && <div style={{ fontSize: 18, fontWeight: 900, color: COLORS.text, marginBottom: 4 }}>{mentor.name}</div>}
-            {mentor.role && <div style={{ fontSize: 15.5, color: COLORS.sub, fontWeight: 600, marginBottom: 22 }}>{mentor.role}</div>}
-            <div style={{ display: "flex", alignItems: "center", gap: 10, background: COLORS.amberSoft, border: `1px solid ${COLORS.amberBorder}`, borderRadius: 12, padding: "14px 16px", marginBottom: 22 }}>
-              <MessageCircle size={17} color={COLORS.amber} strokeWidth={2.25} />
+            {list.length > 1 && <div style={{ fontSize: 18, fontWeight: 600, color: COLORS.ink, marginBottom: 4 }}>{mentor.name}</div>}
+            {mentor.role && <div style={{ fontSize: 15.5, color: COLORS.text2, fontWeight: 600, marginBottom: 22 }}>{mentor.role}</div>}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, background: COLORS.warnBg, border: `1px solid ${COLORS.warnBorder}`, padding: "14px 16px", marginBottom: 22 }}>
+              <MessageCircle size={17} color={COLORS.warnText} strokeWidth={2} />
               <div>
-                <div style={{ fontSize: 12, fontWeight: 800, color: COLORS.amber, letterSpacing: 0.4 }}>Preferred contact</div>
-                <div style={{ fontSize: 15, color: COLORS.text, fontWeight: 700 }}>{mentor.contactMethod || "Not specified"}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: COLORS.warnText, letterSpacing: 0.4 }}>Preferred contact</div>
+                <div style={{ fontSize: 15, color: COLORS.ink, fontWeight: 600 }}>{mentor.contactMethod || "Not specified"}</div>
               </div>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 800, color: COLORS.text, letterSpacing: 0.5, marginBottom: 10 }}>
-              <User size={16} color={COLORS.indigo} strokeWidth={2.25} />
+            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: COLORS.ink, letterSpacing: 0.5, marginBottom: 10 }}>
+              <User size={16} color={COLORS.ink} strokeWidth={2} />
               Bio
             </div>
-            <div style={{ background: "#f7f8fb", border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "16px 18px", fontSize: 15, color: COLORS.text, lineHeight: 1.6 }}>
+            <div style={{ background: COLORS.bg, border: `1px solid ${COLORS.border}`, padding: "16px 18px", fontSize: 15, color: COLORS.ink, lineHeight: 1.6 }}>
               {mentor.bio || "No bio added yet."}
             </div>
           </div>
@@ -154,26 +154,26 @@ function DeliverableAccordion({ item, mode, submission, onChangePayload }) {
 
 
   return (
-    <div style={{ border: `1px solid ${COLORS.border}`, borderRadius: 16, overflow: "hidden" }}>
-      <button type="button" onClick={() => setOpen(!open)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "18px 22px", background: "#fff", border: "none", cursor: "pointer", textAlign: "left" }}>
+    <div style={{ border: `1px solid ${COLORS.border}`, overflow: "hidden" }}>
+      <button type="button" onClick={() => setOpen(!open)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "18px 22px", background: COLORS.surface, border: "none", cursor: "pointer", textAlign: "left" }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <TypeChip type={item.type} points={item.points} />
-          <div style={{ fontSize: 17, fontWeight: 800, color: COLORS.text }}>{item.title}</div>
+          <div style={{ fontSize: 17, fontWeight: 600, color: COLORS.ink }}>{item.title}</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
-          {mode === "student" && submitted && !hasGrade && <span style={{ fontSize: 12, fontWeight: 800, color: COLORS.green }}>Submitted · awaiting grade</span>}
+          {mode === "student" && submitted && !hasGrade && <span style={{ fontSize: 12, fontWeight: 600, color: COLORS.successText }}>Submitted · awaiting grade</span>}
           {mode === "student" && (
-            <span style={{ fontSize: 14.5, fontWeight: 800, color: hasGrade ? COLORS.indigo : COLORS.faint, background: hasGrade ? COLORS.indigoSoft : "#f1f3f7", borderRadius: 999, padding: "4px 14px", minWidth: 30, textAlign: "center", whiteSpace: "nowrap" }}>
+            <span style={{ fontSize: 14.5, fontWeight: 600, color: hasGrade ? COLORS.ink : COLORS.muted, background: hasGrade ? COLORS.bg : COLORS.bg, padding: "4px 14px", minWidth: 30, textAlign: "center", whiteSpace: "nowrap" }}>
               {hasGrade ? `${grade}${item.points != null ? ` / ${item.points}` : ""}` : "—"}
             </span>
           )}
-          {open ? <ChevronUp size={18} color={COLORS.sub} /> : <ChevronDown size={18} color={COLORS.sub} />}
+          {open ? <ChevronUp size={18} color={COLORS.text2} /> : <ChevronDown size={18} color={COLORS.text2} />}
         </div>
       </button>
 
       {open && (
         <div style={{ padding: "0 22px 22px", display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 16, fontSize: 14.5, color: COLORS.sub, lineHeight: 1.55 }}>{item.instructions}</div>
+          <div style={{ borderTop: `1px solid ${COLORS.border}`, paddingTop: 16, fontSize: 14.5, color: COLORS.text2, lineHeight: 1.55 }}>{item.instructions}</div>
 
           {mode === "leader" ? (
             <>
@@ -184,8 +184,8 @@ function DeliverableAccordion({ item, mode, submission, onChangePayload }) {
             <>
               <DeliverableInput item={item} payload={submission?.payload} onChange={onChangePayload} />
               <div>
-                <span style={{ fontSize: 13, fontWeight: 700, color: COLORS.faint, letterSpacing: 0.4 }}>Feedback</span>
-                <div style={{ marginTop: 8, background: "#f7f8fb", border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "14px 16px", fontSize: 14.5, color: submission?.feedback ? COLORS.text : COLORS.faint, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: COLORS.muted, letterSpacing: 0.4 }}>Feedback</span>
+                <div style={{ marginTop: 8, background: COLORS.bg, border: `1px solid ${COLORS.border}`, padding: "14px 16px", fontSize: 14.5, color: submission?.feedback ? COLORS.ink : COLORS.muted, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>
                   {submission?.feedback || "No feedback yet."}
                 </div>
               </div>
@@ -204,24 +204,24 @@ function Logistics({ lesson, editable, onChange, showMentor }) {
   if (!editable || !editing) {
     return (
       <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 22, marginTop: 20, paddingTop: 20, borderTop: `1px solid ${COLORS.border}` }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, color: COLORS.sub, fontSize: 15, fontWeight: 600 }}>
-          <MapPin size={17} color={COLORS.indigo} strokeWidth={2.25} />
+        <div style={{ display: "flex", alignItems: "center", gap: 8, color: COLORS.text2, fontSize: 15, fontWeight: 600 }}>
+          <MapPin size={17} color={COLORS.ink} strokeWidth={2} />
           {lesson.room || "Room TBD"}
         </div>
         {lesson.date && (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, color: COLORS.sub, fontSize: 15, fontWeight: 600 }}>
-            <CalendarDays size={17} color={COLORS.indigo} strokeWidth={2.25} />
+          <div style={{ display: "flex", alignItems: "center", gap: 8, color: COLORS.text2, fontSize: 15, fontWeight: 600 }}>
+            <CalendarDays size={17} color={COLORS.ink} strokeWidth={2} />
             {lesson.date}
           </div>
         )}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, color: COLORS.sub, fontSize: 15, fontWeight: 600 }}>
-          <Clock size={17} color={COLORS.indigo} strokeWidth={2.25} />
+        <div style={{ display: "flex", alignItems: "center", gap: 8, color: COLORS.text2, fontSize: 15, fontWeight: 600 }}>
+          <Clock size={17} color={COLORS.ink} strokeWidth={2} />
           {lesson.startTime || "TBD"}
           {lesson.endTime ? ` – ${lesson.endTime}` : ""}
         </div>
         {showMentor && (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, color: COLORS.sub, fontSize: 13.5, fontWeight: 600, background: COLORS.amberSoft, border: `1px solid ${COLORS.amberBorder}`, borderRadius: 999, padding: "4px 12px" }}>
-            <UserCheck size={14} color={COLORS.amber} strokeWidth={2.25} />
+          <div style={{ display: "flex", alignItems: "center", gap: 8, color: COLORS.text2, fontSize: 13.5, fontWeight: 600, background: COLORS.warnBg, border: `1px solid ${COLORS.warnBorder}`, padding: "4px 12px" }}>
+            <UserCheck size={14} color={COLORS.warnText} strokeWidth={2} />
             Mentor arrival · {mentorWhere(lesson)} · {mentorWhen(lesson)}
           </div>
         )}
@@ -229,7 +229,7 @@ function Logistics({ lesson, editable, onChange, showMentor }) {
           <button
             type="button"
             onClick={() => setEditing(true)}
-            style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: "auto", border: `1px solid ${COLORS.border}`, background: "#fff", color: COLORS.indigo, fontWeight: 800, fontSize: 13, borderRadius: 999, padding: "6px 12px", cursor: "pointer" }}
+            style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: "auto", border: `1px solid ${COLORS.border}`, background: COLORS.surface, color: COLORS.ink, fontWeight: 600, fontSize: 13, padding: "6px 12px", cursor: "pointer" }}
           >
             <Pencil size={13} /> Edit location & time
           </button>
@@ -238,8 +238,8 @@ function Logistics({ lesson, editable, onChange, showMentor }) {
     );
   }
 
-  const small = { ...fieldStyle, padding: "9px 12px", fontSize: 14, borderRadius: 10 };
-  const label = { fontSize: 11.5, fontWeight: 800, color: COLORS.faint, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 6 };
+  const small = { ...fieldStyle, padding: "9px 12px", fontSize: 14 };
+  const label = { fontSize: 11.5, fontWeight: 600, color: COLORS.muted, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 6 };
   return (
     <div style={{ marginTop: 20, paddingTop: 20, borderTop: `1px solid ${COLORS.border}` }}>
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1.2fr 1fr 1fr auto", gap: 12, alignItems: "end" }}>
@@ -259,15 +259,15 @@ function Logistics({ lesson, editable, onChange, showMentor }) {
           <div style={label}>End</div>
           <input value={lesson.endTime} onChange={(e) => onChange({ endTime: e.target.value })} placeholder="4:15 PM" style={small} />
         </div>
-        <button type="button" onClick={() => setEditing(false)} style={{ border: "none", background: COLORS.indigo, color: "#fff", fontWeight: 800, fontSize: 13.5, borderRadius: 10, padding: "10px 16px", cursor: "pointer" }}>
+        <button type="button" onClick={() => setEditing(false)} style={{ border: "none", background: COLORS.ink, color: COLORS.white, fontWeight: 600, fontSize: 13.5, padding: "10px 16px", cursor: "pointer" }}>
           Done
         </button>
       </div>
-      <div style={{ fontSize: 12.5, color: COLORS.faint, marginTop: 8 }}>Saves as you type. This is what students see; the date is shared with the mentor side.</div>
+      <div style={{ fontSize: 12.5, color: COLORS.muted, marginTop: 8 }}>Saves as you type. This is what students see; the date is shared with the mentor side.</div>
       {showMentor && (
-        <div style={{ marginTop: 16, background: COLORS.amberSoft, border: `1px solid ${COLORS.amberBorder}`, borderRadius: 12, padding: "12px 14px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 800, color: COLORS.amber, textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 8 }}>
-            <UserCheck size={13} strokeWidth={2.5} /> Mentor arrival
+        <div style={{ marginTop: 16, background: COLORS.warnBg, border: `1px solid ${COLORS.warnBorder}`, padding: "12px 14px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 600, color: COLORS.warnText, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 8 }}>
+            <UserCheck size={13} strokeWidth={2} /> Mentor arrival
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12, alignItems: "end" }}>
             <div>
@@ -283,7 +283,7 @@ function Logistics({ lesson, editable, onChange, showMentor }) {
               <input value={lesson.mentorEndTime || ""} onChange={(e) => onChange({ mentorEndTime: e.target.value })} placeholder={MENTOR_DEFAULTS.mentorEndTime} style={small} />
             </div>
           </div>
-          <div style={{ fontSize: 12.5, color: COLORS.sub, marginTop: 8 }}>What the Mentor CRM shows for this session. Blank means {MENTOR_DEFAULTS.mentorLocation}, {MENTOR_DEFAULTS.mentorStartTime} to {MENTOR_DEFAULTS.mentorEndTime}.</div>
+          <div style={{ fontSize: 12.5, color: COLORS.text2, marginTop: 8 }}>What the Mentor CRM shows for this session. Blank means {MENTOR_DEFAULTS.mentorLocation}, {MENTOR_DEFAULTS.mentorStartTime} to {MENTOR_DEFAULTS.mentorEndTime}.</div>
         </div>
       )}
     </div>
@@ -297,17 +297,17 @@ function LessonCard({ lesson, mode, submissions, onChangePayload, onChangeLogist
 
 
   return (
-    <div id={`lesson-${lesson.id}`} style={{ background: COLORS.card, borderRadius: 22, padding: "34px 36px 36px", boxShadow: "0 1px 3px rgba(15,23,42,0.05)", scrollMarginTop: 84 }}>
+    <div id={`lesson-${lesson.id}`} style={{ background: COLORS.surface, padding: "34px 36px 36px", border: `1px solid ${COLORS.border}`, scrollMarginTop: 84 }}>
       <div style={{ display: "flex", gap: 20 }}>
-        <div style={{ width: 54, height: 54, borderRadius: 14, background: COLORS.indigoSoft, color: COLORS.indigo, fontWeight: 800, fontSize: 24, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <div style={{ width: 54, height: 54, background: COLORS.bg, color: COLORS.ink, fontWeight: 600, fontSize: 24, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
           {lesson.number}
         </div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 14, fontWeight: 800, color: COLORS.indigo, marginBottom: 4 }}>{lesson.chapterLabel}</div>
-          <div style={{ fontSize: 27, fontWeight: 800, color: COLORS.text }}>{lesson.title}</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.ink, marginBottom: 4 }}>{lesson.chapterLabel}</div>
+          <div style={{ fontFamily: FONTS.serif, fontSize: 32, fontWeight: 600, color: COLORS.ink }}>{lesson.title}</div>
         </div>
         {superAdmin && !lesson.studentVisible && (
-          <div title="Students and student leaders cannot see this lesson yet. Publish it from the Lesson Editor." style={{ display: "flex", alignItems: "center", gap: 6, alignSelf: "flex-start", fontSize: 12.5, fontWeight: 800, color: COLORS.sub, background: "#f1f3f7", border: `1px solid ${COLORS.border}`, borderRadius: 999, padding: "5px 11px", whiteSpace: "nowrap" }}>
+          <div title="Students and student leaders cannot see this lesson yet. Publish it from the Lesson Editor." style={{ display: "flex", alignItems: "center", gap: 6, alignSelf: "flex-start", fontSize: 12.5, fontWeight: 600, color: COLORS.text2, background: COLORS.bg, border: `1px solid ${COLORS.border}`, padding: "5px 11px", whiteSpace: "nowrap" }}>
             <EyeOff size={13} /> Draft · hidden from students
           </div>
         )}
@@ -325,9 +325,9 @@ function LessonCard({ lesson, mode, submissions, onChangePayload, onChangeLogist
       </div>
 
       <div style={{ marginTop: 28 }}>
-        <div style={{ fontSize: 13, fontWeight: 800, color: COLORS.indigo, letterSpacing: 0.5, marginBottom: 16 }}>Deliverables</div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.ink, letterSpacing: 0.5, marginBottom: 16 }}>Deliverables</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {lesson.deliverables.length === 0 && <div style={{ fontSize: 14, color: COLORS.faint, fontStyle: "italic" }}>No deliverables for this lesson.</div>}
+          {lesson.deliverables.length === 0 && <div style={{ fontSize: 14, color: COLORS.muted, fontStyle: "italic" }}>No deliverables for this lesson.</div>}
           {lesson.deliverables.map((d) => (
             <DeliverableAccordion key={d.id} item={d} mode={mode} submission={submissions[`${lesson.id}:${d.id}`]} onChangePayload={(payload) => onChangePayload(lesson.id, d.id, payload)} />
           ))}
@@ -421,7 +421,7 @@ export default function LessonView({ user }) {
     <div style={{ background: COLORS.bg, minHeight: "100%", paddingRight: aidaLesson && wide ? 440 : 0 }}>
       <div style={{ maxWidth: 1180, margin: "0 auto", padding: "36px 24px 80px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 22 }}>
-          <span style={{ fontSize: 30, fontWeight: 800, color: COLORS.text }}>Lessons</span>
+          <span style={{ fontFamily: FONTS.serif, fontSize: 36, fontWeight: 600, color: COLORS.ink }}>Lessons</span>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <SaveIndicator status={saver.status} />
             {lessons.length > 0 && <Pill icon={Download} label="Export all as MD" tone="default" onClick={() => exportMd()} />}
@@ -436,7 +436,7 @@ export default function LessonView({ user }) {
         {!data ? (
           <Loading />
         ) : lessons.length === 0 ? (
-          <div style={{ fontSize: 15, color: COLORS.faint }}>No lessons have been published yet.</div>
+          <div style={{ fontSize: 15, color: COLORS.muted }}>No lessons have been published yet.</div>
         ) : (
           <LessonLayout lessons={lessons}>
             {lessons.map((lesson) => (
@@ -507,20 +507,19 @@ function LessonLayout({ lessons, children }) {
           gap: 10,
           width: narrow ? "auto" : "100%",
           textAlign: "left",
-          border: `1px solid ${active ? COLORS.indigoBorder : "transparent"}`,
-          background: active ? COLORS.indigoSoft : "transparent",
-          color: active ? COLORS.indigo : COLORS.sub,
-          borderRadius: 12,
+          border: `1px solid ${active ? COLORS.border2 : "transparent"}`,
+          background: active ? COLORS.bg : "transparent",
+          color: active ? COLORS.ink : COLORS.text2,
           padding: narrow ? "8px 12px 8px 8px" : "9px 10px",
           cursor: "pointer",
           fontFamily: "inherit",
           flexShrink: 0,
         }}
       >
-        <span style={{ width: 28, height: 28, borderRadius: 8, background: active ? COLORS.indigo : "#fff", border: `1px solid ${active ? COLORS.indigo : COLORS.border}`, color: active ? "#fff" : COLORS.text, fontWeight: 800, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <span style={{ width: 28, height: 28, background: active ? COLORS.ink : COLORS.white, border: `1px solid ${active ? COLORS.ink : COLORS.border}`, color: active ? COLORS.white : COLORS.ink, fontWeight: 600, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
           {l.number}
         </span>
-        <span style={{ fontSize: 13.5, fontWeight: 700, whiteSpace: narrow ? "nowrap" : "normal", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.3 }}>{l.title}</span>
+        <span style={{ fontSize: 13.5, fontWeight: 600, whiteSpace: narrow ? "nowrap" : "normal", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.3 }}>{l.title}</span>
       </button>
     );
   };
@@ -537,7 +536,7 @@ function LessonLayout({ lessons, children }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "230px minmax(0, 1fr)", gap: 28, alignItems: "start" }}>
       <nav aria-label="Jump to lesson" style={{ position: "sticky", top: 84, display: "flex", flexDirection: "column", gap: 4 }}>
-        <div style={{ fontSize: 11.5, fontWeight: 800, color: COLORS.faint, textTransform: "uppercase", letterSpacing: 0.6, padding: "0 10px", marginBottom: 6 }}>Jump to</div>
+        <div style={{ fontSize: 11.5, fontWeight: 600, color: COLORS.muted, textTransform: "uppercase", letterSpacing: "0.12em", padding: "0 10px", marginBottom: 6 }}>Jump to</div>
         {lessons.map(item)}
       </nav>
       <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>{children}</div>
