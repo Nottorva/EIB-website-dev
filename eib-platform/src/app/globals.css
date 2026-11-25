@@ -1,15 +1,19 @@
 /* joineib.ca design system (see DESIGN.md). The tokens live here as CSS
    variables and in src/lib/tokens.js for JavaScript; keep the two in step. */
 :root {
-  --bg: #f5f3ee;
-  --surface: #fffdf8;
+  --bg: #ece8df;
+  --surface: #ffffff;
   --ink: #14213d;
   --ink-hover: #0b1427;
   --text-2: #3a4352;
-  --muted: #4a5568;
-  --border: #e2ded5;
-  --border-2: #c9c3b6;
+  --muted: #5e6878;
+  --border: #d3ccbd;
+  --border-2: #a39b8a;
   --accent: #a67c2e;
+  --action: #1b4fd8;
+  --action-hover: #143dae;
+  --action-bg: #e9effd;
+  --action-border: #b4c6f4;
   --success-bg: #e8f3ec;
   --success-border: #b7d7c2;
   --success-text: #1e4d2e;
@@ -22,7 +26,7 @@
   --warn-border: #e2d2a8;
   --warn-text: #5c4310;
   --warn-icon: #8a6516;
-  --disabled: #c9c3b6;
+  --disabled: #b9b3a6;
 }
 
 /* The font variables are set on <body> by next/font, so the stacks that use
@@ -61,7 +65,7 @@ a {
 
 /* Keyboard focus is always visible; pointer clicks do not show the ring. */
 :focus-visible {
-  outline: 2px solid var(--ink);
+  outline: 2px solid var(--action);
   outline-offset: 2px;
 }
 
@@ -69,8 +73,8 @@ a {
    was reached. !important because the tools set borders inline. The public
    site (.site) keeps its own focus style until it is restyled. */
 body :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), textarea, select):not(.site *):focus {
-  border-color: var(--ink) !important;
-  outline: 2px solid var(--ink) !important;
+  border-color: var(--action) !important;
+  outline: 2px solid var(--action) !important;
   outline-offset: 2px;
 }
 
@@ -141,13 +145,13 @@ body :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"])
   font-size: 13px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.3em;
+  letter-spacing: 0.22em;
   line-height: 1.4;
   color: var(--ink);
 }
 .eib-label {
   font-size: 12px;
-  font-weight: 400;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   line-height: 1.4;
@@ -161,12 +165,13 @@ body :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"])
   max-width: 68ch;
 }
 .eib-link {
-  color: var(--ink);
+  color: var(--action);
+  font-weight: 500;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
 .eib-link:hover {
-  color: var(--ink-hover);
+  color: var(--action-hover);
 }
 
 /* ---------- Layout ---------- */
@@ -249,34 +254,39 @@ body :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"])
   line-height: 1.2;
   text-decoration: none;
   cursor: pointer;
-  border: 1px solid var(--ink);
+  border: 1px solid var(--action);
   border-radius: 0;
-  background: var(--ink);
+  background: var(--action);
   color: #fff;
   transition: background-color 0.12s, border-color 0.12s, color 0.12s;
 }
+/* Three clearly different weights. Primary: solid blue, the one thing to do
+   next. Secondary: white with a heavy ink outline. Tertiary: a quiet grey
+   outline for cancel and other ways out. */
 .eib-btn:hover {
-  background: var(--ink-hover);
-  border-color: var(--ink-hover);
+  background: var(--action-hover);
+  border-color: var(--action-hover);
 }
 .eib-btn--secondary {
   background: var(--surface);
+  border: 1.5px solid var(--ink);
   color: var(--ink);
 }
 .eib-btn--secondary:hover {
-  background: var(--bg);
-  border-color: var(--ink-hover);
-  color: var(--ink-hover);
+  background: var(--action-bg);
+  border-color: var(--action);
+  color: var(--action-hover);
 }
 .eib-btn--tertiary {
   background: transparent;
   border-color: var(--border-2);
-  color: var(--ink);
+  color: var(--text-2);
   font-weight: 500;
 }
 .eib-btn--tertiary:hover {
-  background: transparent;
+  background: var(--surface);
   border-color: var(--ink);
+  color: var(--ink);
 }
 .eib-btn--danger {
   background: var(--error-bg);
@@ -317,6 +327,7 @@ body :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"])
 .eib-btn--secondary:disabled,
 .eib-btn--tertiary:disabled {
   background: transparent;
+  border-color: var(--disabled);
   color: var(--muted);
 }
 .eib-iconbtn {
@@ -329,7 +340,7 @@ body :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"])
   cursor: pointer;
 }
 .eib-iconbtn:hover:not(:disabled) {
-  color: var(--ink) !important;
+  color: var(--action) !important;
 }
 .eib-iconbtn:disabled {
   cursor: default;
@@ -368,7 +379,7 @@ body :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"])
   font-size: 14px;
   font-weight: 500;
   white-space: nowrap;
-  color: var(--muted);
+  color: var(--text-2);
   background: transparent;
   border: 0;
   border-radius: 0;
@@ -378,7 +389,12 @@ body :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"])
   border-left: 1px solid var(--border-2);
 }
 .eib-tab:hover {
-  color: var(--ink);
+  color: var(--action-hover);
+  background: var(--action-bg);
+}
+.eib-tab[aria-pressed="true"]:hover {
+  background: var(--ink);
+  color: #fff;
 }
 .eib-tab[aria-pressed="true"] {
   background: var(--ink);
@@ -406,24 +422,46 @@ body :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"])
   flex-wrap: wrap;
   gap: 12px 28px;
   padding: 14px 28px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  background: var(--ink);
+  border-bottom: 2px solid var(--accent);
+}
+/* The bar is ink, so what sits on it is white. */
+.eib-topbar .eib-wordmark {
+  color: #fff;
+}
+.eib-topbar .eib-btn--tertiary {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.45);
+}
+.eib-topbar .eib-btn--tertiary:hover {
+  background: #fff;
+  border-color: #fff;
+  color: var(--ink);
 }
 .eib-navlink {
   font-size: 14px;
   font-weight: 500;
-  color: var(--muted);
+  color: rgba(255, 255, 255, 0.74);
   text-decoration: none;
   padding: 6px 0;
   border-bottom: 2px solid transparent;
   white-space: nowrap;
 }
 .eib-navlink:hover {
-  color: var(--ink);
+  color: #fff;
 }
 .eib-navlink[aria-current="page"] {
-  color: var(--ink);
-  border-bottom-color: var(--ink);
+  color: #fff;
+  font-weight: 600;
+  border-bottom-color: var(--accent);
+}
+/* A tile that is a link (the home menu). */
+.eib-tile {
+  transition: border-color 0.12s, background-color 0.12s;
+}
+.eib-tile:hover {
+  border-color: var(--action) !important;
+  background: var(--action-bg) !important;
 }
 
 /* ---------- Tables (dashboards, CRM) ---------- */
@@ -436,13 +474,14 @@ body :where(input:not([type="checkbox"]):not([type="radio"]):not([type="range"])
 }
 .eib-table th {
   font-size: 12px;
-  font-weight: 400;
+  font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: var(--muted);
+  color: var(--ink);
+  background: var(--bg);
   text-align: left;
   padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-2);
 }
 .eib-table td {
   padding: 14px 16px;

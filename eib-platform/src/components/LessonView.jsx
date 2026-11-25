@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Eye, Presentation, UserCheck, MapPin, Clock, ChevronDown, ChevronUp, MessageCircle, FileText, User, Lightbulb, ExternalLink, Pencil, CalendarDays, EyeOff, Download, Sparkles } from "lucide-react";
+import { Presentation, UserCheck, MapPin, Clock, ChevronDown, ChevronUp, MessageCircle, FileText, User, ExternalLink, Pencil, CalendarDays, EyeOff, Download, Sparkles, Check, AlertCircle, CalendarClock } from "lucide-react";
 import { COLORS, FONTS, Pill, ModalShell, HeaderButton, Notice, SaveIndicator, Loading, TypeChip, fieldStyle } from "./ui";
 import { api, useDebouncedSaver } from "@/lib/api";
 import { MENTOR_DEFAULTS, mentorWhere, mentorWhen } from "@/lib/sessionDefaults";
@@ -9,7 +9,23 @@ import { DeliverableInput, DeliverablePreview, ExampleBlock } from "./Deliverabl
 import PdfReader from "./PdfReader";
 import OfficeReader, { officeKind } from "./OfficeReader";
 import AidaPanel from "./AidaPanel";
-import { CredentialCard } from "./Credential";
+import { isComplete, dueDay, dueState, formatDue } from "@/lib/deliverables";
+
+// A small coloured tag: red for past due, amber for due today, green for done.
+function DueTag({ tone, icon: Icon, children, wrap }) {
+  const look = {
+    past: { color: COLORS.errorText, bg: COLORS.errorBg, border: COLORS.errorBorder },
+    today: { color: COLORS.warnText, bg: COLORS.warnBg, border: COLORS.warnBorder },
+    done: { color: COLORS.successText, bg: COLORS.successBg, border: COLORS.successBorder },
+    plain: { color: COLORS.text2, bg: COLORS.bg, border: COLORS.border },
+  }[tone || "plain"];
+  return (
+    <span data-due={tone || "plain"} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12.5, fontWeight: 600, color: look.color, background: look.bg, border: `1px solid ${look.border}`, padding: "3px 10px", whiteSpace: wrap ? "normal" : "nowrap" }}>
+      {Icon && <Icon size={13} strokeWidth={2} style={{ flexShrink: 0 }} />}
+      {children}
+    </span>
+  );
+}
 
 /* ---------- Modals ---------- */
 // Shown only when a resource button is clicked and no link has been set yet.
@@ -76,38 +92,6 @@ function ResourceModal({ eyebrow, lesson, what, link, file, onClose }) {
   );
 }
 
-function StudentOverviewModal({ eyebrow, lesson, onClose }) {
-  return (
-    <ModalShell
-      eyebrow={`${eyebrow} · Student Overview`}
-      title={lesson.title}
-      onClose={onClose}
-      maxWidth={620}
-      headerRight={lesson.overviewLink ? <HeaderButton icon={ExternalLink} label="Open overview" href={lesson.overviewLink} /> : null}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 8, color: COLORS.text2, fontSize: 15, fontWeight: 600, marginBottom: 22, flexWrap: "wrap" }}>
-        <MapPin size={17} color={COLORS.ink} strokeWidth={2} />
-        {lesson.room || "Room TBD"}
-        {lesson.date && (
-          <>
-            <span style={{ color: COLORS.muted, margin: "0 4px" }}>·</span>
-            <CalendarDays size={17} color={COLORS.ink} strokeWidth={2} />
-            {lesson.date}
-          </>
-        )}
-        <span style={{ color: COLORS.muted, margin: "0 4px" }}>·</span>
-        <Clock size={17} color={COLORS.ink} strokeWidth={2} />
-        {lesson.startTime || "TBD"}
-        {lesson.endTime ? ` – ${lesson.endTime}` : ""}
-      </div>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 12, background: COLORS.bg, padding: "18px 20px" }}>
-        <Lightbulb size={20} color={COLORS.ink} strokeWidth={2} style={{ marginTop: 2, flexShrink: 0 }} />
-        <div style={{ fontSize: 15, color: COLORS.ink, lineHeight: 1.6 }}>{lesson.overview || "No overview has been added for this lesson yet."}</div>
-      </div>
-    </ModalShell>
-  );
-}
-
 /* Receives ONLY the public mentor shape from /api/lessons/view. A session
    can have up to two mentors; each gets its own block. */
 const mentorNames = (lesson) => (lesson.mentors || []).map((m) => m.name).filter(Boolean);
@@ -146,24 +130,28 @@ function MentorInfoModal({ eyebrow, mentors, onClose }) {
 }
 
 /* ---------- Deliverable accordion ---------- */
-function DeliverableAccordion({ item, mode, submission, onChangePayload }) {
+function DeliverableAccordion({ item, mode, submission, onChangePayload, due, dueStatus }) {
   const [open, setOpen] = useState(false);
   const grade = submission?.grade;
   const hasGrade = grade !== null && grade !== undefined && grade !== "";
-  const submitted = Boolean(submission?.payload);
+  // Done means every field is filled in (the same rule the credential and the reminder emails use).
+  const done = isComplete(item, submission?.payload);
 
 
   return (
-    <div style={{ border: `1px solid ${COLORS.border}`, overflow: "hidden" }}>
-      <button type="button" onClick={() => setOpen(!open)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "18px 22px", background: COLORS.surface, border: "none", cursor: "pointer", textAlign: "left" }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
+    <div style={{ border: `1px solid ${open ? COLORS.ink : COLORS.border2}`, overflow: "hidden" }}>
+      <button type="button" onClick={() => setOpen(!open)} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12, padding: "18px 22px", background: open ? COLORS.bg : COLORS.surface, border: "none", cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}>
+        <div style={{ flex: "1 1 240px", minWidth: 0 }}>
           <TypeChip type={item.type} points={item.points} />
           <div style={{ fontSize: 17, fontWeight: 600, color: COLORS.ink }}>{item.title}</div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0 }}>
-          {mode === "student" && submitted && !hasGrade && <span style={{ fontSize: 12, fontWeight: 600, color: COLORS.successText }}>Submitted · awaiting grade</span>}
+        <div style={{ display: "flex", alignItems: "center", gap: 14, flexShrink: 0, marginLeft: "auto" }}>
+          {mode === "student" && done && <DueTag tone="done" icon={Check}>{hasGrade ? "Done" : "Done · awaiting grade"}</DueTag>}
+          {mode === "student" && !done && dueStatus === "past" && <DueTag tone="past" icon={AlertCircle}>Past due</DueTag>}
+          {mode === "student" && !done && dueStatus === "today" && <DueTag tone="today" icon={AlertCircle}>Due today</DueTag>}
+          {mode === "student" && !done && dueStatus === "upcoming" && <DueTag>Due {formatDue(due, { short: true })}</DueTag>}
           {mode === "student" && (
-            <span style={{ fontSize: 14.5, fontWeight: 600, color: hasGrade ? COLORS.ink : COLORS.muted, background: hasGrade ? COLORS.bg : COLORS.bg, padding: "4px 14px", minWidth: 30, textAlign: "center", whiteSpace: "nowrap" }}>
+            <span style={{ fontSize: 14.5, fontWeight: 600, color: hasGrade ? COLORS.successText : COLORS.muted, background: hasGrade ? COLORS.successBg : COLORS.bg, border: `1px solid ${hasGrade ? COLORS.successBorder : COLORS.border}`, padding: "4px 14px", minWidth: 30, textAlign: "center", whiteSpace: "nowrap" }}>
               {hasGrade ? `${grade}${item.points != null ? ` / ${item.points}` : ""}` : "—"}
             </span>
           )}
@@ -184,7 +172,7 @@ function DeliverableAccordion({ item, mode, submission, onChangePayload }) {
             <>
               <DeliverableInput item={item} payload={submission?.payload} onChange={onChangePayload} />
               <div>
-                <span style={{ fontSize: 13, fontWeight: 600, color: COLORS.muted, letterSpacing: 0.4 }}>Feedback</span>
+                <span className="eib-label" style={{ fontWeight: 600 }}>Feedback</span>
                 <div style={{ marginTop: 8, background: COLORS.bg, border: `1px solid ${COLORS.border}`, padding: "14px 16px", fontSize: 14.5, color: submission?.feedback ? COLORS.ink : COLORS.muted, lineHeight: 1.55, whiteSpace: "pre-wrap" }}>
                   {submission?.feedback || "No feedback yet."}
                 </div>
@@ -259,7 +247,7 @@ function Logistics({ lesson, editable, onChange, showMentor }) {
           <div style={label}>End</div>
           <input value={lesson.endTime} onChange={(e) => onChange({ endTime: e.target.value })} placeholder="4:15 PM" style={small} />
         </div>
-        <button type="button" onClick={() => setEditing(false)} style={{ border: "none", background: COLORS.ink, color: COLORS.white, fontWeight: 600, fontSize: 13.5, padding: "10px 16px", cursor: "pointer" }}>
+        <button type="button" onClick={() => setEditing(false)} style={{ border: "none", background: COLORS.action, color: COLORS.white, fontWeight: 600, fontSize: 13.5, padding: "10px 16px", cursor: "pointer" }}>
           Done
         </button>
       </div>
@@ -291,19 +279,24 @@ function Logistics({ lesson, editable, onChange, showMentor }) {
 }
 
 /* ---------- Lesson card ---------- */
-function LessonCard({ lesson, mode, submissions, onChangePayload, onChangeLogistics, onExport, onAida, superAdmin }) {
+function LessonCard({ lesson, mode, submissions, onChangePayload, onChangeLogistics, superAdmin }) {
   const [activeModal, setActiveModal] = useState(null);
   const eyebrow = lesson.chapterLabel || "Chapter";
-
+  // Deliverables are due the Thursday after the lesson. A student is told when theirs are late.
+  const due = dueDay(lesson);
+  const dueStatus = dueState(due);
+  const unfinished = mode === "student" ? lesson.deliverables.filter((d) => !isComplete(d, submissions[`${lesson.id}:${d.id}`]?.payload)).length : 0;
+  const late = unfinished > 0 && dueStatus === "past";
+  const dueNow = unfinished > 0 && dueStatus === "today";
 
   return (
     <div id={`lesson-${lesson.id}`} style={{ background: COLORS.surface, padding: "34px 36px 36px", border: `1px solid ${COLORS.border}`, scrollMarginTop: 84 }}>
       <div style={{ display: "flex", gap: 20 }}>
-        <div style={{ width: 54, height: 54, background: COLORS.bg, color: COLORS.ink, fontWeight: 600, fontSize: 24, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <div style={{ width: 54, height: 54, background: COLORS.ink, color: COLORS.white, fontWeight: 600, fontSize: 24, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
           {lesson.number}
         </div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: COLORS.ink, marginBottom: 4 }}>{lesson.chapterLabel}</div>
+          <div className="eib-label" style={{ fontWeight: 600, marginBottom: 4 }}>{lesson.chapterLabel}</div>
           <div style={{ fontFamily: FONTS.serif, fontSize: 32, fontWeight: 600, color: COLORS.ink }}>{lesson.title}</div>
         </div>
         {superAdmin && !lesson.studentVisible && (
@@ -316,25 +309,34 @@ function LessonCard({ lesson, mode, submissions, onChangePayload, onChangeLogist
       <Logistics lesson={lesson} editable={mode === "leader"} onChange={(fields) => onChangeLogistics(lesson.id, fields)}  showMentor={superAdmin && Boolean(lesson.mentorEnabled)} />
 
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 24, paddingBottom: 24, borderBottom: `1px solid ${COLORS.border}` }}>
-        <Pill icon={Eye} label="Student Overview" onClick={() => setActiveModal("overview")} />
         <Pill icon={Presentation} label="Slides" onClick={() => setActiveModal("slides")} />
         {mode === "leader" && <Pill icon={FileText} label="Teaching Plan" onClick={() => setActiveModal("plan")} />}
-        <Pill icon={Download} label="Export as MD" onClick={() => onExport(lesson.id)} />
-        {onAida && <Pill icon={Sparkles} label="Ask AIDA" tone="default" onClick={() => onAida(lesson)} />}
         {lesson.mentorEnabled && <Pill icon={UserCheck} label={mentorNames(lesson).length > 1 ? `Mentors: ${mentorNames(lesson).join(" & ")}` : `Mentor: ${mentorNames(lesson)[0] || "Unassigned"}`} tone="amber" onClick={() => setActiveModal("mentor")} />}
       </div>
 
       <div style={{ marginTop: 28 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.ink, letterSpacing: 0.5, marginBottom: 16 }}>Deliverables</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px 16px", flexWrap: "wrap", marginBottom: 16 }}>
+          <div className="eib-eyebrow">Deliverables</div>
+          {lesson.deliverables.length > 0 && due && (
+            <DueTag wrap tone={late ? "past" : dueNow ? "today" : mode === "student" && unfinished === 0 ? "done" : "plain"} icon={mode === "student" && unfinished === 0 ? Check : CalendarClock}>
+              {late ? `Past due: was due ${formatDue(due)}` : dueNow ? `Due today, ${formatDue(due)}` : mode === "student" && unfinished === 0 ? `All done · due ${formatDue(due)}` : `Due ${formatDue(due)}`}
+            </DueTag>
+          )}
+          {lesson.deliverables.length > 0 && !due && mode === "leader" && <span style={{ fontSize: 13, color: COLORS.muted }}>No due date yet: it is the Thursday after the lesson's date.</span>}
+        </div>
+        {(late || dueNow) && (
+          <Notice tone={late ? "error" : "amber"} lead={late ? `${unfinished} of these ${unfinished === 1 ? "is" : "are"} past due.` : `${unfinished} of these ${unfinished === 1 ? "is" : "are"} due today.`}>
+            Not completing deliverables before Thursday will result in a loss of feedback. Not completing deliverables before the end of the course will result in a loss of credential.
+          </Notice>
+        )}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {lesson.deliverables.length === 0 && <div style={{ fontSize: 14, color: COLORS.muted, fontStyle: "italic" }}>No deliverables for this lesson.</div>}
           {lesson.deliverables.map((d) => (
-            <DeliverableAccordion key={d.id} item={d} mode={mode} submission={submissions[`${lesson.id}:${d.id}`]} onChangePayload={(payload) => onChangePayload(lesson.id, d.id, payload)} />
+            <DeliverableAccordion key={d.id} item={d} mode={mode} submission={submissions[`${lesson.id}:${d.id}`]} onChangePayload={(payload) => onChangePayload(lesson.id, d.id, payload)} due={due} dueStatus={dueStatus} />
           ))}
         </div>
       </div>
 
-      {activeModal === "overview" && <StudentOverviewModal eyebrow={eyebrow} lesson={lesson} onClose={() => setActiveModal(null)} />}
       {["slides", "plan"].includes(activeModal) && (() => {
         const [what, link, file] = activeModal === "slides" ? ["Slides", lesson.slidesLink, lesson.slidesFile] : ["Teaching Plan", lesson.teachingPlanLink, lesson.teachingPlanFile];
         const Modal = link ? ResourceModal : MissingLinkModal;
@@ -390,61 +392,84 @@ export default function LessonView({ user }) {
     });
   };
 
-  // Download the Markdown file for one lesson, or for all of them. Waits for
-  // answers still being saved, so the file has what is on screen.
+  // Waits for answers still being saved (AIDA reads the saved copy).
   const savingRef = useRef(saver.status);
   savingRef.current = saver.status;
   const saved = async () => {
     for (let i = 0; i < 40 && savingRef.current === "saving"; i++) await new Promise((r) => setTimeout(r, 100));
   };
-  const exportMd = async (lessonId) => {
-    await saved();
-    window.location.href = `/api/lessons/export${lessonId ? `?lesson=${encodeURIComponent(lessonId)}` : ""}`;
-  };
 
-  // AIDA, the AI cofounder: a side panel for one lesson at a time (students, when it is switched on).
+  // AIDA, the AI cofounder: a full-screen chat for one lesson at a time (students, when it is switched
+  // on), opened from the "Ask AIDA" button that floats in the bottom right corner of the page. It opens
+  // on the lesson the student is looking at. Opening it adds a step to the browser's history, so the Back button (or the back swipe on a
+  // phone) leaves the chat and lands on the lessons again instead of leaving the page.
   const [aidaLesson, setAidaLesson] = useState(null);
-  const closeAida = useRef(() => setAidaLesson(null)).current;
-  // On a wide screen the page makes room for the panel, so the deliverables stay in view beside it.
-  const [wide, setWide] = useState(false);
+  const openAida = useRef((lesson) => {
+    setAidaLesson(lesson);
+    window.history.pushState({ ...(window.history.state || {}), eibAida: true }, "");
+  }).current;
+  const closeAida = useRef(() => {
+    if (window.history.state?.eibAida) window.history.back();
+    else setAidaLesson(null);
+  }).current;
+  // The lesson on screen: the last card whose top has passed just under the top bar (the same rule the
+  // "Jump to" list uses for its highlight), or the first lesson at the top of the page.
+  const lessonInView = () => {
+    let best = null;
+    for (const l of lessons) {
+      const el = document.getElementById(`lesson-${l.id}`);
+      if (el && el.getBoundingClientRect().top <= 140) best = l;
+    }
+    return best || lessons[0];
+  };
   useEffect(() => {
-    const fit = () => setWide(window.innerWidth >= 1000);
-    fit();
-    window.addEventListener("resize", fit);
-    return () => window.removeEventListener("resize", fit);
+    const onPop = () => setAidaLesson(null);
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
   }, []);
 
   const mode = data?.mode || (user.role === "student" ? "student" : "leader");
   const lessons = data?.lessons || [];
 
   return (
-    <div style={{ background: COLORS.bg, minHeight: "100%", paddingRight: aidaLesson && wide ? 440 : 0 }}>
-      <div style={{ maxWidth: 1180, margin: "0 auto", padding: "36px 24px 80px" }}>
+    <div style={{ background: COLORS.bg, minHeight: "100%" }}>
+      <div style={{ maxWidth: 1180, margin: "0 auto", padding: "36px 24px 110px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 22 }}>
           <span style={{ fontFamily: FONTS.serif, fontSize: 36, fontWeight: 600, color: COLORS.ink }}>Lessons</span>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <SaveIndicator status={saver.status} />
-            {lessons.length > 0 && <Pill icon={Download} label="Export all as MD" tone="default" onClick={() => exportMd()} />}
           </div>
         </div>
 
         {error && <Notice onClose={() => setError(null)}>{error}</Notice>}
         {saver.error && <Notice onClose={saver.clearError}>{saver.error}</Notice>}
 
-        {data?.credential && <CredentialCard credential={data.credential} />}
-
         {!data ? (
           <Loading />
         ) : lessons.length === 0 ? (
           <div style={{ fontSize: 15, color: COLORS.muted }}>No lessons have been published yet.</div>
         ) : (
-          <LessonLayout lessons={lessons}>
+          <LessonLayout lessons={lessons} flags={mode === "student" ? Object.fromEntries(lessons.map((l) => {
+            const state = dueState(dueDay(l));
+            const open = l.deliverables.some((d) => !isComplete(d, submissions[`${l.id}:${d.id}`]?.payload));
+            return [l.id, open && (state === "past" || state === "today") ? state : ""];
+          })) : {}}>
             {lessons.map((lesson) => (
-              <LessonCard key={lesson.id} lesson={lesson} mode={mode} submissions={submissions} onChangePayload={changePayload} onChangeLogistics={changeLogistics} onExport={exportMd} onAida={data.aida ? setAidaLesson : null} superAdmin={user.role === "superAdmin"} />
+              <LessonCard key={lesson.id} lesson={lesson} mode={mode} submissions={submissions} onChangePayload={changePayload} onChangeLogistics={changeLogistics} superAdmin={user.role === "superAdmin"} />
             ))}
           </LessonLayout>
         )}
       </div>
+      {data?.aida && lessons.length > 0 && !aidaLesson && (
+        <button
+          type="button"
+          data-aida-float
+          onClick={() => openAida(lessonInView())}
+          style={{ position: "fixed", right: "max(20px, env(safe-area-inset-right))", bottom: "max(20px, env(safe-area-inset-bottom))", zIndex: 55, display: "flex", alignItems: "center", gap: 10, minHeight: 56, padding: "0 24px", background: COLORS.action, color: COLORS.white, border: `2px solid ${COLORS.white}`, outline: `1px solid ${COLORS.action}`, fontSize: 16, fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}
+        >
+          <Sparkles size={20} strokeWidth={2} /> Ask AIDA
+        </button>
+      )}
       {aidaLesson && <AidaPanel lesson={aidaLesson} lessons={lessons} submissions={submissions} onChangePayload={changePayload} onClose={closeAida} beforeSend={saved} />}
     </div>
   );
@@ -453,7 +478,7 @@ export default function LessonView({ user }) {
 /* Lesson cards with a jump list beside them: a sticky column on wide
    screens, a scrollable row of chips above the cards on narrow ones. The
    highlighted entry follows whichever card is nearest the top of the screen. */
-function LessonLayout({ lessons, children }) {
+function LessonLayout({ lessons, children, flags = {} }) {
   const [narrow, setNarrow] = useState(false);
   const [activeId, setActiveId] = useState(lessons[0]?.id || null);
 
@@ -507,19 +532,20 @@ function LessonLayout({ lessons, children }) {
           gap: 10,
           width: narrow ? "auto" : "100%",
           textAlign: "left",
-          border: `1px solid ${active ? COLORS.border2 : "transparent"}`,
-          background: active ? COLORS.bg : "transparent",
-          color: active ? COLORS.ink : COLORS.text2,
+          border: `1px solid ${active ? COLORS.ink : "transparent"}`,
+          background: active ? COLORS.ink : "transparent",
+          color: active ? COLORS.white : COLORS.text2,
           padding: narrow ? "8px 12px 8px 8px" : "9px 10px",
           cursor: "pointer",
           fontFamily: "inherit",
           flexShrink: 0,
         }}
       >
-        <span style={{ width: 28, height: 28, background: active ? COLORS.ink : COLORS.white, border: `1px solid ${active ? COLORS.ink : COLORS.border}`, color: active ? COLORS.white : COLORS.ink, fontWeight: 600, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        <span style={{ width: 28, height: 28, background: COLORS.white, border: `1px solid ${active ? COLORS.white : COLORS.border2}`, color: COLORS.ink, fontWeight: 600, fontSize: 13, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
           {l.number}
         </span>
-        <span style={{ fontSize: 13.5, fontWeight: 600, whiteSpace: narrow ? "nowrap" : "normal", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.3 }}>{l.title}</span>
+        <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 600, whiteSpace: narrow ? "nowrap" : "normal", overflow: "hidden", textOverflow: "ellipsis", lineHeight: 1.3 }}>{l.title}</span>
+        {flags[l.id] && <span title={flags[l.id] === "past" ? "Past due" : "Due today"} aria-label={flags[l.id] === "past" ? "Past due" : "Due today"} style={{ width: 10, height: 10, flexShrink: 0, background: flags[l.id] === "past" ? COLORS.errorIcon : COLORS.warnIcon, border: `1px solid ${COLORS.white}` }} />}
       </button>
     );
   };

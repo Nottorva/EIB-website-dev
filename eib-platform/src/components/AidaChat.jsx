@@ -33,7 +33,7 @@ const SEARCHING = "[[searching]]";
 const visible = (content) => String(content).replaceAll(SEARCHING, "").replace(CARD, "").replace(/\[\[[^\]]*\]?$/, "").replace(/\n{3,}/g, "\n\n").trim();
 // Text with its web addresses as links.
 const LINK = /(https?:\/\/[^\s<>"]+[^\s<>".,;:!?)\]])/;
-const linked = (str) => (LINK.test(str) ? str.split(LINK).map((part, i) => (i % 2 ? <a key={i} href={part} target="_blank" rel="noopener noreferrer" style={{ color: COLORS.ink }}>{part}</a> : part)) : str);
+const linked = (str) => (LINK.test(str) ? str.split(LINK).map((part, i) => (i % 2 ? <a key={i} href={part} target="_blank" rel="noopener noreferrer" style={{ color: COLORS.action }}>{part}</a> : part)) : str);
 const shownIn = (content) => [...new Set([...String(content).matchAll(CARD)].map((m) => m[1]))];
 // The deliverables AIDA wrote out in a reply (finished ones only).
 const draftedIn = (content) => splitReply(content).filter((p) => p.draft?.done).map((p) => p.draft.id);
@@ -50,7 +50,7 @@ function Draft({ draft, d, onAdd }) {
     <div style={box} data-draft={draft.id}>
       {d.item.type === "table" ? <PayloadView type="table" payload={payload} /> : <div>{payload.text}</div>}
       {draft.done && d.apply && (
-        <button type="button" disabled={isIn} onClick={() => onAdd(draft.id, payload)} style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 10, border: "none", padding: "8px 13px", fontSize: 13.5, fontWeight: 600, fontFamily: "inherit", cursor: isIn ? "default" : "pointer", background: isIn ? "transparent" : COLORS.ink, color: isIn ? COLORS.ink : COLORS.white }}>
+        <button type="button" disabled={isIn} onClick={() => onAdd(draft.id, payload)} style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 10, border: "none", padding: "8px 13px", fontSize: 13.5, fontWeight: 600, fontFamily: "inherit", cursor: isIn ? "default" : "pointer", background: isIn ? "transparent" : COLORS.action, color: isIn ? COLORS.ink : COLORS.white }}>
           {isIn ? <Check size={15} /> : <FilePlus2 size={15} />}
           {isIn ? `Added to ${d.label}` : hasOther ? `Replace ${d.label} with this` : `Add to ${d.label}`}
         </button>
@@ -87,8 +87,8 @@ function Catalog({ catalog, startOpen, active, onPick }) {
                 {g.items.map((d) => {
                   const on = active.includes(d.id);
                   return (
-                    <button key={d.id} type="button" aria-pressed={on} title={on ? "Remove from the chat" : "Bring into the chat"} onClick={() => onPick(d.id)} style={{ display: "flex", alignItems: "baseline", gap: 8, border: "none", padding: "6px 8px", cursor: "pointer", fontFamily: "inherit", textAlign: "left", background: on ? COLORS.bg : "transparent", color: on ? COLORS.ink : COLORS.ink }}>
-                      <span style={{ fontSize: 12.5, fontWeight: 600, color: COLORS.ink, flexShrink: 0 }}>{d.label}</span>
+                    <button key={d.id} type="button" aria-pressed={on} title={on ? "Remove from the chat" : "Bring into the chat"} onClick={() => onPick(d.id)} style={{ display: "flex", alignItems: "baseline", gap: 8, border: "none", padding: "6px 8px", cursor: "pointer", fontFamily: "inherit", textAlign: "left", background: on ? COLORS.actionBg : "transparent", color: COLORS.ink }}>
+                      <span style={{ fontSize: 12.5, fontWeight: 600, color: on ? COLORS.action : COLORS.ink, flexShrink: 0 }}>{d.label}</span>
                       <span style={{ fontSize: 13, lineHeight: 1.35 }}>{d.title}</span>
                     </button>
                   );
@@ -102,7 +102,7 @@ function Catalog({ catalog, startOpen, active, onPick }) {
   );
 }
 
-export default function AidaChat({ messages, setMessages, post, emptyHint, disabledReason = "", deliverableOf, catalog = [], currentGroup = "", wide = false, editorNote = "This is your deliverable. It saves as you type.", maxChars = AIDA_MAX_CHARS, placeholder = "Ask AIDA about your work…" }) {
+export default function AidaChat({ messages, setMessages, post, emptyHint, disabledReason = "", deliverableOf, catalog = [], currentGroup = "", wide = false, column = 0, editorNote = "This is your deliverable. It saves as you type.", maxChars = AIDA_MAX_CHARS, placeholder = "Ask AIDA about your work…" }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -224,12 +224,14 @@ export default function AidaChat({ messages, setMessages, post, emptyHint, disab
       onClick={onClick}
       disabled={disabled}
       aria-label={label || "Send"}
-      style={{ height: 44, minWidth: 44, flexShrink: 0, border: "none", padding: label ? "0 16px" : 0, background: COLORS.ink, color: COLORS.white, fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.5 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+      style={{ height: 44, minWidth: 44, flexShrink: 0, border: "none", padding: label ? "0 16px" : 0, background: COLORS.action, color: COLORS.white, fontSize: 14, fontWeight: 600, fontFamily: "inherit", cursor: disabled ? "default" : "pointer", opacity: disabled ? 0.5 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
     >
       {label} <Send size={label ? 16 : 18} />
     </button>
   );
   const hasList = catalog.length > 0 && Boolean(deliverableOf);
+  // `column` (a width in px) keeps the conversation in a centred column when the chat has a whole screen.
+  const side = column ? `max(16px, calc((100% - ${column}px) / 2))` : "16px";
   const list = hasList && <Catalog catalog={catalog} startOpen={currentGroup} active={buttons.map((d) => d.id)} onPick={pick} />;
 
   return (
@@ -241,10 +243,10 @@ export default function AidaChat({ messages, setMessages, post, emptyHint, disab
         </nav>
       )}
       <div style={{ display: "flex", flexDirection: "column", minHeight: 0, minWidth: 0, flex: 1 }}>
-        <div aria-live="polite" style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10, padding: "16px 16px 8px", background: COLORS.bg }}>
+        <div aria-live="polite" style={{ flex: 1, minHeight: 0, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10, padding: `16px ${side} 8px`, background: COLORS.bg }}>
           {messages.length === 0 && (
             <div style={{ margin: "auto", textAlign: "center", color: COLORS.muted, fontSize: 14, lineHeight: 1.55, maxWidth: 380 }}>
-              <Sparkles size={22} color={COLORS.ink} style={{ marginBottom: 8 }} />
+              <Sparkles size={22} color={COLORS.action} style={{ marginBottom: 8 }} />
               <div>{emptyHint}</div>
             </div>
           )}
@@ -252,7 +254,7 @@ export default function AidaChat({ messages, setMessages, post, emptyHint, disab
           <div ref={endRef} />
         </div>
 
-        <div style={{ padding: "10px 16px max(14px, env(safe-area-inset-bottom))", borderTop: `1px solid ${COLORS.border}`, background: COLORS.surface }}>
+        <div style={{ padding: `10px ${side} max(14px, env(safe-area-inset-bottom))`, borderTop: `1px solid ${COLORS.border}`, background: COLORS.surface }}>
           {error && <div style={{ marginBottom: 8 }}><Notice onClose={() => setError(null)}>{error}</Notice></div>}
           {disabledReason && <div style={{ marginBottom: 8 }}><Notice tone="amber">{disabledReason}</Notice></div>}
 

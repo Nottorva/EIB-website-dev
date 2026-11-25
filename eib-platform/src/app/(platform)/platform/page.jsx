@@ -131,6 +131,7 @@ export default async function Home() {
             <Link
               key={t.href}
               href={t.href}
+              className="eib-tile"
               style={{
                 display: "block",
                 background: amber ? COLORS.warnBg : COLORS.surface,
@@ -143,8 +144,8 @@ export default async function Home() {
                 style={{
                   width: 42,
                   height: 42,
-                  background: amber ? COLORS.surface : COLORS.bg,
-                  color: amber ? COLORS.warnText : COLORS.ink,
+                  background: amber ? COLORS.warnText : COLORS.ink,
+                  color: COLORS.white,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",

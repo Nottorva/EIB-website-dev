@@ -22,7 +22,7 @@ export default function PaymentCard({ payment, paid }) {
       </div>
       {payment.note && <p style={{ fontSize: 14.5, color: COLORS.text2, lineHeight: 1.6, margin: "10px 0 0", whiteSpace: "pre-wrap" }}>{payment.note}</p>}
       {payment.url && (
-        <a href={payment.url} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 8, marginTop: 16, background: COLORS.ink, color: COLORS.white, fontWeight: 600, fontSize: 15, padding: "12px 20px", textDecoration: "none" }}>
+        <a href={payment.url} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 8, marginTop: 16, background: COLORS.action, color: COLORS.white, fontWeight: 600, fontSize: 15, padding: "12px 20px", textDecoration: "none" }}>
           {payment.label || "Pay the program fee"} <ExternalLink size={15} />
         </a>
       )}

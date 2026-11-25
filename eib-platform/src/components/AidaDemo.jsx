@@ -97,7 +97,7 @@ export default function AidaDemo({ token, initial, hours, maxMessages }) {
               </div>
             ))}
           </div>
-          <button type="button" onClick={start} disabled={starting} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, border: "none", padding: "15px 18px", background: COLORS.ink, color: COLORS.white, fontSize: 16, fontWeight: 600, fontFamily: "inherit", cursor: starting ? "default" : "pointer", opacity: starting ? 0.7 : 1 }}>
+          <button type="button" onClick={start} disabled={starting} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, border: "none", padding: "15px 18px", background: COLORS.action, color: COLORS.white, fontSize: 16, fontWeight: 600, fontFamily: "inherit", cursor: starting ? "default" : "pointer", opacity: starting ? 0.7 : 1 }}>
             {starting ? "Starting…" : "Start the demo"} {!starting && <ArrowRight size={18} />}
           </button>
           <p style={{ fontSize: 12.5, lineHeight: 1.5, color: COLORS.muted, margin: "16px 0 0", textAlign: "center" }}>

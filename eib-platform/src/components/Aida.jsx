@@ -69,7 +69,7 @@ export default function Aida() {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <SaveIndicator status={saver.status} />
-            <Link href="/aida/chat" style={{ display: "flex", alignItems: "center", gap: 8, background: COLORS.ink, color: COLORS.white, padding: "11px 18px", fontSize: 14.5, fontWeight: 600, textDecoration: "none" }}>
+            <Link href="/aida/chat" style={{ display: "flex", alignItems: "center", gap: 8, background: COLORS.action, color: COLORS.white, padding: "11px 18px", fontSize: 14.5, fontWeight: 600, textDecoration: "none" }}>
               <MessageCircle size={17} /> Chat with AIDA
             </Link>
           </div>
@@ -146,7 +146,7 @@ export default function Aida() {
               <div style={{ ...hint, marginBottom: 12 }}>For things that are true all year: how EIB works, what you expect from students, house rules.</div>
               <textarea aria-label="General context" value={data.settings.general} onChange={(e) => patchSettings({ general: e.target.value })} placeholder="For example: Students work alone or in pairs. The showcase is on April 23. Ventures must be something a student could really start this year." rows={rowsFor(data.settings.general)} style={{ ...fieldStyle, ...mono, resize: "vertical" }} />
 
-              <button type="button" onClick={() => setShowPrompt((v) => !v)} style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 16, border: "none", background: "transparent", color: COLORS.ink, fontWeight: 600, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit", padding: 0 }}>
+              <button type="button" onClick={() => setShowPrompt((v) => !v)} style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 16, border: "none", background: "transparent", color: COLORS.action, fontWeight: 600, fontSize: 13.5, cursor: "pointer", fontFamily: "inherit", padding: 0 }}>
                 {showPrompt ? <ChevronUp size={15} /> : <ChevronDown size={15} />} Core behaviour (how AIDA works with students)
               </button>
               {showPrompt && (

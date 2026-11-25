@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Users, ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Mail, Calendar, Link2, UserPlus, Lock, ExternalLink, Send, Pencil, Copy, Check, CalendarClock, Megaphone, ShieldOff, ShieldCheck, Clock, ChartColumn, Table2, Signature, Upload, Download, X, CircleCheck, Circle, Award } from "lucide-react";
+import { Users, ArrowLeft, Plus, Trash2, ChevronUp, ChevronDown, Mail, Calendar, Link2, UserPlus, Lock, ExternalLink, Send, Pencil, Copy, Check, CalendarClock, Megaphone, ShieldOff, ShieldCheck, Clock, ChartColumn, Table2, Signature, Upload, Download, X, CircleCheck, Circle, Award, BellRing } from "lucide-react";
 import { buildDays, TimeChart, DaysTable, Stat } from "./ApplicationsChart";
 import {
   COLORS, FONTS,
@@ -25,6 +25,7 @@ import { api, useDebouncedSaver } from "@/lib/api";
 import { fmtSmart, fmtDateTime, fmtLongDate, fmtShortDateTime } from "@/lib/format";
 import { GradeCard, useGrades } from "./Grading";
 import GraduationTab from "./GraduationTab";
+import RemindersTab from "./RemindersTab";
 
 // First come, first served: a person is in the class or on the waitlist.
 // Rows from the old review process that were never accepted are not shown.
@@ -128,7 +129,7 @@ function QuestionEditor({ question, index, total, onChange, onDelete, onMove, he
             <button
               type="button"
               onClick={() => onChange({ ...question, options: [...question.options, "New option"] })}
-              style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.ink, fontWeight: 600, fontSize: 13, cursor: "pointer", padding: "4px 0", alignSelf: "flex-start" }}
+              style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.action, fontWeight: 600, fontSize: 13, cursor: "pointer", padding: "4px 0", alignSelf: "flex-start" }}
             >
               <Plus size={14} /> Add option
             </button>
@@ -452,7 +453,7 @@ function StudentDetail({ student, account, isSuperAdmin, onSuspend, onAgreement,
 
   return (
     <div style={{ maxWidth: 680, margin: "0 auto" }}>
-      <button type="button" onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.text2, fontWeight: 600, fontSize: 13.5, cursor: "pointer", padding: "4px 0", marginBottom: 14 }}>
+      <button type="button" onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.action, fontWeight: 600, fontSize: 13.5, cursor: "pointer", padding: "4px 0", marginBottom: 14 }}>
         <ArrowLeft size={15} /> Back to list
       </button>
 
@@ -600,7 +601,7 @@ function SignupLinkPanel({ saver }) {
   if (error && !win) return <Notice>{error}</Notice>;
   if (!win) return <Loading />;
   const st = WINDOW_STATE[win.state];
-  const inputStyle = { width: "100%", boxSizing: "border-box", border: `1px solid ${COLORS.border}`, padding: "9px 12px", fontSize: 14, color: COLORS.ink };
+  const inputStyle = { width: "100%", boxSizing: "border-box", border: `1px solid ${COLORS.border2}`, padding: "9px 12px", fontSize: 14, color: COLORS.ink };
   const label = { fontSize: 11.5, fontWeight: 600, color: COLORS.muted, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 6 };
 
   return (
@@ -615,7 +616,7 @@ function SignupLinkPanel({ saver }) {
         <PrimaryButton onClick={copy} icon={copied ? Check : Copy} style={{ whiteSpace: "nowrap" }}>
           {copied ? "Copied" : "Copy link"}
         </PrimaryButton>
-        <a href="/apply" target="_blank" rel="noreferrer" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 600, color: COLORS.ink, textDecoration: "none", whiteSpace: "nowrap" }}>
+        <a href="/apply" target="_blank" rel="noreferrer" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 13, fontWeight: 600, color: COLORS.action, textDecoration: "none", whiteSpace: "nowrap" }}>
           Open <ExternalLink size={13} />
         </a>
       </div>
@@ -718,7 +719,7 @@ function EditNumber({ value, min, label, onSave }) {
           <span style={{ fontSize: 12, color: COLORS.muted }}>Enter to save</span>
         </div>
       ) : (
-        <button type="button" onClick={() => setEditing(true)} style={{ display: "flex", alignItems: "center", gap: 5, border: "none", background: "transparent", color: COLORS.ink, fontWeight: 600, fontSize: 12.5, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
+        <button type="button" onClick={() => setEditing(true)} style={{ display: "flex", alignItems: "center", gap: 5, border: "none", background: "transparent", color: COLORS.action, fontWeight: 600, fontSize: 12.5, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
           <Pencil size={12} /> {label}
         </button>
       )}
@@ -743,7 +744,7 @@ function ClassBar({ seated, waitlisted, settings, canEdit, onSave, onStart, onHo
         {canEdit && (
           <div style={{ marginTop: 10 }}>
             {started ? (
-              <button type="button" onClick={onHold} style={{ border: "none", background: "transparent", color: COLORS.muted, fontWeight: 600, fontSize: 12.5, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
+              <button type="button" onClick={onHold} style={{ border: "none", background: "transparent", color: COLORS.action, fontWeight: 600, fontSize: 12.5, cursor: "pointer", padding: 0, fontFamily: "inherit" }}>
                 Put the class on hold
               </button>
             ) : (
@@ -974,7 +975,7 @@ function AccManagerTab({ saver }) {
     });
   };
 
-  const inputStyle = { width: "100%", boxSizing: "border-box", border: `1px solid ${COLORS.border}`, padding: "9px 12px", fontSize: 14 };
+  const inputStyle = { width: "100%", boxSizing: "border-box", border: `1px solid ${COLORS.border2}`, padding: "9px 12px", fontSize: 14 };
 
   return (
     <div style={{ maxWidth: 720, margin: "0 auto" }}>
@@ -1111,7 +1112,7 @@ function AgreementFields({ meta, saver }) {
             </button>
           </div>
         ))}
-        <button type="button" onClick={() => commit({ relationships: [...relationships, "New option"] })} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.ink, fontWeight: 600, fontSize: 13, cursor: "pointer", padding: "4px 0", alignSelf: "flex-start", fontFamily: "inherit" }}>
+        <button type="button" onClick={() => commit({ relationships: [...relationships, "New option"] })} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.action, fontWeight: 600, fontSize: 13, cursor: "pointer", padding: "4px 0", alignSelf: "flex-start", fontFamily: "inherit" }}>
           <Plus size={14} /> Add option
         </button>
       </div>
@@ -1285,12 +1286,12 @@ function AgreementCard({ saver }) {
                     <Download size={13} /> Download
                   </a>
                 )}
-                <label style={{ display: "inline-flex", alignItems: "center", gap: 6, background: COLORS.ink, color: COLORS.white, fontWeight: 600, fontSize: 12.5, padding: "6px 12px", cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1 }}>
+                <label style={{ display: "inline-flex", alignItems: "center", gap: 6, background: COLORS.action, color: COLORS.white, fontWeight: 600, fontSize: 12.5, padding: "6px 12px", cursor: busy ? "default" : "pointer", opacity: busy ? 0.6 : 1 }}>
                   <Upload size={13} /> {busy ? "Uploading…" : meta.pdf ? "Replace PDF" : "Upload PDF"}
                   <input ref={fileRef} type="file" accept="application/pdf" onChange={(e) => upload(e.target.files?.[0])} disabled={busy} style={{ display: "none" }} />
                 </label>
                 {meta.pdf && (
-                  <button type="button" onClick={remove} style={{ display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.muted, fontWeight: 600, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>
+                  <button type="button" onClick={remove} style={{ display: "inline-flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.action, fontWeight: 600, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>
                     <Trash2 size={13} /> Remove
                   </button>
                 )}
@@ -1474,13 +1475,13 @@ function UnfinishedList({ user, drafts, questions, onChange }) {
                             type="button"
                             onClick={() => submitFor(d)}
                             onBlur={() => setArmedId((a) => (a === d.id ? null : a))}
-                            style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: armedId === d.id ? COLORS.warnText : COLORS.ink, color: COLORS.white, fontWeight: 600, fontSize: 13, padding: "8px 14px", cursor: "pointer", fontFamily: "inherit" }}
+                            style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: armedId === d.id ? COLORS.warnText : COLORS.action, color: COLORS.white, fontWeight: 600, fontSize: 13, padding: "8px 14px", cursor: "pointer", fontFamily: "inherit" }}
                           >
                             <Send size={14} /> {armedId === d.id ? "Click again to submit it for them" : "Submit this for them"}
                           </button>
                           <span style={{ fontSize: 12, color: COLORS.muted }}>Creates their application with what they have, as if they had pressed Submit.</span>
                         </div>
-                        <button type="button" onClick={() => remove(d)} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.muted, fontWeight: 600, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>
+                        <button type="button" onClick={() => remove(d)} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.action, fontWeight: 600, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>
                           <Trash2 size={14} /> Clear this unfinished application
                         </button>
                       </div>
@@ -1527,6 +1528,7 @@ export default function StudentManager({ user }) {
     ...(isSuperAdmin ? [{ id: "agreement", label: "Student agreement", icon: Signature }] : []),
     { id: "students", label: "EIB Students", icon: Users },
     // Analytics has no tab; it still opens at /manager?tab=analytics.
+    ...(isSuperAdmin ? [{ id: "reminders", label: "Reminders", icon: BellRing }] : []),
     ...(isSuperAdmin ? [{ id: "graduation", label: "Graduation", icon: Award }] : []),
     ...(isSuperAdmin ? [{ id: "accmanager", label: "Acc Manager", icon: UserPlus }] : []),
   ];
@@ -1544,7 +1546,7 @@ export default function StudentManager({ user }) {
       />
       <div style={{ maxWidth: 720, margin: "0 auto" }}>{saver.error && <Notice onClose={saver.clearError}>{saver.error}</Notice>}</div>
 
-      {tab === "agreement" && isSuperAdmin ? <AgreementCard saver={saver} /> : tab === "analytics" ? <AnalyticsTab key={listKey} user={user} /> : tab === "graduation" && isSuperAdmin ? <GraduationTab /> : tab === "accmanager" && isSuperAdmin ? <AccManagerTab saver={saver} /> : <StudentsTab key={listKey} saver={saver} user={user} />}
+      {tab === "agreement" && isSuperAdmin ? <AgreementCard saver={saver} /> : tab === "analytics" ? <AnalyticsTab key={listKey} user={user} /> : tab === "graduation" && isSuperAdmin ? <GraduationTab /> : tab === "reminders" && isSuperAdmin ? <div style={{ maxWidth: 760, margin: "0 auto" }}><RemindersTab /></div> : tab === "accmanager" && isSuperAdmin ? <AccManagerTab saver={saver} /> : <StudentsTab key={listKey} saver={saver} user={user} />}
     </div>
   );
 }

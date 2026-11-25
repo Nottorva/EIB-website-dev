@@ -9,12 +9,12 @@ import { COLORS } from "./ui";
 
 const inputBox = {
   width: "100%",
-  border: `1px solid ${COLORS.border}`,
+  border: `1px solid ${COLORS.border2}`,
   padding: "14px 16px",
   fontSize: 14.5,
   color: COLORS.ink,
   boxSizing: "border-box",
-  background: COLORS.bg,
+  background: COLORS.surface,
 };
 
 export function TextInput({ item, payload, onChange }) {
@@ -95,7 +95,7 @@ export function TableInput({ item, payload, onChange }) {
         </table>
       </div>
       {!fixed && (
-        <button type="button" onClick={() => commit([...rows, columns.map(() => "")])} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.ink, fontWeight: 600, fontSize: 13, cursor: "pointer", padding: "8px 0 0" }}>
+        <button type="button" onClick={() => commit([...rows, columns.map(() => "")])} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.action, fontWeight: 600, fontSize: 13, cursor: "pointer", padding: "8px 0 0" }}>
           <Plus size={14} /> Add row
         </button>
       )}
@@ -148,11 +148,11 @@ export function LinkInput({ payload, onChange }) {
             value={url}
             onChange={(e) => onChange({ url: e.target.value })}
             placeholder="https://docs.google.com/..."
-            style={{ ...inputBox, paddingLeft: 38, borderColor: valid ? COLORS.border : COLORS.errorBorder }}
+            style={{ ...inputBox, paddingLeft: 38, borderColor: valid ? COLORS.border2 : COLORS.errorBorder }}
           />
         </div>
         {isValidUrl(url) && (
-          <a href={url} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 14, color: COLORS.white, background: COLORS.ink, fontWeight: 600, textDecoration: "none", padding: "13px 16px", whiteSpace: "nowrap" }}>
+          <a href={url} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 14, color: COLORS.white, background: COLORS.action, fontWeight: 600, textDecoration: "none", padding: "13px 16px", whiteSpace: "nowrap" }}>
             Open <ExternalLink size={14} />
           </a>
         )}
@@ -291,7 +291,7 @@ export function DeliverablePreview({ item }) {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
         <div style={{ fontSize: 11.5, fontWeight: 600, color: COLORS.ink, textTransform: "uppercase", letterSpacing: "0.12em" }}>Student preview · interactive, not saved</div>
         {payload && (
-          <button type="button" onClick={() => setPayload(null)} style={{ border: "none", background: "transparent", color: COLORS.muted, fontWeight: 600, fontSize: 12, cursor: "pointer", padding: 0 }}>
+          <button type="button" onClick={() => setPayload(null)} style={{ border: "none", background: "transparent", color: COLORS.action, fontWeight: 600, fontSize: 12, cursor: "pointer", padding: 0 }}>
             Reset
           </button>
         )}

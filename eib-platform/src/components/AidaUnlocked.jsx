@@ -95,7 +95,7 @@ function DemoLinks({ onError }) {
       </div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         <input aria-label="Who the link is for" value={label} maxLength={80} onChange={(e) => setLabel(e.target.value)} onKeyDown={(e) => e.key === "Enter" && !busy && create()} placeholder="Who is it for? (optional, only you see this)" style={{ ...fieldStyle, flex: "1 1 220px", width: "auto", padding: "9px 12px", fontSize: "var(--aida-input-size, 14px)" }} />
-        <button type="button" onClick={create} disabled={busy} style={{ ...button, border: "none", background: COLORS.ink, color: COLORS.white, fontWeight: 600, opacity: busy ? 0.6 : 1 }}>
+        <button type="button" onClick={create} disabled={busy} style={{ ...button, border: "none", background: COLORS.action, color: COLORS.white, fontWeight: 600, opacity: busy ? 0.6 : 1 }}>
           <Link2 size={15} /> {busy ? "Making…" : "Create demo link"}
         </button>
       </div>

@@ -43,7 +43,7 @@ export default function Welcome({ user }) {
           type="button"
           onClick={go}
           disabled={busy}
-          style={{ display: "inline-flex", alignItems: "center", gap: 10, border: "none", background: COLORS.ink, color: COLORS.white, fontWeight: 600, fontSize: 18, padding: "16px 28px", cursor: busy ? "default" : "pointer", fontFamily: "inherit" }}
+          style={{ display: "inline-flex", alignItems: "center", gap: 10, border: "none", background: COLORS.action, color: COLORS.white, fontWeight: 600, fontSize: 18, padding: "16px 28px", cursor: busy ? "default" : "pointer", fontFamily: "inherit" }}
         >
           {busy ? "One moment…" : "Go to the Student Agreement"} <ArrowRight size={20} />
         </button>

@@ -89,7 +89,7 @@ function TagsEditor({ tags, onChange }) {
           {open && (
             <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 20, background: COLORS.surface, border: `1px solid ${COLORS.border}`, padding: 6, display: "flex", flexDirection: "column", minWidth: 130 }}>
               {remaining.map((t) => (
-                <button key={t.id} type="button" onClick={() => { onChange([...tags, t.id]); setOpen(false); }} style={{ textAlign: "left", border: "none", background: "transparent", padding: "7px 10px", fontSize: 13, fontWeight: 600, color: COLORS.ink, cursor: "pointer", fontFamily: "inherit" }}>
+                <button key={t.id} type="button" onClick={() => { onChange([...tags, t.id]); setOpen(false); }} style={{ textAlign: "left", border: "none", background: "transparent", padding: "7px 10px", fontSize: 13, fontWeight: 600, color: COLORS.action, cursor: "pointer", fontFamily: "inherit" }}>
                   {t.label}
                 </button>
               ))}
@@ -292,10 +292,10 @@ function MentorDetail({ mentor, onBack, onUpdate, onDelete }) {
   return (
     <div style={{ maxWidth: 720, margin: "0 auto" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-        <button type="button" onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.text2, fontWeight: 600, fontSize: 13.5, cursor: "pointer", padding: "4px 0" }}>
+        <button type="button" onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.action, fontWeight: 600, fontSize: 13.5, cursor: "pointer", padding: "4px 0" }}>
           <ArrowLeft size={15} /> Back to list
         </button>
-        <button type="button" onClick={onDelete} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.muted, fontWeight: 600, fontSize: 12.5, cursor: "pointer" }}>
+        <button type="button" onClick={onDelete} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.action, fontWeight: 600, fontSize: 12.5, cursor: "pointer" }}>
           <Trash2 size={14} /> Remove mentor
         </button>
       </div>
@@ -653,7 +653,7 @@ export default function MentorCRM({ user }) {
                 <button
                   type="button"
                   onClick={addMentor}
-                  style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: COLORS.ink, color: COLORS.white, fontWeight: 600, fontSize: 13, padding: "7px 14px", cursor: "pointer" }}
+                  style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: COLORS.action, color: COLORS.white, fontWeight: 600, fontSize: 13, padding: "7px 14px", cursor: "pointer" }}
                 >
                   <Plus size={14} /> Add mentor
                 </button>
@@ -793,7 +793,7 @@ function AdvancementModal({ onClose }) {
     }
   };
 
-  const inputStyle = { width: "100%", boxSizing: "border-box", border: `1px solid ${COLORS.border}`, padding: "9px 12px", fontSize: 14 };
+  const inputStyle = { width: "100%", boxSizing: "border-box", border: `1px solid ${COLORS.border2}`, padding: "9px 12px", fontSize: 14 };
   const label = { fontSize: 11.5, fontWeight: 600, color: COLORS.muted, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 6 };
 
   return (

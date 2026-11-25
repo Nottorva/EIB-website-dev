@@ -85,7 +85,7 @@ function FileField({ label, lesson, kind, onPatch, hint }) {
               Open <ExternalLink size={13} />
             </a>
           )}
-          <label style={{ ...chip, background: COLORS.ink, color: COLORS.white }}>
+          <label style={{ ...chip, background: COLORS.action, color: COLORS.white }}>
             <Upload size={13} /> {busy ? "Uploading…" : file ? "Replace" : "Upload"}
             <input ref={inputRef} type="file" accept={ACCEPT[kind]} onChange={(e) => upload(e.target.files?.[0])} disabled={busy} style={{ display: "none" }} />
           </label>
@@ -272,7 +272,7 @@ function DeliverableEditorModal({ eyebrow, initial, onSave, onDelete, onClose })
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
           <FieldLabel style={{ marginBottom: 0 }}>Example</FieldLabel>
           {example && (
-            <button type="button" onClick={() => setExample(null)} style={{ border: "none", background: "transparent", color: COLORS.muted, fontWeight: 600, fontSize: 12.5, cursor: "pointer", padding: 0 }}>
+            <button type="button" onClick={() => setExample(null)} style={{ border: "none", background: "transparent", color: COLORS.action, fontWeight: 600, fontSize: 12.5, cursor: "pointer", padding: 0 }}>
               Clear example
             </button>
           )}
@@ -290,7 +290,7 @@ function DeliverableEditorModal({ eyebrow, initial, onSave, onDelete, onClose })
         onClick={save}
         style={{
           width: "100%",
-          background: COLORS.ink,
+          background: COLORS.action,
           color: COLORS.white,
           border: "none",
           padding: "15px",
@@ -599,7 +599,7 @@ function PublishButton({ published, onToggle }) {
         cursor: "pointer",
         fontFamily: "inherit",
         border: published ? `1px solid ${COLORS.successBorder}` : "none",
-        background: published ? COLORS.successBg : COLORS.ink,
+        background: published ? COLORS.successBg : COLORS.action,
         color: published ? COLORS.successText : COLORS.white,
       }}
     >

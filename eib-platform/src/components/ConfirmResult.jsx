@@ -47,7 +47,7 @@ export default function ConfirmResult({ state, student, token }) {
                 <Mail size={16} /> A new link is on its way. Check your inbox.
               </div>
             ) : (
-              <button type="button" onClick={resend} disabled={busy} style={{ display: "inline-flex", alignItems: "center", gap: 8, border: "none", background: COLORS.ink, color: COLORS.white, fontWeight: 600, fontSize: 14, padding: "11px 18px", cursor: busy ? "default" : "pointer", fontFamily: "inherit" }}>
+              <button type="button" onClick={resend} disabled={busy} style={{ display: "inline-flex", alignItems: "center", gap: 8, border: "none", background: COLORS.action, color: COLORS.white, fontWeight: 600, fontSize: 14, padding: "11px 18px", cursor: busy ? "default" : "pointer", fontFamily: "inherit" }}>
                 <Mail size={16} /> {busy ? "Sending…" : "Send me a new link"}
               </button>
             )}

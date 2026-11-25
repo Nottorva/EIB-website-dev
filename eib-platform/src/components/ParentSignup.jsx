@@ -222,7 +222,7 @@ export default function ParentSignup({ state, token, studentName, parentName, po
             </label>
           </fieldset>
           {error && <Notice onClose={() => setError(null)}>{error}</Notice>}
-          <button type="submit" disabled={!canSign || busy} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, border: "none", background: canSign ? COLORS.ink : COLORS.disabled, color: canSign ? COLORS.white : COLORS.muted, fontWeight: 600, fontSize: 15, padding: "13px 22px", cursor: canSign && !busy ? "pointer" : "default", alignSelf: "flex-start", fontFamily: "inherit" }}>
+          <button type="submit" disabled={!canSign || busy} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, border: "none", background: canSign ? COLORS.action : COLORS.disabled, color: canSign ? COLORS.white : COLORS.muted, fontWeight: 600, fontSize: 15, padding: "13px 22px", cursor: canSign && !busy ? "pointer" : "default", alignSelf: "flex-start", fontFamily: "inherit" }}>
             <ShieldCheck size={17} /> {busy ? "Saving…" : "I agree"}
           </button>
           <p style={{ fontSize: 12.5, color: COLORS.muted, lineHeight: 1.6, margin: 0 }}>

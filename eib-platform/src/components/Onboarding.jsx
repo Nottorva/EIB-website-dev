@@ -103,7 +103,7 @@ export default function Onboarding({ user }) {
               </div>
               {resendMsg && <Notice tone={resendMsg.ok ? "info" : "error"} onClose={() => setResendMsg(null)}>{resendMsg.text}</Notice>}
               <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                <button type="button" onClick={resend} disabled={resending || waitMin > 0} style={{ display: "inline-flex", alignItems: "center", gap: 8, border: "none", background: resending || waitMin > 0 ? COLORS.disabled : COLORS.ink, color: resending || waitMin > 0 ? COLORS.muted : COLORS.white, fontWeight: 600, fontSize: 14, padding: "11px 18px", cursor: resending || waitMin > 0 ? "default" : "pointer", fontFamily: "inherit" }}>
+                <button type="button" onClick={resend} disabled={resending || waitMin > 0} style={{ display: "inline-flex", alignItems: "center", gap: 8, border: "none", background: resending || waitMin > 0 ? COLORS.disabled : COLORS.action, color: resending || waitMin > 0 ? COLORS.muted : COLORS.white, fontWeight: 600, fontSize: 14, padding: "11px 18px", cursor: resending || waitMin > 0 ? "default" : "pointer", fontFamily: "inherit" }}>
                   <Mail size={16} /> {resending ? "Sending…" : "Resend the confirmation email"}
                 </button>
                 {waitMin > 0 && <span style={{ fontSize: 12.5, color: COLORS.muted }}>Available again in {waitMin} min</span>}
@@ -112,7 +112,7 @@ export default function Onboarding({ user }) {
           )}
           <div style={{ display: "flex", gap: 10, marginTop: 20, flexWrap: "wrap" }}>
             {signed && (
-              <a href="/lessons" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: COLORS.ink, color: COLORS.white, fontWeight: 600, fontSize: 14, padding: "11px 18px", textDecoration: "none" }}>
+              <a href="/lessons" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: COLORS.action, color: COLORS.white, fontWeight: 600, fontSize: 14, padding: "11px 18px", textDecoration: "none" }}>
                 Open your lessons <ArrowRight size={16} />
               </a>
             )}
@@ -261,7 +261,7 @@ export default function Onboarding({ user }) {
           <button
             type="submit"
             disabled={!canSign || submitting || preview}
-            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, border: "none", background: canSign && !preview ? COLORS.ink : COLORS.disabled, color: canSign && !preview ? COLORS.white : COLORS.muted, fontWeight: 600, fontSize: 15, padding: "13px 22px", cursor: canSign && !preview ? "pointer" : "default", alignSelf: "flex-start" }}
+            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, border: "none", background: canSign && !preview ? COLORS.action : COLORS.disabled, color: canSign && !preview ? COLORS.white : COLORS.muted, fontWeight: 600, fontSize: 15, padding: "13px 22px", cursor: canSign && !preview ? "pointer" : "default", alignSelf: "flex-start" }}
           >
             <ShieldCheck size={17} /> {submitting ? "Saving…" : "I agree"}
           </button>

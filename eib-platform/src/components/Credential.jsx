@@ -33,7 +33,7 @@ function CopyLink({ url }) {
     } catch {}
   };
   return (
-    <button type="button" onClick={copy} style={{ display: "inline-flex", alignItems: "center", gap: 7, border: `1px solid ${COLORS.border}`, background: COLORS.surface, color: COLORS.text2, fontWeight: 600, fontSize: 14, padding: "10px 16px", cursor: "pointer" }}>
+    <button type="button" onClick={copy} style={{ display: "inline-flex", alignItems: "center", gap: 7, border: `1px solid ${COLORS.border2}`, background: COLORS.surface, color: COLORS.ink, fontWeight: 600, fontSize: 14, padding: "10px 16px", cursor: "pointer" }}>
       {copied ? <Check size={15} color={COLORS.successText} /> : <Copy size={15} />} {copied ? "Link copied" : "Copy link"}
     </button>
   );
@@ -51,7 +51,7 @@ export function CredentialCard({ credential }) {
         You have earned the <strong style={{ color: COLORS.ink }}>{credential.title}</strong>, issued {fmtLongDateYear(credential.issuedAt)}. It has its own page that anyone with the link can open, and you can add it to your LinkedIn profile.
       </p>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 16 }}>
-        <a href={credential.url} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: COLORS.ink, color: COLORS.white, fontWeight: 600, fontSize: 14.5, padding: "11px 18px", textDecoration: "none" }}>
+        <a href={credential.url} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: COLORS.action, color: COLORS.white, fontWeight: 600, fontSize: 14.5, padding: "11px 18px", textDecoration: "none" }}>
           View my credential <ExternalLink size={15} />
         </a>
         <LinkedInButton href={credential.linkedIn} />

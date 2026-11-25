@@ -320,7 +320,7 @@ function EventDetail({ event, mentors, statuses, canEdit, onBack, onPatch, onSet
         onBack={onBack}
         right={
           canEdit && (
-            <button type="button" onClick={onDelete} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.muted, fontWeight: 600, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>
+            <button type="button" onClick={onDelete} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.action, fontWeight: 600, fontSize: 12.5, cursor: "pointer", fontFamily: "inherit" }}>
               <Trash2 size={14} /> Delete event
             </button>
           )
@@ -482,7 +482,7 @@ function MentorChooser({ mentors, cohortYear, excludeIds, action, onPick, onNew,
 function BackRow({ onBack, right }) {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-      <button type="button" onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.text2, fontWeight: 600, fontSize: 13.5, cursor: "pointer", padding: "4px 0", fontFamily: "inherit" }}>
+      <button type="button" onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.action, fontWeight: 600, fontSize: 13.5, cursor: "pointer", padding: "4px 0", fontFamily: "inherit" }}>
         <ArrowLeft size={15} /> Back to sessions
       </button>
       {right || null}
@@ -536,7 +536,7 @@ function Field({ icon: Icon, label, children }) {
 
 function BigButton({ onClick, icon: Icon, children }) {
   return (
-    <button type="button" onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 8, border: "none", background: COLORS.ink, color: COLORS.white, fontWeight: 600, fontSize: 13.5, padding: "9px 16px", cursor: "pointer", alignSelf: "flex-start", fontFamily: "inherit" }}>
+    <button type="button" onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 8, border: "none", background: COLORS.action, color: COLORS.white, fontWeight: 600, fontSize: 13.5, padding: "9px 16px", cursor: "pointer", alignSelf: "flex-start", fontFamily: "inherit" }}>
       {Icon && <Icon size={15} />} {children}
     </button>
   );

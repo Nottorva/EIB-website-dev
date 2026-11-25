@@ -152,7 +152,7 @@ export default function ChangesPanel() {
         <Ticket key={t.id} t={t} busy={busy} onDecide={decide} />
       ))}
 
-      <button type="button" onClick={() => setShowHistory((v) => !v)} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "none", color: COLORS.muted, fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit", padding: 0, marginTop: 24, marginBottom: 10 }}>
+      <button type="button" onClick={() => setShowHistory((v) => !v)} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "none", color: COLORS.action, fontWeight: 600, fontSize: 13, cursor: "pointer", fontFamily: "inherit", padding: 0, marginTop: 24, marginBottom: 10 }}>
         {showHistory ? <ChevronDown size={14} /> : <ChevronRight size={14} />} History ({history.length}; proposed tickets expire after {data.expiryDays} days)
       </button>
       {showHistory ? history.map((t) => <Ticket key={t.id} t={t} busy={busy} onDecide={decide} />) : null}

@@ -18,6 +18,7 @@ import { listLessons } from "./lessons";
 import { listSubmissions } from "./submissions";
 import { getCohortYear } from "./settings";
 import { TZ } from "../format";
+import { isComplete } from "../deliverables";
 
 export const CREDENTIAL_TITLE = "EIB Founder Micro-Credential";
 export const CREDENTIAL_ISSUER = "EIB by Nemosyne LTD";
@@ -31,41 +32,10 @@ export const cohortLabel = (year) => `${year}–${String(year + 1).slice(-2)}`;
 const shortName = (lesson, index) => `${lesson.number}${String.fromCharCode(65 + index)}`;
 
 const filled = (v) => String(v ?? "").trim() !== "";
-const isUrl = (v) => {
-  try {
-    return ["http:", "https:"].includes(new URL(String(v || "").trim()).protocol);
-  } catch {
-    return false;
-  }
-};
 
-// A deliverable is complete when every one of its fields is filled:
-//   text       something is written
-//   link       a real web address
-//   checklist  every box is ticked
-//   table      every cell is filled. A table with named rows needs all of
-//              them; one where the student adds rows needs at least one row,
-//              and a row left entirely blank is ignored.
-export function isComplete(d, payload) {
-  // a checklist nobody has given any boxes has nothing to fill
-  if (d.type === "checklist" && d.checklistItems.length === 0) return true;
-  if (!payload) return false;
-  if (d.type === "text") return filled(payload.text);
-  if (d.type === "link") return isUrl(payload.url);
-  if (d.type === "checklist") {
-    const done = new Set((payload.items || []).filter((i) => i.checked).map((i) => i.label));
-    return d.checklistItems.every((label) => done.has(label));
-  }
-  if (d.type === "table") {
-    const width = (d.columns.length ? d.columns : payload.columns || []).length || 2;
-    const whole = (row) => Array.from({ length: width }, (_, c) => row?.[c]).every(filled);
-    const rows = payload.rows || [];
-    if (d.rowLabels.length) return d.rowLabels.every((_, i) => whole(rows[i]));
-    const used = rows.filter((r) => (r || []).some(filled));
-    return used.length > 0 && used.every(whole);
-  }
-  return false;
-}
+// When a deliverable counts as complete: see lib/deliverables.js (the Lessons
+// page and the reminder emails use the same rule).
+export { isComplete };
 
 /* ------------------------------------------------------------ settings --- */
 // storyDeliverableId  the deliverable shown as the founder story ("" = none)

@@ -30,13 +30,13 @@ function Identity({ user, identity, authMode, pathname }) {
     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
       <div
         aria-hidden="true"
-        style={{ width: 36, height: 36, background: TOKENS.bg, border: `1px solid ${TOKENS.border2}`, color: TOKENS.ink, fontWeight: 600, fontSize: 13, letterSpacing: "0.04em", display: "flex", alignItems: "center", justifyContent: "center" }}
+        style={{ width: 36, height: 36, background: TOKENS.white, color: TOKENS.ink, fontWeight: 600, fontSize: 13, letterSpacing: "0.04em", display: "flex", alignItems: "center", justifyContent: "center" }}
       >
         {initialsOf(shown.name)}
       </div>
       <div style={{ textAlign: "left", lineHeight: 1.3 }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: TOKENS.ink }}>{shown.name}</div>
-        {user && <div style={{ fontSize: 13, color: TOKENS.muted }}>{ROLE_LABEL[user.role]}</div>}
+        <div style={{ fontSize: 14, fontWeight: 600, color: TOKENS.white }}>{shown.name}</div>
+        {user && <div style={{ fontSize: 13, color: "rgba(255,255,255,0.74)" }}>{ROLE_LABEL[user.role]}</div>}
       </div>
       {authMode === "google" && <GoogleSignOutButton callbackUrl={pathname === "/apply" ? "/apply" : "/"} />}
     </div>
@@ -55,7 +55,7 @@ export default function TopBar({ user, authMode, identity }) {
     <header className="eib-topbar">
       <Link href={home} style={{ display: "flex", alignItems: "baseline", gap: 12, textDecoration: "none" }}>
         <span className="eib-wordmark">EIB</span>
-        <span style={{ fontSize: 13, color: TOKENS.muted }}>joineib.ca</span>
+        <span style={{ fontSize: 13, color: "rgba(255,255,255,0.74)" }}>joineib.ca</span>
       </Link>
 
       <div style={{ display: "flex", alignItems: "center", gap: "10px 28px", flexWrap: "wrap" }}>

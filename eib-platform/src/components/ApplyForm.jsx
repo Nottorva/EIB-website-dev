@@ -130,7 +130,7 @@ function StatusScreen({ status, onSignOut }) {
             ? "You have a seat in EIB and your student account is ready. Class has not started yet; in the meantime you can read and sign the Student Agreement."
             : "You have a seat in EIB and your student account is ready."}
           <div style={{ marginTop: 20 }}>
-            <Link href="/lessons" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: COLORS.ink, color: COLORS.white, fontWeight: 600, fontSize: 15, padding: "12px 20px", textDecoration: "none" }}>
+            <Link href="/lessons" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: COLORS.action, color: COLORS.white, fontWeight: 600, fontSize: 15, padding: "12px 20px", textDecoration: "none" }}>
               {status.classStarted === false ? "Continue" : "Open your lessons"} <ArrowRight size={16} />
             </Link>
           </div>
@@ -266,7 +266,7 @@ function DevSignInCard({ domain, onSignedIn }) {
         <button
           type="submit"
           disabled={busy}
-          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: busy ? COLORS.disabled : COLORS.ink, color: COLORS.white, border: "none", padding: "13px", fontSize: 15, fontWeight: 600, cursor: busy ? "default" : "pointer" }}
+          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: busy ? COLORS.disabled : COLORS.action, color: COLORS.white, border: "none", padding: "13px", fontSize: 15, fontWeight: 600, cursor: busy ? "default" : "pointer" }}
         >
           <LogIn size={16} /> Sign in with your TFS Google account
         </button>
@@ -319,7 +319,7 @@ function ParentCard({ domain }) {
         <input type="email" value={form.parentEmail} onChange={set("parentEmail")} placeholder="Your email address" aria-label="Your email address" autoComplete="email" required style={fieldStyle} />
         <input value={form.studentName} onChange={set("studentName")} placeholder="Student's full name" aria-label="Student's full name" autoComplete="off" required style={fieldStyle} />
         <input type="email" value={form.studentEmail} onChange={set("studentEmail")} placeholder={`Student's school email (@${domain})`} aria-label={`Student's school email, ending in @${domain}`} autoComplete="off" required style={fieldStyle} />
-        <button type="submit" disabled={busy} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: busy ? COLORS.disabled : COLORS.ink, color: COLORS.white, border: "none", padding: "13px", fontSize: 15, fontWeight: 600, cursor: busy ? "default" : "pointer" }}>
+        <button type="submit" disabled={busy} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: busy ? COLORS.disabled : COLORS.action, color: COLORS.white, border: "none", padding: "13px", fontSize: 15, fontWeight: 600, cursor: busy ? "default" : "pointer" }}>
           <Send size={16} /> {busy ? "Sending…" : "Email me the link"}
         </button>
       </form>
@@ -536,7 +536,7 @@ export default function ApplyForm() {
               <div style={{ fontSize: 12.5, color: COLORS.muted }}>{status.applicant.email}</div>
             </div>
           </div>
-          <button type="button" onClick={signOut} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.text2, fontWeight: 600, fontSize: 12.5, cursor: "pointer" }}>
+          <button type="button" onClick={signOut} style={{ display: "flex", alignItems: "center", gap: 6, border: "none", background: "transparent", color: COLORS.action, fontWeight: 600, fontSize: 12.5, cursor: "pointer" }}>
             <LogOut size={13} /> Not you? Sign out
           </button>
         </div>
@@ -622,7 +622,7 @@ export default function ApplyForm() {
           type="submit"
           disabled={submitting || preview}
           title={preview ? "Submitting is disabled in preview" : undefined}
-          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", background: submitting || preview ? COLORS.disabled : COLORS.ink, color: COLORS.white, border: "none", padding: "15px", fontSize: 16, fontWeight: 600, cursor: submitting ? "default" : "pointer", marginTop: 6 }}
+          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", background: submitting || preview ? COLORS.disabled : COLORS.action, color: COLORS.white, border: "none", padding: "15px", fontSize: 16, fontWeight: 600, cursor: submitting ? "default" : "pointer", marginTop: 6 }}
         >
           <Send size={16} /> {preview ? "Sign up (disabled in preview)" : submitting ? "Signing you up…" : status.seats?.seatsLeft === 0 ? "Join the waitlist" : "Sign up"}
         </button>

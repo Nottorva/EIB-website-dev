@@ -39,13 +39,17 @@ import {
 const SWATCHES = [
   ["bg", "Page background"],
   ["surface", "Cards, sections, inputs"],
-  ["ink", "Text, primary button"],
+  ["ink", "Text, the top bar, the open tab"],
   ["inkHover", "Hover"],
   ["text2", "Body text in cards"],
   ["muted", "Labels, captions"],
   ["border", "Card borders"],
   ["border2", "Input borders"],
   ["accent", "Brass: rules and frames only"],
+  ["action", "Main buttons and links"],
+  ["actionHover", "Hover"],
+  ["actionBg", "Hover ground, the AIDA strip"],
+  ["actionBorder", "Border on the pale tint"],
 ];
 
 const STATUSES = [
@@ -113,7 +117,7 @@ export default function StyleGuide() {
             <div style={{ fontSize: 15, color: TOKENS.text2 }}>Followed by a 15px description in the second text colour.</div>
           </div>
           <div>
-            <TextLink href="#top">A text link, underlined in ink</TextLink>
+            <TextLink href="#top">A text link, underlined in blue</TextLink>
           </div>
         </div>
       </Section>

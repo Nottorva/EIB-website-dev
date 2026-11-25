@@ -6,15 +6,22 @@
 // No "use client" here on purpose, so server pages can import it too.
 
 export const COLORS = {
-  bg: "#F5F3EE", // page background
-  surface: "#FFFDF8", // cards, sections, inputs
+  bg: "#ECE8DF", // page background: deep enough that white cards stand off it
+  surface: "#FFFFFF", // cards, sections, inputs
   ink: "#14213D", // primary text, primary button, borders that need weight
   inkHover: "#0B1427",
   text2: "#3A4352", // body text inside cards
-  muted: "#4A5568", // labels, captions, secondary text
-  border: "#E2DED5", // card and section borders
-  border2: "#C9C3B6", // tertiary button and input borders
+  muted: "#5E6878", // labels, captions, secondary text: clearly lighter than ink
+  border: "#D3CCBD", // card and section borders
+  border2: "#A39B8A", // tertiary button and input borders
   accent: "#A67C2E", // brass: rules, frames, seals. Never text.
+  // The action colour: anything you press to make something happen (main
+  // buttons, links). Ink stays for text and for "you are here" (the open tab,
+  // the current lesson), so the two never read as the same thing.
+  action: "#1B4FD8",
+  actionHover: "#143DAE",
+  actionBg: "#E9EFFD", // pale tint: hover grounds, the AIDA callout
+  actionBorder: "#B4C6F4",
   successBg: "#E8F3EC",
   successBorder: "#B7D7C2",
   successText: "#1E4D2E",
@@ -29,7 +36,7 @@ export const COLORS = {
   warnBorder: "#E2D2A8",
   warnText: "#5C4310",
   warnIcon: "#8A6516",
-  disabled: "#C9C3B6", // a button that cannot be pressed
+  disabled: "#B9B3A6", // a button that cannot be pressed
   white: "#FFFFFF", // text on ink
   scrim: "rgba(20,33,61,0.55)", // the dimmed page behind a dialog
 };

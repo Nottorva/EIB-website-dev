@@ -784,6 +784,80 @@ head("AIDA");
   check("switched off again: chat refused", 403, (await chat(student, "lesson_2", "hello")).status);
 }
 
+/* ---- due dates and reminder emails ---- */
+head("due dates and deliverable reminders");
+{
+  const { dueDay, dueState, lessonDay, formatDue } = await import("../src/lib/deliverables.js");
+  check("due: the Thursday after the lesson", ["2026-11-19", "2026-11-26", "2026-11-26", "2026-11-26"], [dueDay({ date: "Nov 17, 2026" }), dueDay({ date: "2026-11-24" }), dueDay({ date: "Nov 19, 2026" }), dueDay({ date: "Wednesday, November 25, 2026" })]);
+  check("due: no date or an unreadable one means no due date", ["", "", ""], [dueDay({ date: "" }), dueDay({ date: "TBD" }), dueDay({})]);
+  check("due: a date typed without a year is this year", "2026-11-17", lessonDay("Nov 17", new Date("2026-06-01T12:00:00Z")));
+  check("due: upcoming, today through the end of Thursday in Toronto, then past", ["upcoming", "today", "today", "past", ""], [dueState("2026-11-26", new Date("2026-11-25T23:00:00Z")), dueState("2026-11-26", new Date("2026-11-26T12:00:00Z")), dueState("2026-11-26", new Date("2026-11-27T04:30:00Z")), dueState("2026-11-26", new Date("2026-11-27T05:30:00Z")), dueState("")]);
+  check("due: written out", ["Thursday, November 26", "Thu, Nov 26"], [formatDue("2026-11-26"), formatDue("2026-11-26", { short: true })]);
+
+  const R = "/api/reminders";
+  const mail = () => { try { return fs.readFileSync("data/outbox.jsonl", "utf8").trim().split("\n").filter(Boolean).map((l) => JSON.parse(l)); } catch { return []; } };
+  const toAmara = () => mail().filter((m) => m.to === "amara.chen@tfs.ca" && /still outstanding$/.test(m.subject));
+  const day = (offset) => new Date(Date.now() + offset * 86400_000).toLocaleDateString("en-CA", { timeZone: "America/Toronto" });
+  const lessonsNow = (await req(admin, "GET", "/api/lessons")).json;
+  const l1 = lessonsNow.find((l) => l.id === "lesson_1");
+  const d1 = l1.deliverables.find((d) => d.type === "text");
+  const short = `${l1.number}${String.fromCharCode(65 + l1.deliverables.indexOf(d1))}`;
+  const key = { lessonId: "lesson_1", deliverableId: d1.id };
+  const before = (await req(student, "GET", "/api/lessons/view")).json.submissions.find((x) => x.lessonId === "lesson_1" && x.deliverableId === d1.id)?.payload;
+  const others = lessonsNow.filter((l) => l.id !== "lesson_1").map((l) => ({ id: l.id, date: l.date }));
+  for (const o of others) await req(admin, "PATCH", `/api/lessons/${o.id}`, { date: "" });
+
+  check("reminders: only the super admin", [403, 403, 401, 403, 403], [await code(leader, "GET", R), await code(student, "GET", R), await code(stranger, "GET", R), await code(leader, "POST", R, { action: "send" }), await code(leader, "PATCH", R, { enabled: true })]);
+  const start = (await req(admin, "GET", R)).json;
+  check("reminders: start off, with the email to read", [false, true, true], [start.enabled, /loss of feedback/.test(start.sample.text) && /loss of credential/.test(start.sample.text), /\/lessons/.test(start.sample.text)]);
+
+  // lesson 1 was two weeks ago, so its Thursday has passed; one deliverable is left empty
+  await req(admin, "PATCH", "/api/lessons/lesson_1", { date: day(-14) });
+  await req(student, "PUT", "/api/submissions", { ...key, payload: { text: "" } });
+  const late = (await req(admin, "GET", R)).json;
+  const mine = late.students.find((x) => x.id === "user_amara");
+  check("reminders: the unfinished, past-due deliverable is listed for the student", [true, "past", true], [Boolean(mine), mine?.items.some((i) => i.short === short && i.chapter === l1.chapterLabel) ? "past" : "", late.nextAutomatic >= 1]);
+  const n0 = toAmara().length;
+  check("reminders: the daily run sends nothing while switched off", ["reminders are off", n0], [(await req(null, "GET", `${R}/cron`)).json.skipped, toAmara().length]);
+
+  check("reminders: switched on", true, (await req(admin, "PATCH", R, { enabled: true })).json.enabled);
+  const ran = (await req(null, "GET", `${R}/cron`)).json;
+  const got = toAmara().at(-1);
+  check("reminders: the daily run emails the student once", [true, n0 + 1], [ran.sent >= 1, toAmara().length]);
+  const whole = mine?.items.length === l1.deliverables.length;
+  check("reminders: the subject and first line name the chapter, and say all or some", [`${whole ? "Your" : "Some"} ${l1.chapterLabel} deliverables are still outstanding`, true], [got?.subject, got?.text.includes(`${got?.subject}:`)]);
+  check("reminders: the email lists the deliverable and is plain", [true, true, true], [got?.text.includes(`- ${short} ${d1.title}`), got?.text.startsWith("Hi Amara,"), /loss of feedback\. Not completing deliverables before the end of the course will result in a loss of credential\./.test(got?.text || "")]);
+  // two chapters behind: lesson 2 was over a week ago and one of its deliverables is emptied too
+  const l2 = lessonsNow.find((l) => l.id === "lesson_2");
+  const d2 = l2.deliverables[0];
+  const key2 = { lessonId: "lesson_2", deliverableId: d2.id };
+  const before2 = (await req(student, "GET", "/api/lessons/view")).json.submissions.find((x) => x.lessonId === "lesson_2" && x.deliverableId === d2.id)?.payload;
+  await req(admin, "PATCH", "/api/lessons/lesson_2", { date: day(-8) });
+  await req(student, "PUT", "/api/submissions", { ...key2, payload: d2.type === "text" ? { text: "" } : d2.type === "link" ? { url: "" } : d2.type === "checklist" ? { items: [] } : { rows: [] } });
+  const twoRun = (await req(null, "GET", `${R}/cron`)).json;
+  const two = toAmara().at(-1);
+  check("reminders: a second chapter going past due sends one email covering both", [true, true, true, true], [twoRun.sent >= 1, /Chapter 1 and Chapter 2 deliverables are still outstanding$/.test(two?.subject || ""), two?.text.includes(`- ${short} ${d1.title}`), two?.text.includes(`- ${l2.number}A ${d2.title}`)]);
+  await req(admin, "PATCH", "/api/lessons/lesson_2", { date: "" });
+  if (before2) await req(student, "PUT", "/api/submissions", { ...key2, payload: before2 });
+  check("reminders: the next daily run does not email them again", [0, n0 + 2], [(await req(null, "GET", `${R}/cron`)).json.sent, toAmara().length]);
+  const manual = (await req(admin, "POST", R, { action: "send" })).json;
+  check("reminders: Send now emails them again, and it is in the history", [true, n0 + 3, true], [manual.result.sent.some((x) => x.name === "Amara Chen"), toAmara().length, manual.recent.some((r) => r.name === "Amara Chen" && r.manual)]);
+
+  await req(student, "PUT", "/api/submissions", { ...key, payload: { text: "SMOKE-DUE-DONE" } });
+  const done = (await req(admin, "GET", R)).json.students.find((x) => x.id === "user_amara");
+  check("reminders: once it is done it leaves the list", false, Boolean(done?.items.some((i) => i.short === short)));
+  await req(admin, "PATCH", "/api/settings", { classStarted: false });
+  check("reminders: nothing is sent while the class is on hold", "the class is on hold", (await req(null, "GET", `${R}/cron`)).json.skipped);
+  await req(admin, "PATCH", "/api/settings", { classStarted: true });
+
+  // put everything back
+  await req(admin, "PATCH", R, { enabled: false });
+  await req(admin, "PATCH", "/api/lessons/lesson_1", { date: l1.date || "" });
+  for (const o of others) await req(admin, "PATCH", `/api/lessons/${o.id}`, { date: o.date || "" });
+  if (before) await req(student, "PUT", "/api/submissions", { ...key, payload: before });
+  check("reminders: switched off again", false, (await req(admin, "GET", R)).json.enabled);
+}
+
 /* ---- graduation: the EIB Founder Micro-Credential ---- */
 head("graduation and micro-credentials");
 {
