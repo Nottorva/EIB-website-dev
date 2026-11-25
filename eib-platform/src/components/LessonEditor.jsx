@@ -119,39 +119,6 @@ function TeachingPlanModal({ eyebrow, lesson, onPatch, onClose }) {
   );
 }
 
-/* ---------- Student overview modal (room/time/overview text) ---------- */
-function StudentOverviewModal({ eyebrow, lesson, onPatch, onClose }) {
-  return (
-    <ModalShell eyebrow={`${eyebrow} · Student Overview`} title={lesson.title} onClose={onClose} maxWidth={680}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 16 }}>
-        <div>
-          <FieldLabel>Room</FieldLabel>
-          <input value={lesson.room} onChange={(e) => onPatch({ room: e.target.value })} placeholder="Room 214" style={fieldStyle} />
-        </div>
-        <div>
-          <FieldLabel>Start</FieldLabel>
-          <input value={lesson.startTime} onChange={(e) => onPatch({ startTime: e.target.value })} placeholder="3:30 PM" style={fieldStyle} />
-        </div>
-        <div>
-          <FieldLabel>End</FieldLabel>
-          <input value={lesson.endTime} onChange={(e) => onPatch({ endTime: e.target.value })} placeholder="4:15 PM" style={fieldStyle} />
-        </div>
-      </div>
-      <div>
-        <FieldLabel>Short overview shown on the card</FieldLabel>
-        <textarea
-          value={lesson.overview}
-          onChange={(e) => onPatch({ overview: e.target.value })}
-          rows={3}
-          placeholder="What is this session about, in two or three sentences?"
-          style={{ ...fieldStyle, resize: "vertical", fontSize: 14.5 }}
-        />
-      </div>
-      <div style={{ fontSize: 13, color: COLORS.muted, marginTop: 14, lineHeight: 1.5 }}>Student leaders can also change room and time from their Lessons view.</div>
-    </ModalShell>
-  );
-}
-
 /* ---------- Add / Edit Deliverable modal ---------- */
 function DeliverableEditorModal({ eyebrow, initial, onSave, onDelete, onClose }) {
   const [type, setType] = useState(initial?.type || "text");
@@ -517,7 +484,6 @@ function LessonCard({ lesson, onPatch, onDelete }) {
           borderBottom: `1px solid ${COLORS.border}`,
         }}
       >
-        <Pill icon={Eye} label="Student Overview" onClick={() => setActiveModal("studentOverview")} />
         <Pill icon={Presentation} label="Slides" onClick={() => setActiveModal("slides")} />
         <Pill icon={FileText} label="Teaching Plan" onClick={() => setActiveModal("teachingPlan")} />
         <MentorToggle value={lesson.mentorEnabled ? (lesson.mentorSeats === 2 ? 2 : 1) : 0} onChange={(seats) => onPatch(seats ? { mentorEnabled: true, mentorSeats: seats } : { mentorEnabled: false })} />
@@ -560,7 +526,6 @@ function LessonCard({ lesson, onPatch, onDelete }) {
         </div>
       </div>
 
-      {activeModal === "studentOverview" && <StudentOverviewModal eyebrow={eyebrow} lesson={lesson} onPatch={onPatch} onClose={() => setActiveModal(null)} />}
       {activeModal === "slides" && <SlidesModal eyebrow={eyebrow} lesson={lesson} onPatch={onPatch} onClose={() => setActiveModal(null)} />}
       {activeModal === "teachingPlan" && <TeachingPlanModal eyebrow={eyebrow} lesson={lesson} onPatch={onPatch} onClose={() => setActiveModal(null)} />}
       {activeModal === "addDeliverable" && <DeliverableEditorModal eyebrow={eyebrow} initial={null} onSave={saveDeliverable} onClose={() => setActiveModal(null)} />}
